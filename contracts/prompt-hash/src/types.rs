@@ -29,6 +29,7 @@ pub enum Error {
     InvalidReferralPercentage = 23,
     InvalidDiscountPercentage = 24,
     MaxSupplyReached = 25,
+    InvalidAsset = 26,
 }
 
 #[contracttype]
@@ -56,6 +57,13 @@ pub struct Purchase {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PricingConfig {
+    pub price: i128,
+    pub asset: Address,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Prompt {
     pub id: u128,
     pub creator: Address,
@@ -68,6 +76,7 @@ pub struct Prompt {
     pub wrapped_key: String,
     pub content_hash: BytesN<32>,
     pub price_stroops: i128,
+    pub asset: Address,
     pub active: bool,
     pub sales_count: u64,
     pub max_supply: u64, // 0 = unlimited
@@ -93,7 +102,7 @@ pub trait PromptHashTrait {
         encryption_iv: String,
         wrapped_key: String,
         content_hash: BytesN<32>,
-        price_stroops: i128,
+        pricing: PricingConfig,
     ) -> Result<u128, Error>;
 
     fn set_prompt_sale_status(

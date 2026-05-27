@@ -1,10 +1,12 @@
+import { lazy, Suspense } from "react";
 import { Outlet, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home";
-import BrowsePage from "./pages/browse/page.jsx";
-import SellPage from "./pages/sell/page.tsx";
-import ChatHome from "./pages/chat/page.tsx";
-import ProfilePage from "./pages/profile/page.tsx";
-import StatusPage from "./pages/status/page.tsx";
+
+const BrowsePage = lazy(() => import("./pages/browse/page.jsx"));
+const SellPage = lazy(() => import("./pages/sell/page.tsx"));
+const ChatHome = lazy(() => import("./pages/chat/page.tsx"));
+const ProfilePage = lazy(() => import("./pages/profile/page.tsx"));
+const StatusPage = lazy(() => import("./pages/status/page.tsx"));
 
 const AppLayout = () => (
   <main className="min-h-screen bg-slate-950 text-white">
@@ -14,17 +16,25 @@ const AppLayout = () => (
 
 function App() {
   return (
-    <Routes>
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/browse" element={<BrowsePage />} />
-        <Route path="/sell" element={<SellPage />} />
-        <Route path="/chat" element={<ChatHome />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/status" element={<StatusPage />} />
-        <Route path="*" element={<Home />} />
-      </Route>
-    </Routes>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen bg-slate-950">
+          <div className="text-white text-lg">Loading...</div>
+        </div>
+      }
+    >
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/browse" element={<BrowsePage />} />
+          <Route path="/sell" element={<SellPage />} />
+          <Route path="/chat" element={<ChatHome />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/status" element={<StatusPage />} />
+          <Route path="*" element={<Home />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }
 

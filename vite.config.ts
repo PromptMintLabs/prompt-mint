@@ -30,6 +30,21 @@ export default defineConfig(() => {
     },
     build: {
       target: "esnext",
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            "vendor-stellar": [
+              "@stellar/stellar-sdk",
+              "@stellar/stellar-base",
+              "@stellar/design-system",
+              "@creit.tech/stellar-wallets-kit",
+            ],
+            "vendor-charts": ["chart.js", "react-chartjs-2"],
+            "vendor-motion": ["framer-motion"],
+            "vendor-crypto": ["libsodium-wrappers"],
+          },
+        },
+      },
     },
     define: {
       global: "window",

@@ -6,6 +6,7 @@ struct PromptCreated {
     pub prompt_id: u128,
     pub creator: Address,
     pub price_stroops: i128,
+    pub asset: Address,
 }
 
 #[contractevent]
@@ -75,11 +76,18 @@ struct FeeWalletUpdated {
 pub struct Events;
 
 impl Events {
-    pub fn emit_prompt_created(env: &Env, prompt_id: u128, creator: Address, price_stroops: i128) {
+    pub fn emit_prompt_created(
+        env: &Env,
+        prompt_id: u128,
+        creator: Address,
+        price_stroops: i128,
+        asset: Address,
+    ) {
         PromptCreated {
             prompt_id,
             creator,
             price_stroops,
+            asset,
         }
         .publish(env);
     }

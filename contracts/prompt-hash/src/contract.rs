@@ -1,7 +1,7 @@
 use super::events::Events;
 use super::storage::Storage;
-use super::types::{DataKey, Error, Prompt, PromptHashTrait};
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
+use super::types::{DataKey, Error, PricingConfig, Prompt, PromptHashTrait};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Vec};
 use stellar_access::ownable::{self as ownable, Ownable};
 use stellar_macros::{default_impl, only_owner};
 
@@ -52,7 +52,7 @@ impl PromptHashTrait for PromptHashContract {
         encryption_iv: String,
         wrapped_key: String,
         content_hash: BytesN<32>,
-        price_stroops: i128,
+        pricing: PricingConfig,
     ) -> Result<u128, Error> {
         creator.require_auth();
         ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
@@ -64,8 +64,11 @@ impl PromptHashTrait for PromptHashContract {
             &encrypted_prompt,
             &encryption_iv,
             &wrapped_key,
-            price_stroops,
+            pricing.price,
         )?;
+
+        // Validate that the asset address implements the token interface
+        token::Client::new(&env, &pricing.asset).decimals();
 
         let prompt_id = Storage::get_prompt_counter(&env);
         let prompt = Prompt {
@@ -79,15 +82,16 @@ impl PromptHashTrait for PromptHashContract {
             encryption_iv,
             wrapped_key,
             content_hash,
-            price_stroops,
+            price_stroops: pricing.price,
+            asset: pricing.asset.clone(),
             active: true,
             sales_count: 0,
-            max_supply: 0, // default unlimited; use set_prompt_max_supply to restrict
+            max_supply: 0,
         };
 
         Storage::save_prompt(&env, &prompt)?;
         Storage::add_prompt_to_creator(&env, &creator, prompt_id);
-        Events::emit_prompt_created(&env, prompt_id, creator, price_stroops);
+        Events::emit_prompt_created(&env, prompt_id, creator, pricing.price, pricing.asset);
         Ok(prompt_id)
     }
 
@@ -231,17 +235,17 @@ impl PromptHashTrait for PromptHashContract {
             .checked_sub(deductions)
             .ok_or(Error::ArithmeticOverflow)?;
 
-        let xlm = Storage::get_stellar_asset_contract(&env)?;
+        let asset_client = token::StellarAssetClient::new(&env, &prompt.asset);
 
-        xlm.transfer_from(&this_contract, &buyer, &prompt.creator, &creator_amount);
+        asset_client.transfer_from(&this_contract, &buyer, &prompt.creator, &creator_amount);
 
         if fee_amount > 0 {
-            xlm.transfer_from(&this_contract, &buyer, &fee_wallet, &fee_amount);
+            asset_client.transfer_from(&this_contract, &buyer, &fee_wallet, &fee_amount);
         }
 
         if let Some(ref r) = referrer {
             if referral_amount > 0 {
-                xlm.transfer_from(&this_contract, &buyer, r, &referral_amount);
+                asset_client.transfer_from(&this_contract, &buyer, r, &referral_amount);
             }
         }
 
@@ -315,10 +319,10 @@ impl PromptHashTrait for PromptHashContract {
             .checked_sub(fee_amount)
             .ok_or(Error::ArithmeticOverflow)?;
 
-        let xlm = Storage::get_stellar_asset_contract(&env)?;
-        xlm.transfer_from(&this_contract, &buyer, &prompt.creator, &seller_amount);
+        let asset_client = token::StellarAssetClient::new(&env, &prompt.asset);
+        asset_client.transfer_from(&this_contract, &buyer, &prompt.creator, &seller_amount);
         if fee_amount > 0 {
-            xlm.transfer_from(&this_contract, &buyer, &fee_wallet, &fee_amount);
+            asset_client.transfer_from(&this_contract, &buyer, &fee_wallet, &fee_amount);
         }
 
         prompt.sales_count = prompt
