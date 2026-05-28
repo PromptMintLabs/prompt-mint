@@ -14,16 +14,16 @@ export default function SellPage() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.12),_transparent_35%),linear-gradient(180deg,_#020617,_#0f172a_45%,_#020617)] text-white">
       <Navigation />
 
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
         {/* Hero */}
-        <section className="mb-10 rounded-[2rem] border border-white/10 bg-slate-950/60 px-8 py-10 shadow-[0_32px_120px_-64px_rgba(16,185,129,0.4)]">
+        <section className="mb-8 rounded-[2rem] border border-white/10 bg-slate-950/60 px-5 py-7 shadow-[0_32px_120px_-64px_rgba(16,185,129,0.4)] sm:mb-10 sm:px-8 sm:py-10">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-400">
             Creator Studio
           </p>
-          <h1 className="mt-3 text-3xl font-semibold leading-snug sm:text-4xl">
+          <h1 className="mt-3 text-2xl font-semibold leading-snug sm:text-4xl">
             Sell encrypted prompt licenses
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:leading-7">
             Your full prompt is encrypted in the browser before anything touches the
             blockchain. Buyers only see plaintext after an on-chain access check and
             wallet-authenticated unlock — you keep creative control.
@@ -53,7 +53,7 @@ export default function SellPage() {
         <div className="mb-8 flex gap-2 rounded-2xl border border-white/10 bg-slate-950/60 p-1.5">
           <button
             onClick={() => setView("create")}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
+            className={`min-h-11 flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all sm:px-4 ${
               view === "create"
                 ? "bg-emerald-500/20 text-emerald-300 shadow-inner"
                 : "text-slate-400 hover:text-slate-200"
@@ -64,7 +64,7 @@ export default function SellPage() {
           </button>
           <button
             onClick={() => setView("manage")}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
+            className={`min-h-11 flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all sm:px-4 ${
               view === "manage"
                 ? "bg-emerald-500/20 text-emerald-300 shadow-inner"
                 : "text-slate-400 hover:text-slate-200"
