@@ -305,7 +305,10 @@ function WalletIdentityPanel({
                 <span className="min-w-0 truncate font-mono text-xs text-slate-300">
                   {address}
                 </span>
-                <span className="ml-auto shrink-0 text-xs text-slate-500">
+                <span
+                  className="ml-auto shrink-0 text-xs text-slate-500"
+                  aria-live="polite"
+                >
                   {copied ? "Copied!" : "Copy"}
                 </span>
               </button>
@@ -860,6 +863,7 @@ export default function ProfilePage() {
                   <TabsList className="mb-6 grid h-auto w-full grid-cols-2 rounded-xl border border-white/10 bg-white/[0.03] p-1.5 sm:w-[34rem]">
                     <TabsTrigger
                       value="purchased"
+                      aria-label="Open my library tab"
                       className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-slate-400 transition-all data-[state=active]:bg-cyan-200 data-[state=active]:text-slate-950 data-[state=active]:shadow-sm"
                     >
                       <LibraryBig className="h-4 w-4" />
@@ -870,6 +874,7 @@ export default function ProfilePage() {
                     </TabsTrigger>
                     <TabsTrigger
                       value="created"
+                      aria-label="Open my inventory tab"
                       className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-slate-400 transition-all data-[state=active]:bg-amber-300 data-[state=active]:text-slate-950 data-[state=active]:shadow-sm"
                     >
                       <Boxes className="h-4 w-4" />
