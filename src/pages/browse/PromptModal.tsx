@@ -132,6 +132,9 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       <div
         className="relative max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-[28px] border border-white/10 bg-slate-900 shadow-2xl sm:rounded-[32px]"
         role="dialog"
+        aria-modal="true"
+        aria-labelledby="prompt-modal-title"
+        aria-describedby="prompt-modal-description"
       >
         {/* Header Decor */}
         <div className="h-2 w-full bg-gradient-to-r from-emerald-500 to-blue-500" />
@@ -147,10 +150,10 @@ export const PromptModal: React.FC<PromptModalProps> = ({
 
         <div className="p-5 sm:p-8">
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 id="prompt-modal-title" className="mb-2 text-2xl font-bold text-white">
               Acquire License
             </h2>
-            <p className="text-sm text-slate-400">
+            <p id="prompt-modal-description" className="text-sm text-slate-400">
               Unlock high-quality prompt content via Stellar smart contract.
             </p>
           </div>
