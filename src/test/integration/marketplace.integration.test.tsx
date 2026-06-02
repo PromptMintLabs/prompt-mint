@@ -65,6 +65,68 @@ describe("marketplace purchase and unlock integration coverage", () => {
     expect(screen.queryByText("Inactive delisted prompt")).not.toBeInTheDocument();
   });
 
+  it("searches prompt descriptions as well as titles", async () => {
+    const prompt = makePrompt({
+      id: 5n,
+      title: "Hidden narrative prompt",
+      previewText: "Build a complete story arc with three plot twists.",
+      tags: ["Storytelling"],
+    });
+    const otherPrompt = makePrompt({
+      id: 6n,
+      title: "Sales operations overview",
+      previewText: "Manage sales staffing and quotas.",
+      tags: ["Sales"],
+    });
+
+    getAllPromptsMock.mockResolvedValue([prompt, otherPrompt]);
+    hasAccessMock.mockResolvedValue(false);
+
+    renderWithProviders(
+      <FetchAllPrompts
+        selectedCategory=""
+        selectedTag=""
+        priceRange={[0, 25]}
+        searchQuery="story arc"
+        sortBy="recent"
+      />,
+    );
+
+    expect(await screen.findByText("Hidden narrative prompt")).toBeInTheDocument();
+    expect(screen.queryByText("Sales operations overview")).not.toBeInTheDocument();
+  });
+
+  it("filters listings by selected tag", async () => {
+    const prompt = makePrompt({
+      id: 9n,
+      title: "Taggable prompt",
+      previewText: "A prompt with useful metadata.",
+      tags: ["AI"],
+    });
+    const otherPrompt = makePrompt({
+      id: 10n,
+      title: "Different prompt",
+      previewText: "Another listing.",
+      tags: ["Sales"],
+    });
+
+    getAllPromptsMock.mockResolvedValue([prompt, otherPrompt]);
+    hasAccessMock.mockResolvedValue(false);
+
+    renderWithProviders(
+      <FetchAllPrompts
+        selectedCategory=""
+        selectedTag="AI"
+        priceRange={[0, 25]}
+        searchQuery=""
+        sortBy="recent"
+      />,
+    );
+
+    expect(await screen.findByText("Taggable prompt")).toBeInTheDocument();
+    expect(screen.queryByText("Different prompt")).not.toBeInTheDocument();
+  });
+
   it("buys access, unlocks content, and refreshes the marketplace access state", async () => {
     const prompt = makePrompt({
       id: 7n,
@@ -98,6 +160,7 @@ describe("marketplace purchase and unlock integration coverage", () => {
     renderWithProviders(
       <FetchAllPrompts
         selectedCategory=""
+        selectedTag=""
         priceRange={[0, 25]}
         searchQuery=""
         sortBy="recent"
@@ -174,6 +237,7 @@ describe("marketplace purchase and unlock integration coverage", () => {
     renderWithProviders(
       <FetchAllPrompts
         selectedCategory=""
+        selectedTag=""
         priceRange={[0, 25]}
         searchQuery=""
         sortBy="recent"

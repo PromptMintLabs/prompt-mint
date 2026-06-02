@@ -34,6 +34,17 @@ struct PromptPurchased {
 }
 
 #[contractevent]
+struct LicenseTransferred {
+    #[topic]
+    pub prompt_id: u128,
+    pub seller: Address,
+    pub buyer: Address,
+    pub creator: Address,
+    pub resale_price: i128,
+    pub royalty_amount: i128,
+}
+
+#[contractevent]
 struct PromptTipped {
     #[topic]
     pub prompt_id: u128,
@@ -125,6 +136,26 @@ impl Events {
             creator,
             price_stroops,
             referrer,
+        }
+        .publish(env);
+    }
+
+    pub fn emit_license_transferred(
+        env: &Env,
+        prompt_id: u128,
+        seller: Address,
+        buyer: Address,
+        creator: Address,
+        resale_price: i128,
+        royalty_amount: i128,
+    ) {
+        LicenseTransferred {
+            prompt_id,
+            seller,
+            buyer,
+            creator,
+            resale_price,
+            royalty_amount,
         }
         .publish(env);
     }

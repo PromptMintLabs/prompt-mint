@@ -464,6 +464,142 @@ fn test_get_prompts_by_creator_and_buyer() {
 }
 
 #[test]
+fn test_license_owner_can_transfer_and_creator_receives_royalty() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Transferable Prompt",
+        10_000,
+        &context.xlm,
+    );
+
+    fund_buyer(&xlm_client, &seller, &context.contract, 100_000);
+    client.buy_prompt(
+        &seller,
+        &prompt_id,
+        &None::<Address>,
+        &10_000i128,
+        &None::<Bytes>,
+    );
+
+    fund_buyer(&xlm_client, &buyer, &context.contract, 100_000);
+    let creator_before = xlm_client.balance(&creator);
+    let seller_before = xlm_client.balance(&seller);
+    let buyer_before = xlm_client.balance(&buyer);
+    let resale_price = 20_000i128;
+
+    client.transfer_license(&seller, &prompt_id, &buyer, &resale_price);
+
+    let royalty = resale_price * 500 / 10_000;
+    let seller_proceeds = resale_price - royalty;
+    assert_eq!(xlm_client.balance(&creator), creator_before + royalty);
+    assert_eq!(xlm_client.balance(&seller), seller_before + seller_proceeds);
+    assert_eq!(xlm_client.balance(&buyer), buyer_before - resale_price);
+    assert!(!client.has_access(&seller, &prompt_id));
+    assert!(client.has_access(&buyer, &prompt_id));
+    assert_eq!(client.get_prompts_by_buyer(&seller).len(), 0);
+    assert_eq!(client.get_prompts_by_buyer(&buyer).len(), 1);
+}
+
+#[test]
+fn test_non_owner_cannot_transfer_license() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let stranger = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Protected Transfer Prompt",
+        10_000,
+        &context.xlm,
+    );
+
+    fund_buyer(&xlm_client, &owner, &context.contract, 100_000);
+    fund_buyer(&xlm_client, &buyer, &context.contract, 100_000);
+    client.buy_prompt(
+        &owner,
+        &prompt_id,
+        &None::<Address>,
+        &10_000i128,
+        &None::<Bytes>,
+    );
+
+    let result = client.try_transfer_license(&stranger, &prompt_id, &buyer, &20_000i128);
+    match result {
+        Err(Ok(Error::LicenseNotFound)) => {}
+        other => panic!(
+            "expected LicenseNotFound for non-owner transfer, got {:?}",
+            other
+        ),
+    }
+    assert!(client.has_access(&owner, &prompt_id));
+    assert!(!client.has_access(&buyer, &prompt_id));
+}
+
+#[test]
+fn test_transfer_license_rejects_zero_price_and_self_transfer() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Invalid Transfer Prompt",
+        10_000,
+        &context.xlm,
+    );
+
+    fund_buyer(&xlm_client, &owner, &context.contract, 100_000);
+    client.buy_prompt(
+        &owner,
+        &prompt_id,
+        &None::<Address>,
+        &10_000i128,
+        &None::<Bytes>,
+    );
+
+    let zero_price = client.try_transfer_license(&owner, &prompt_id, &buyer, &0i128);
+    match zero_price {
+        Err(Ok(Error::InvalidPaymentAmount)) => {}
+        other => panic!(
+            "expected InvalidPaymentAmount for zero resale, got {:?}",
+            other
+        ),
+    }
+
+    let self_transfer = client.try_transfer_license(&owner, &prompt_id, &owner, &20_000i128);
+    match self_transfer {
+        Err(Ok(Error::InvalidLicenseTransfer)) => {}
+        other => panic!(
+            "expected InvalidLicenseTransfer for self transfer, got {:?}",
+            other
+        ),
+    }
+}
+
+#[test]
 fn test_duplicate_purchase_returns_typed_error() {
     let env: Env = Default::default();
     let context = setup(&env);

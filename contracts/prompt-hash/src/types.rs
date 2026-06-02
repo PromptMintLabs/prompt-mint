@@ -34,6 +34,8 @@ pub enum Error {
     InvalidSplits = 27,
     // #49 – time-bound listing expiry
     ListingExpired = 28,
+    LicenseNotFound = 29,
+    InvalidLicenseTransfer = 30,
 }
 
 #[contracttype]
@@ -56,6 +58,13 @@ pub enum DataKey {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Purchase {
+    pub prompt_id: u128,
+    pub original_creator: Address,
+    pub owner: Address,
+    pub original_price: i128,
+    pub last_transfer_price: i128,
+    pub transfer_count: u32,
+    pub last_transferred_at: u64,
     pub expires_at: u64,
 }
 
@@ -195,6 +204,14 @@ pub trait PromptHashTrait {
         prompt_ids: Vec<u128>,
         payment_amounts: Vec<i128>,
         referrer: Option<Address>,
+    ) -> Result<(), Error>;
+
+    fn transfer_license(
+        env: Env,
+        seller: Address,
+        prompt_id: u128,
+        new_buyer: Address,
+        resale_price: i128,
     ) -> Result<(), Error>;
 
     fn has_access(env: Env, user: Address, prompt_id: u128) -> Result<bool, Error>;

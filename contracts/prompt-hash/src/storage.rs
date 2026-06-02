@@ -140,7 +140,32 @@ impl Storage {
             .persistent()
             .get(&key)
             .unwrap_or_else(|| Vec::new(env));
+        for index in 0..ids.len() {
+            if ids.get(index).unwrap() == prompt_id {
+                Self::extend_key_ttl(env, &key);
+                return;
+            }
+        }
         ids.push_back(prompt_id);
+        env.storage().persistent().set(&key, &ids);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn remove_prompt_from_buyer(env: &Env, buyer: &Address, prompt_id: u128) {
+        let key = DataKey::BuyerPrompts(buyer.clone());
+        let mut ids: Vec<u128> = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| Vec::new(env));
+        let mut index = 0;
+        while index < ids.len() {
+            if ids.get(index).unwrap() == prompt_id {
+                ids.remove(index);
+            } else {
+                index += 1;
+            }
+        }
         env.storage().persistent().set(&key, &ids);
         Self::extend_key_ttl(env, &key);
     }
@@ -160,12 +185,46 @@ impl Storage {
             .unwrap_or(false)
     }
 
-    pub fn grant_purchase(env: &Env, prompt_id: u128, buyer: &Address, expires_at: u64) {
-        let key = DataKey::Purchase(prompt_id, buyer.clone());
-        let purchase = Purchase { expires_at };
+    pub fn save_purchase(env: &Env, purchase: &Purchase) {
+        let key = DataKey::Purchase(purchase.prompt_id, purchase.owner.clone());
+        env.storage().persistent().set(&key, purchase);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn remove_purchase(env: &Env, prompt_id: u128, owner: &Address) {
+        let key = DataKey::Purchase(prompt_id, owner.clone());
+        env.storage().persistent().remove(&key);
+    }
+
+    pub fn require_purchase(
+        env: &Env,
+        prompt_id: u128,
+        owner: &Address,
+    ) -> Result<Purchase, Error> {
+        Self::get_purchase(env, prompt_id, owner).ok_or(Error::LicenseNotFound)
+    }
+
+    pub fn grant_purchase(
+        env: &Env,
+        prompt: &Prompt,
+        buyer: &Address,
+        paid_price: i128,
+        expires_at: u64,
+    ) {
+        let key = DataKey::Purchase(prompt.id, buyer.clone());
+        let purchase = Purchase {
+            prompt_id: prompt.id,
+            original_creator: prompt.creator.clone(),
+            owner: buyer.clone(),
+            original_price: paid_price,
+            last_transfer_price: 0,
+            transfer_count: 0,
+            last_transferred_at: 0,
+            expires_at,
+        };
         env.storage().persistent().set(&key, &purchase);
         Self::extend_key_ttl(env, &key);
-        Self::add_prompt_to_buyer(env, buyer, prompt_id);
+        Self::add_prompt_to_buyer(env, buyer, prompt.id);
     }
 
     pub fn set_fee_percentage(env: &Env, fee_percentage: &u32) {

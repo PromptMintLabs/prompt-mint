@@ -6,6 +6,7 @@ use stellar_access::ownable::{self as ownable, Ownable};
 use stellar_macros::{default_impl, only_owner};
 
 const DEFAULT_FEE_BPS: u32 = 500;
+const ROYALTY_BPS: u32 = 500;
 const MAX_BPS: u32 = 10_000;
 const MAX_TITLE_LEN: u32 = 120;
 const MAX_CATEGORY_LEN: u32 = 40;
@@ -72,7 +73,10 @@ impl PromptHashTrait for PromptHashContract {
 
         // #49: optional listing expiry must be in the future when provided
         if listing.expires_at != 0 {
-            ensure(listing.expires_at > env.ledger().timestamp(), Error::InvalidPrice)?;
+            ensure(
+                listing.expires_at > env.ledger().timestamp(),
+                Error::InvalidPrice,
+            )?;
         }
 
         // #50: validate revenue splits
@@ -236,7 +240,7 @@ impl PromptHashTrait for PromptHashContract {
             .checked_add(lease_duration_secs)
             .ok_or(Error::ArithmeticOverflow)?;
         Storage::update_prompt(&env, &prompt);
-        Storage::grant_purchase(&env, prompt_id, &buyer, expires_at);
+        Storage::grant_purchase(&env, &prompt, &buyer, lease_price, expires_at);
         Storage::clear_reentrancy_guard(&env);
         Events::emit_prompt_purchased(&env, prompt_id, buyer, prompt.creator, lease_price, None);
         Ok(())
@@ -275,13 +279,88 @@ impl PromptHashTrait for PromptHashContract {
     ) -> Result<(), Error> {
         buyer.require_auth();
         ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
-        ensure(prompt_ids.len() == payment_amounts.len(), Error::InvalidPrice)?;
+        ensure(
+            prompt_ids.len() == payment_amounts.len(),
+            Error::InvalidPrice,
+        )?;
 
         for i in 0..prompt_ids.len() {
             let prompt_id = prompt_ids.get(i).unwrap();
             let payment_amount = payment_amounts.get(i).unwrap();
             execute_buy(&env, &buyer, prompt_id, &referrer, payment_amount, None)?;
         }
+        Ok(())
+    }
+
+    fn transfer_license(
+        env: Env,
+        seller: Address,
+        prompt_id: u128,
+        new_buyer: Address,
+        resale_price: i128,
+    ) -> Result<(), Error> {
+        seller.require_auth();
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+        ensure(resale_price > 0, Error::InvalidPaymentAmount)?;
+        ensure(seller != new_buyer, Error::InvalidLicenseTransfer)?;
+        new_buyer.require_auth();
+
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        let now = env.ledger().timestamp();
+        let mut purchase = Storage::require_purchase(&env, prompt_id, &seller)?;
+        ensure(purchase.owner == seller, Error::Unauthorized)?;
+        ensure(purchase.expires_at >= now, Error::LicenseNotFound)?;
+        ensure(
+            !Storage::has_active_purchase(&env, prompt_id, &new_buyer, now),
+            Error::AlreadyPurchased,
+        )?;
+
+        Storage::set_reentrancy_guard(&env)?;
+
+        let this_contract = env.current_contract_address();
+        let asset_client = token::StellarAssetClient::new(&env, &prompt.asset);
+        let royalty_amount = resale_price
+            .checked_mul(ROYALTY_BPS as i128)
+            .ok_or(Error::ArithmeticOverflow)?
+            / MAX_BPS as i128;
+        let seller_amount = resale_price
+            .checked_sub(royalty_amount)
+            .ok_or(Error::ArithmeticOverflow)?;
+
+        if royalty_amount > 0 {
+            asset_client.transfer_from(
+                &this_contract,
+                &new_buyer,
+                &purchase.original_creator,
+                &royalty_amount,
+            );
+        }
+        if seller_amount > 0 {
+            asset_client.transfer_from(&this_contract, &new_buyer, &seller, &seller_amount);
+        }
+
+        Storage::remove_purchase(&env, prompt_id, &seller);
+        Storage::remove_prompt_from_buyer(&env, &seller, prompt_id);
+        purchase.owner = new_buyer.clone();
+        purchase.last_transfer_price = resale_price;
+        purchase.transfer_count = purchase
+            .transfer_count
+            .checked_add(1)
+            .ok_or(Error::ArithmeticOverflow)?;
+        purchase.last_transferred_at = now;
+        Storage::save_purchase(&env, &purchase);
+        Storage::add_prompt_to_buyer(&env, &new_buyer, prompt_id);
+        Storage::clear_reentrancy_guard(&env);
+
+        Events::emit_license_transferred(
+            &env,
+            prompt_id,
+            seller,
+            new_buyer,
+            purchase.original_creator,
+            resale_price,
+            royalty_amount,
+        );
         Ok(())
     }
 
@@ -549,12 +628,7 @@ fn execute_buy(
             .ok_or(Error::ArithmeticOverflow)?
             / MAX_BPS as i128;
         if split_amount > 0 {
-            asset_client.transfer_from(
-                &this_contract,
-                buyer,
-                &split.recipient,
-                &split_amount,
-            );
+            asset_client.transfer_from(&this_contract, buyer, &split.recipient, &split_amount);
         }
     }
 
@@ -563,7 +637,13 @@ fn execute_buy(
         .checked_add(1)
         .ok_or(Error::ArithmeticOverflow)?;
     Storage::update_prompt(env, &prompt);
-    Storage::grant_purchase(env, prompt_id, buyer, MAX_ACCESS_EXPIRY);
+    Storage::grant_purchase(
+        env,
+        &prompt,
+        buyer,
+        payment_amount_stroops,
+        MAX_ACCESS_EXPIRY,
+    );
     Storage::clear_reentrancy_guard(env);
 
     Events::emit_prompt_purchased(
