@@ -11,6 +11,7 @@ import {
   type WalletContextType,
 } from "@/providers/WalletProvider";
 import { TransactionProvider } from "@/components/TransactionProvider";
+import { CurrencyProvider } from "@/providers/CurrencyProvider";
 
 const defaultWallet: WalletContextType = {
   address: undefined,
@@ -61,9 +62,9 @@ export function renderWithProviders(
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <WalletContext value={walletValue}>
-        <TransactionProvider>
+        <CurrencyProvider><TransactionProvider>
           <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
-        </TransactionProvider>
+        </TransactionProvider></CurrencyProvider>
       </WalletContext>
     </QueryClientProvider>
   );

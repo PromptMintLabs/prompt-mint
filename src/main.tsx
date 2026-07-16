@@ -12,6 +12,7 @@ import { WalletProvider } from "./providers/WalletProvider.tsx";
 import { TransactionProvider } from "./components/TransactionProvider.tsx";
 import { NotificationProvider } from "./providers/NotificationProvider.tsx";
 import { ContractSyncProvider } from "./providers/ContractSyncProvider.tsx";
+import { CurrencyProvider } from "./providers/CurrencyProvider.tsx";
 
 // Initialize the client
 const queryClient = new QueryClient({
@@ -31,7 +32,7 @@ createRoot(document.getElementById("root") as HTMLElement).render(
           <TransactionProvider>
             <WalletProvider>
               <BrowserRouter>
-                <App />
+                <CurrencyProvider><App /></CurrencyProvider>
               </BrowserRouter>
             </WalletProvider>
           </TransactionProvider>

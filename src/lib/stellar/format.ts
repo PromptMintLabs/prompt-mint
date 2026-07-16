@@ -4,14 +4,21 @@
  */
 export function stroopsToXlmString(stroops: bigint): string {
   const xlm = Number(stroops) / 10_000_000;
-  return xlm.toFixed(2);
+  return xlm.toLocaleString("en-US", { maximumFractionDigits: 7 });
+}
+
+export function formatPriceLabel(value: bigint | number): string {
+  const xlm = typeof value === "bigint"
+    ? stroopsToXlmString(value)
+    : value.toLocaleString("en-US", { maximumFractionDigits: 7 });
+  return `${xlm} XLM`;
 }
 
 /**
  * Converts XLM to stroops
  */
-export function xlmToStroops(xlm: number): bigint {
-  return BigInt(Math.floor(xlm * 10_000_000));
+export function xlmToStroops(xlm: number | string): bigint {
+  return BigInt(Math.round(Number(xlm) * 10_000_000));
 }
 
 /**

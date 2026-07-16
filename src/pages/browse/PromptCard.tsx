@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { shortenAddress } from "@/lib/utils";
 import { formatPriceLabel } from "@/lib/stellar/format";
+import { CurrencyPrice } from "@/components/CurrencyPrice";
 import type { PromptRecord } from "@/lib/stellar/promptHashClient";
 import { StarRating } from "@/components/prompts/StarRating";
 import { useQuery } from "@tanstack/react-query";
@@ -158,7 +159,7 @@ export const PromptCard = ({
                 aria-label={`Price: ${formatPriceLabel(prompt.priceStroops)}`}
                 data-testid="price-label"
               >
-                {formatPriceLabel(prompt.priceStroops)}
+                <CurrencyPrice stroops={prompt.priceStroops} />
               </p>
               <p className="text-[10px] text-slate-500 uppercase tracking-tighter">
                 per license
