@@ -1,0 +1,35 @@
+groups:
+  - name: prompt_mint_unlock_services
+    rules:
+      - alert: HighAPIErrorRate
+        expr: sum(rate(api_request_error_total[5m])) > 5
+        for: 5m
+        labels:
+          severity: critical
+          service: unlock_api
+        annotations:
+          summary: "High API Error Rate"
+          description: "The API is experiencing a sustained rate of 5xx errors (> 5 req/sec) over the last 5 minutes."
+          runbook_url: "https://github.com/PromptMintLabs/prompt-mint/blob/main/docs/operations/runbook.md#monitoring--metrics"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.99, sum(rate(api_request_duration_ms_bucket[5m])) by (le, path)) > 2000
+        for: 5m
+        labels:
+          severity: warning
+          service: unlock_api
+        annotations:
+          summary: "High API Latency"
+          description: "The P99 API latency for path {{ $labels.path }} is consistently over 2 seconds. This could indicate RPC or Indexer lag."
+          runbook_url: "https://github.com/PromptMintLabs/prompt-mint/blob/main/docs/operations/runbook.md#monitoring--metrics"
+
+      - alert: ExcessiveUnlockFailures
+        expr: sum(rate(unlock_failure_total[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: unlock_api
+        annotations:
+          summary: "High Unlock Failure Rate"
+          description: "Elevated volume of unlock failures. This represents user errors (invalid signatures, no access) but may indicate a UX issue or systemic RPC sync issue if a large number of purchases are not being recognized."
+          runbook_url: "https://github.com/PromptMintLabs/prompt-mint/blob/main/docs/operations/runbook.md#debugging-common-issues"
