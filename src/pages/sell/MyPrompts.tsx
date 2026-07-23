@@ -16,6 +16,10 @@ import {
 import { formatPriceLabel, stroopsToXlmString, xlmToStroops } from "@/lib/stellar/format";
 import { unlockPromptContent } from "@/lib/prompts/unlock";
 
+import { FreshnessBadge } from "@/components/FreshnessBadge";
+import { useNetworkState } from "@/hooks/useNetworkState";
+import { type PromptRecord } from "@/lib/stellar/promptHashClient";
+
 const emptyState = (
   <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-sm text-slate-300">
     No prompts found yet.
@@ -26,11 +30,35 @@ interface MyPromptsProps {
   onCreateNew?: () => void;
 }
 
+interface CachedPromptsList {
+  timestamp: number;
+  prompts: PromptRecord[];
+}
+
+function getCachedCreatorPrompts(address?: string): CachedPromptsList | null {
+  if (!address) return null;
+  try {
+    const raw = window.localStorage.getItem(`prompt-mint:created-prompts-cache:${address}`);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function setCachedCreatorPrompts(address: string, prompts: PromptRecord[]) {
+  try {
+    window.localStorage.setItem(
+      `prompt-mint:created-prompts-cache:${address}`,
+      JSON.stringify({ timestamp: Date.now(), prompts }),
+    );
+  } catch {}
+}
+
 const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
   void _onCreateNew;
 
   const queryClient = useQueryClient();
   const { address, signMessage, signTransaction } = useWallet();
+  const networkState = useNetworkState();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [busyPromptId, setBusyPromptId] = useState<string | null>(null);
@@ -39,10 +67,27 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
 
   const createdQuery = useQuery({
     queryKey: ["created-prompts", address],
-    queryFn: async () =>
-      address ? getPromptsByCreator(browserStellarConfig, address) : [],
+    queryFn: async () => {
+      if (!address) return [];
+      try {
+        const live = await getPromptsByCreator(browserStellarConfig, address);
+        if (live && live.length > 0) {
+          setCachedCreatorPrompts(address, live);
+        }
+        return live;
+      } catch (err) {
+        const cached = getCachedCreatorPrompts(address);
+        if (cached && cached.prompts.length > 0) return cached.prompts;
+        throw err;
+      }
+    },
     enabled: Boolean(address),
   });
+
+  const cachedCreatorData = getCachedCreatorPrompts(address);
+  const createdPrompts = createdQuery.data ?? cachedCreatorData?.prompts ?? [];
+  const isUsingCache = createdQuery.isError || !networkState.isOnline || (createdQuery.isSuccess && !createdQuery.isFetchedAfterMount);
+  const freshnessTimestamp = createdQuery.dataUpdatedAt || cachedCreatorData?.timestamp || null;
 
   const purchasedQuery = useQuery({
     queryKey: ["purchased-prompts", address],
@@ -51,7 +96,6 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
     enabled: Boolean(address),
   });
 
-  const createdPrompts = createdQuery.data ?? [];
   const purchasedPrompts = purchasedQuery.data ?? [];
 
   const mergedDrafts = useMemo(() => {
@@ -99,6 +143,10 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
   };
 
   const handleToggleSaleStatus = async (promptId: bigint, active: boolean) => {
+    if (!networkState.canTrustConfirmation) {
+      updateError("Network connection lost or degraded. Status changes are disabled.");
+      return;
+    }
     if (!address || !signTransaction) {
       updateError("Connect a wallet before changing prompt status.");
       return;
@@ -123,7 +171,14 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
   };
 
   const handleUpdatePrice = async (promptId: bigint) => {
+    if (!networkState.canTrustConfirmation) {
+      updateError("Network connection lost or degraded. Price updates are disabled.");
+      return;
+    }
     if (!address || !signTransaction) {
+      updateError("Connect a wallet before updating prompt prices.");
+      return;
+    }
       updateError("Connect a wallet before updating prompt prices.");
       return;
     }
@@ -197,11 +252,19 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
       ) : null}
 
       <section className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-semibold text-white">Created by me</h2>
-          <p className="mt-2 text-sm text-slate-400">
-            Update pricing, pause listings, and track license sales without changing ownership.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-semibold text-white">Created by me</h2>
+            <p className="mt-2 text-sm text-slate-400">
+              Update pricing, pause listings, and track license sales without changing ownership.
+            </p>
+          </div>
+          <FreshnessBadge
+            timestamp={freshnessTimestamp}
+            isCached={isUsingCache}
+            isOffline={!networkState.isOnline}
+            isDegraded={networkState.isDegraded}
+          />
         </div>
 
         {createdQuery.isLoading ? (
@@ -267,7 +330,7 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
                     <Button
                       className="bg-emerald-400 text-slate-950 hover:bg-emerald-300"
                       onClick={() => void handleUpdatePrice(prompt.id)}
-                      disabled={busyPromptId === prompt.id.toString()}
+                      disabled={busyPromptId === prompt.id.toString() || !networkState.canTrustConfirmation}
                     >
                       Update price
                     </Button>
@@ -286,7 +349,7 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
                     variant="outline"
                     className="border-white/10 bg-white/5 text-slate-100 hover:bg-white/10"
                     onClick={() => void handleToggleSaleStatus(prompt.id, prompt.active)}
-                    disabled={busyPromptId === prompt.id.toString()}
+                    disabled={busyPromptId === prompt.id.toString() || !networkState.canTrustConfirmation}
                   >
                     {prompt.active ? "Set inactive" : "Reactivate"}
                   </Button>
