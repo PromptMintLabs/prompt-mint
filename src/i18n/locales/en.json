@@ -37,7 +37,48 @@
   "errors": {
     "not_found": "Prompt not found.",
     "unauthorized": "You are not authorized.",
-    "paused": "The marketplace is currently paused."
+    "paused": "The marketplace is currently paused.",
+    "validation": {
+      "required": "This field is required.",
+      "min_length": "Must be at least {{min}} characters.",
+      "max_length": "Must not exceed {{max}} characters.",
+      "invalid_url": "Please enter a valid URL starting with http:// or https://.",
+      "invalid_rating": "Rating must be between 1 and 5.",
+      "invalid_price": "Please enter a valid price greater than zero.",
+      "invalid_address": "Invalid wallet address.",
+      "review_text_short": "Review text must be at least 10 characters.",
+      "review_text_long": "Review text must not exceed 500 characters.",
+      "response_text_long": "Response text must not exceed 1000 characters."
+    },
+    "transaction": {
+      "user_rejected": "Transaction was rejected by the user.",
+      "insufficient_funds": "Insufficient funds to complete this transaction.",
+      "insufficient_gas": "Insufficient gas to complete this transaction.",
+      "invalid_signature": "Transaction signature is invalid.",
+      "network_error": "Network error. Please try again.",
+      "expired": "Transaction request has expired.",
+      "unknown": "An unexpected error occurred. Please try again.",
+      "pending": "Processing transaction on the Stellar network..."
+    },
+    "wallet": {
+      "connect_required": "Please connect your wallet first.",
+      "network_mismatch": "Wrong network configured in your wallet.",
+      "disconnect_failed": "Failed to disconnect wallet."
+    },
+    "review": {
+      "self_vote": "You cannot vote on your own review.",
+      "duplicate_vote": "You have already voted on this review.",
+      "not_eligible": "Only verified purchasers can submit reviews.",
+      "already_reviewed": "You have already submitted a review for this prompt.",
+      "seller_only": "Only the verified seller can respond to reviews.",
+      "vote_success": "Vote recorded successfully.",
+      "vote_removed": "Vote removed successfully.",
+      "response_submitted": "Seller response submitted successfully."
+    },
+    "moderation": {
+      "unauthorized": "Only authorized moderators can view audit logs.",
+      "address_required": "Moderator address is required."
+    }
   },
   "language": {
     "select": "Language"

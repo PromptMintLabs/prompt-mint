@@ -15,24 +15,26 @@ interface StellarError {
   message?: string;
 }
 
+import { translateError } from "../lib/i18n-errors";
+
 /**
  * Translates generic Stellar RPC/Horizon error codes into human-readable prompts.
  */
 const translateStellarError = (error: unknown): string => {
-  if (typeof error !== 'object' || error === null) return "An unknown error occurred while submitting.";
-  
+  if (typeof error !== 'object' || error === null) return translateError("unknown");
+
   const err = error as StellarError;
   const txCode = err.response?.data?.extras?.result_codes?.transaction;
   const opCodes = err.response?.data?.extras?.result_codes?.operations;
 
-  if (txCode === "tx_bad_auth") return "Transaction signing failed. Please check your wallet.";
+  if (txCode === "tx_bad_auth" || txCode === "tx_bad_auth_extra") return "Transaction signing failed. Please check your wallet.";
   if (txCode === "tx_insufficient_balance" || opCodes?.includes("op_underfunded")) {
-    return "Insufficient balance to cover transaction limits or fees.";
+    return translateError("insufficient funds");
   }
   if (opCodes?.includes("op_no_trust")) return "A required trustline is missing for this transaction.";
   if (opCodes?.includes("op_not_authorized")) return "Your account is not authorized to perform this operation.";
-  
-  return err.message || "Failed to submit transaction to the Stellar network.";
+
+  return err.message ? translateError(err.message) : translateError("unknown");
 };
 
 /* eslint-disable no-unused-vars */

@@ -37,7 +37,48 @@
   "errors": {
     "not_found": "Prompt introuvable.",
     "unauthorized": "Vous n'êtes pas autorisé.",
-    "paused": "La place de marché est actuellement en pause."
+    "paused": "La place de marché est actuellement en pause.",
+    "validation": {
+      "required": "Ce champ est requis.",
+      "min_length": "Doit contenir au moins {{min}} caractères.",
+      "max_length": "Ne doit pas dépasser {{max}} caractères.",
+      "invalid_url": "Veuillez saisir une URL valide commençant par http:// ou https://.",
+      "invalid_rating": "La note doit être comprise entre 1 et 5.",
+      "invalid_price": "Veuillez saisir un prix valide supérieur à zéro.",
+      "invalid_address": "Adresse de portefeuille invalide.",
+      "review_text_short": "L'avis doit contenir au moins 10 caractères.",
+      "review_text_long": "L'avis ne doit pas dépasser 500 caractères.",
+      "response_text_long": "La réponse ne doit pas dépasser 1000 caractères."
+    },
+    "transaction": {
+      "user_rejected": "Transaction rejetée par l'utilisateur.",
+      "insufficient_funds": "Fonds insuffisants pour effectuer cette transaction.",
+      "insufficient_gas": "Gaz insuffisant pour effectuer cette transaction.",
+      "invalid_signature": "La signature de la transaction est invalide.",
+      "network_error": "Erreur réseau. Veuillez réessayer.",
+      "expired": "La demande de transaction a expiré.",
+      "unknown": "Une erreur inattendue s'est produite. Veuillez réessayer.",
+      "pending": "Traitement de la transaction sur le réseau Stellar..."
+    },
+    "wallet": {
+      "connect_required": "Veuillez d'abord connecter votre portefeuille.",
+      "network_mismatch": "Mauvais réseau configuré dans votre portefeuille.",
+      "disconnect_failed": "Échec de la déconnexion du portefeuille."
+    },
+    "review": {
+      "self_vote": "Vous ne pouvez pas voter sur votre propre avis.",
+      "duplicate_vote": "Vous avez déjà voté sur cet avis.",
+      "not_eligible": "Seuls les acheteurs vérifiés peuvent soumettre des avis.",
+      "already_reviewed": "Vous avez déjà soumis un avis pour ce prompt.",
+      "seller_only": "Seul le vendeur vérifié peut répondre aux avis.",
+      "vote_success": "Vote enregistré avec succès.",
+      "vote_removed": "Vote supprimé avec succès.",
+      "response_submitted": "Réponse du vendeur soumise avec succès."
+    },
+    "moderation": {
+      "unauthorized": "Seuls les modérateurs autorisés peuvent consulter les journaux d'audit.",
+      "address_required": "L'adresse du modérateur est requise."
+    }
   },
   "language": {
     "select": "Langue"

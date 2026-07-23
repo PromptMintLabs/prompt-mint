@@ -1,18 +1,18 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StarRating } from "./StarRating";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { Loader2, Send } from "lucide-react";
 
-/* eslint-disable no-unused-vars */
 interface ReviewFormProps {
   promptId: string;
   onSubmit: (_review: { rating: number; text: string }) => Promise<void>;
   onCancel?: () => void;
 }
-/* eslint-enable no-unused-vars */
 
 export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) => {
+  const { t } = useTranslation();
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,12 +23,12 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
     setError("");
 
     if (rating === 0) {
-      setError("Please select a rating");
+      setError(t("errors.validation.required"));
       return;
     }
 
     if (reviewText.trim().length < 10) {
-      setError("Review must be at least 10 characters");
+      setError(t("errors.validation.review_text_short"));
       return;
     }
 
@@ -38,7 +38,7 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
       setRating(0);
       setReviewText("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit review");
+      setError(err instanceof Error ? err.message : t("errors.transaction.unknown"));
     } finally {
       setIsSubmitting(false);
     }
@@ -96,7 +96,7 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
             </>
           )}
         </Button>
-        
+
         {onCancel && (
           <Button
             type="button"

@@ -1,9 +1,3 @@
-/**
- * Review Client
- * 
- * Client-side API for submitting, checking eligibility, and fetching prompt reviews.
- */
-
 export interface Review {
   id: string;
   promptId: string;
@@ -12,6 +6,12 @@ export interface Review {
   text: string;
   createdAt: number;
   verified: boolean;
+  helpfulVotes: number;
+  sellerResponse?: {
+    text: string;
+    createdAt: number;
+    editedAt?: number;
+  };
 }
 
 export interface ReviewStats {
@@ -38,12 +38,23 @@ export interface ReviewEligibilityResponse {
   reason?: string;
 }
 
+export interface VoteResponse {
+  voted: boolean;
+  helpfulVotes: number;
+  message?: string;
+}
+
+export interface SellerResponseInput {
+  promptId: string;
+  reviewId: string;
+  sellerAddress: string;
+  text: string;
+  signature?: string;
+}
+
 const API_BASE = "/api/reviews";
 
 export class ReviewClient {
-  /**
-   * Check if a user address is eligible to submit a review for a prompt.
-   */
   static async checkEligibility(
     promptId: string,
     userAddress: string
@@ -74,9 +85,6 @@ export class ReviewClient {
     }
   }
 
-  /**
-   * Submit a new review for a prompt
-   */
   static async submitReview(
     promptId: string,
     userAddress: string,
@@ -104,9 +112,6 @@ export class ReviewClient {
     return response.json();
   }
 
-  /**
-   * Get all reviews for a prompt
-   */
   static async getReviews(promptId: string): Promise<ReviewListResponse> {
     const response = await fetch(`${API_BASE}/list?promptId=${promptId}`);
 
@@ -118,11 +123,58 @@ export class ReviewClient {
     return response.json();
   }
 
-  /**
-   * Get review statistics for a prompt
-   */
   static async getReviewStats(promptId: string): Promise<ReviewStats> {
     const data = await this.getReviews(promptId);
     return data.stats;
+  }
+
+  static async voteReview(
+    promptId: string,
+    reviewId: string,
+    userAddress: string
+  ): Promise<VoteResponse> {
+    const response = await fetch(`${API_BASE}/vote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        promptId,
+        reviewId,
+        userAddress,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to record vote");
+    }
+
+    return response.json();
+  }
+
+  static async submitSellerResponse(
+    promptId: string,
+    reviewId: string,
+    sellerAddress: string,
+    text: string,
+    signature: string = ""
+  ): Promise<{ success: boolean; sellerResponse: { text: string; createdAt: number } }> {
+    const response = await fetch(`${API_BASE}/respond`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        promptId,
+        reviewId,
+        sellerAddress,
+        text,
+        signature,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to submit seller response");
+    }
+
+    return response.json();
   }
 }
