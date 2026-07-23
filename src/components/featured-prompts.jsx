@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { PromptPlayground } from "./prompt-playground";
+import { SafeImage } from "./ui/SafeImage";
 
 export function FeaturedPrompts({ limit = 6, title = "Featured Templates" }) {
   const [selectedPrompt, setSelectedPrompt] = useState(null);
@@ -44,7 +45,7 @@ export function FeaturedPrompts({ limit = 6, title = "Featured Templates" }) {
                 className="overflow-hidden border-white/10 bg-slate-950/60 text-white shadow-[0_24px_80px_-48px_rgba(245,158,11,0.6)]"
               >
                 <div className="relative aspect-video overflow-hidden">
-                  <img
+                  <SafeImage
                     src={prompt.imageUrl}
                     alt={prompt.title}
                     className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
@@ -101,7 +102,7 @@ export function FeaturedPrompts({ limit = 6, title = "Featured Templates" }) {
               </Button>
             </div>
             <div className="grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <img
+              <SafeImage
                 src={selectedPrompt.imageUrl}
                 alt={selectedPrompt.title}
                 className="aspect-video w-full rounded-2xl object-cover"
