@@ -1,7 +1,7 @@
 /**
  * Review Client
  * 
- * Client-side API for submitting and fetching prompt reviews.
+ * Client-side API for submitting, checking eligibility, and fetching prompt reviews.
  */
 
 export interface Review {
@@ -31,9 +31,49 @@ export interface ReviewListResponse {
   stats: ReviewStats;
 }
 
+export interface ReviewEligibilityResponse {
+  eligible: boolean;
+  verified: boolean;
+  alreadyReviewed: boolean;
+  reason?: string;
+}
+
 const API_BASE = "/api/reviews";
 
 export class ReviewClient {
+  /**
+   * Check if a user address is eligible to submit a review for a prompt.
+   */
+  static async checkEligibility(
+    promptId: string,
+    userAddress: string
+  ): Promise<ReviewEligibilityResponse> {
+    try {
+      const response = await fetch(
+        `${API_BASE}/eligibility?promptId=${encodeURIComponent(promptId)}&userAddress=${encodeURIComponent(userAddress)}`
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        return {
+          eligible: false,
+          verified: false,
+          alreadyReviewed: false,
+          reason: error.error || "Eligibility check unavailable",
+        };
+      }
+
+      return response.json();
+    } catch (err) {
+      return {
+        eligible: false,
+        verified: false,
+        alreadyReviewed: false,
+        reason: err instanceof Error ? err.message : "Failed to verify eligibility",
+      };
+    }
+  }
+
   /**
    * Submit a new review for a prompt
    */
