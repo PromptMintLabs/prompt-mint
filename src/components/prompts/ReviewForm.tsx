@@ -1,18 +1,19 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StarRating } from "./StarRating";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { Loader2, Send } from "lucide-react";
+import { formatValidationError } from "../../lib/i18n-errors";
 
-/* eslint-disable no-unused-vars */
 interface ReviewFormProps {
   promptId: string;
   onSubmit: (_review: { rating: number; text: string }) => Promise<void>;
   onCancel?: () => void;
 }
-/* eslint-enable no-unused-vars */
 
 export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) => {
+  const { t } = useTranslation();
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,12 +24,12 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
     setError("");
 
     if (rating === 0) {
-      setError("Please select a rating");
+      setError(t("errors:validation.required"));
       return;
     }
 
     if (reviewText.trim().length < 10) {
-      setError("Review must be at least 10 characters");
+      setError(t("errors:validation.review_text_short"));
       return;
     }
 
@@ -38,7 +39,7 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
       setRating(0);
       setReviewText("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit review");
+      setError(err instanceof Error ? err.message : t("errors:transaction.unknown"));
     } finally {
       setIsSubmitting(false);
     }
@@ -47,12 +48,12 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <span id={`rating-label-${promptId}`} className="text-sm font-semibold text-white block">Your Rating</span>
+        <span id={`rating-label-${promptId}`} className="text-sm font-semibold text-white block">{t("create:title")}</span>
         <StarRating rating={rating} onRatingChange={setRating} size="lg" />
       </div>
 
       <div className="space-y-2">
-        <label htmlFor={`review-textarea-${promptId}`} className="text-sm font-semibold text-white">Your Review</label>
+        <label htmlFor={`review-textarea-${promptId}`} className="text-sm font-semibold text-white">{t("create:title")}</label>
         <Textarea
           id={`review-textarea-${promptId}`}
           value={reviewText}
@@ -92,11 +93,11 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
           ) : (
             <>
               <Send className="h-4 w-4 mr-2" />
-              Submit Review
+              {t("create:submit")}
             </>
           )}
         </Button>
-        
+
         {onCancel && (
           <Button
             type="button"

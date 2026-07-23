@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 export type TransactionStatus = "idle" | "pending" | "success" | "error";
 
-/* eslint-disable no-unused-vars */
 interface TransactionFeedbackContextType {
   status: TransactionStatus;
   error: string | null;
@@ -11,11 +11,11 @@ interface TransactionFeedbackContextType {
   clear: () => void;
   retry?: () => void;
 }
-/* eslint-enable no-unused-vars */
 
 const TransactionFeedbackContext = createContext<TransactionFeedbackContextType | undefined>(undefined);
 
 export const TransactionFeedbackProvider = ({ children }: { children: ReactNode }) => {
+  const { t } = useTranslation();
   const [status, setRawStatus] = useState<TransactionStatus>("idle");
   const [error, setRawError] = useState<string | null>(null);
   const [retry, setRetry] = useState<(() => void) | undefined>(undefined);
@@ -50,9 +50,8 @@ export const TransactionFeedbackProvider = ({ children }: { children: ReactNode 
   return (
     <TransactionFeedbackContext.Provider value={contextValue}>
       <div aria-live="polite" aria-atomic="true" className="sr-only">
-        {/* Accessible live region for screen readers */}
         <span key={announcementId}>
-          {status === "pending" && "Transaction in progress."}
+          {status === "pending" && t("errors:transaction.pending")}
           {status === "success" && "Transaction successful."}
           {status === "error" && error}
         </span>
