@@ -22,7 +22,8 @@
     "lint": "eslint .",
     "format": "prettier . --write",
     "prepare": "husky",
-    "check:setup": "node scripts/check-local-setup.mjs"
+    "check:setup": "node scripts/check-local-setup.mjs",
+    "test:synthetic": "npx tsx scripts/synthetic-unlock.ts"
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^1.9.5",

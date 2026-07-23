@@ -1,6 +1,7 @@
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { SafeImage } from "./ui/SafeImage";
 
 const creators = [
   {
@@ -53,7 +54,7 @@ export function PopularCreators() {
             >
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <img
+                  <SafeImage
                     src={creator.image || "/placeholder.svg"}
                     alt={creator.name}
                     className="w-16 h-16 rounded-full object-cover border-2 border-purple-500"
