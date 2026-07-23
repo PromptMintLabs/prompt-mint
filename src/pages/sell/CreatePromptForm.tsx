@@ -80,7 +80,7 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
   const [draftRestored, setDraftRestored] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(true);
-  const [isFirstListing, setIsFirstListing] = useState(true);
+  const [isFirstListing] = useState(true);
 
   const isConfigured = useMemo(
     () =>

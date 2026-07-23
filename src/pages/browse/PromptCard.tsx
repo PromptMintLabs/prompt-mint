@@ -155,10 +155,10 @@ export const PromptCard = ({
             <div className="text-right shrink-0">
               <p
                 className="text-lg font-black text-emerald-400 sm:text-xl font-mono tracking-tight"
-                aria-label={`Price: ${formatPriceLabel(prompt.priceStroops)}`}
+                aria-label={`Price: ${formatPriceLabel(prompt.priceStroops)} XLM`}
                 data-testid="price-label"
               >
-                {formatPriceLabel(prompt.priceStroops)}
+                {formatPriceLabel(prompt.priceStroops)} XLM
               </p>
               <p className="text-[10px] text-slate-500 uppercase tracking-tighter">
                 per license

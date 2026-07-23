@@ -279,7 +279,7 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
                       Current price
                     </p>
                     <p className="mt-2 text-lg font-semibold text-slate-100">
-                      {formatPriceLabel(prompt.priceStroops)}
+                      {formatPriceLabel(prompt.priceStroops)} XLM
                     </p>
                   </div>
                   <Button
@@ -327,7 +327,7 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
                       <h3 className="mt-2 text-xl font-semibold">{prompt.title}</h3>
                     </div>
                     <div className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm">
-                      {formatPriceLabel(prompt.priceStroops)}
+                      {formatPriceLabel(prompt.priceStroops)} XLM
                     </div>
                   </div>
                   <p className="text-sm leading-6 text-slate-300">

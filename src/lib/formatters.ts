@@ -72,12 +72,12 @@ export function stroopsToXlmNumber(
   }
 
   if (typeof stroops === "bigint") {
-    return Number(stroops) / 10_000_000;
+    return Number(stroops) / Number(STROOPS_PER_XLM);
   }
 
   const parsed = parseNumericValue(stroops);
   if (parsed.num === null) return null;
-  return parsed.num / 10_000_000;
+  return parsed.num / Number(STROOPS_PER_XLM);
 }
 
 /**

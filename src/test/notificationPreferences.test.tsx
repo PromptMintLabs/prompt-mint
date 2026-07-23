@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { NotificationPreferences } from "../components/NotificationPreferences";
 
@@ -58,7 +57,7 @@ describe("NotificationPreferences Component", () => {
 
   it("saves preferences to backend API when Save button is clicked", async () => {
     const wallet = "GABC1234567890XYZ";
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       if (typeof url === "string" && url.includes("/api/user/preferences")) {
         return new Response(JSON.stringify({ message: "Preferences updated successfully" }), {
           status: 200,
