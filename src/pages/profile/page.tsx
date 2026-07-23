@@ -433,7 +433,7 @@ function PurchasedPromptCard({
                 Paid access
               </p>
               <p className="mt-1.5 text-lg font-semibold text-white">
-                {formatPriceLabel(prompt.priceStroops)}
+                {formatPriceLabel(prompt.priceStroops)} XLM
               </p>
             </div>
           </div>
@@ -569,7 +569,7 @@ function CreatedPromptCard({
                   Price
                 </p>
                 <p className="mt-1.5 text-xl font-semibold text-white">
-                  {formatPriceLabel(prompt.priceStroops)}
+                  {formatPriceLabel(prompt.priceStroops)} XLM
                 </p>
               </div>
             </div>

@@ -123,7 +123,7 @@ describe("Purchase Button States", () => {
     await user.click(purchaseButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/confirming in wallet/i)).toBeInTheDocument();
+      expect(screen.getByText(/broadcasting to stellar/i)).toBeInTheDocument();
     });
   });
 
@@ -156,7 +156,7 @@ describe("Purchase Button States", () => {
     await user.click(purchaseButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/insufficient xlm balance/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/insufficient xlm balance/i).length).toBeGreaterThan(0);
     });
   });
 

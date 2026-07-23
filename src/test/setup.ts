@@ -42,3 +42,28 @@ if (typeof window !== 'undefined') {
     })),
   });
 }
+
+// The published design-system package references source SCSS files that are not
+// included in its npm artifact. Tests only need semantic stand-ins for its UI.
+vi.mock('@stellar/design-system', async () => {
+  const React = await import('react');
+  const element = (tag: string) =>
+    ({ children, ...props }: Record<string, unknown>) =>
+      React.createElement(tag, props, children as React.ReactNode);
+
+  return {
+    Alert: element('div'),
+    Button: element('button'),
+    Card: element('div'),
+    Code: element('code'),
+    Icon: element('span'),
+    Input: element('input'),
+    Layout: element('div'),
+    Link: element('a'),
+    Loader: element('div'),
+    Notification: ({ title }: { title?: string }) => React.createElement('div', null, title),
+    Select: element('select'),
+    Text: element('span'),
+    Tooltip: element('span'),
+  };
+});

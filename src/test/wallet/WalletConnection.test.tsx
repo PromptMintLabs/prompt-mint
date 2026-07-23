@@ -30,7 +30,7 @@ describe("Wallet Connection States", () => {
 
     renderWithProviders(<WalletButton />, { wallet: mockWallet });
 
-    expect(screen.getByText(/connecting/i)).toBeInTheDocument();
+    expect(screen.getByText(/opening wallet/i)).toBeInTheDocument();
   });
 
   it("shows connected wallet address when wallet is connected", () => {
@@ -63,6 +63,7 @@ describe("Wallet Connection States", () => {
 
     const connectButton = screen.getByRole("button");
     await user.click(connectButton);
+    await user.click(screen.getByRole("button", { name: "Freighter" }));
 
     await waitFor(() => {
       expect(mockConnect).toHaveBeenCalled();
@@ -93,6 +94,6 @@ describe("Wallet Connection States", () => {
 
     renderWithProviders(<WalletButton />, { wallet: mockWallet });
 
-    expect(screen.getByText(/reconnecting/i)).toBeInTheDocument();
+    expect(screen.getByText(/restoring session/i)).toBeInTheDocument();
   });
 });

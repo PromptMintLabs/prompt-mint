@@ -140,7 +140,7 @@ function PromptLibraryCard({
               Paid
             </p>
             <p className="mt-0.5 text-sm font-semibold text-white">
-              {formatPriceLabel(prompt.priceStroops)}
+              {formatPriceLabel(prompt.priceStroops)} XLM
             </p>
           </div>
         </div>
