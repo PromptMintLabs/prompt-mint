@@ -29,6 +29,7 @@ import { createPrompt } from "@/lib/stellar/promptHashClient";
 import {
   LISTING_LIMITS,
   validateListingForm,
+  validateImageMetadata,
 } from "@/lib/validation/listing";
 
 const limits = {
@@ -212,22 +213,32 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
       return;
     }
 
+    setIsSubmitting(true);
+    const imageError = await validateImageMetadata(formData.imageUrl);
+    if (imageError) {
+      setErrors((prev) => ({ ...prev, imageUrl: imageError }));
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!address || !signTransaction) {
       setSubmitError("Connect a Stellar wallet before creating a prompt.");
+      setIsSubmitting(false);
       return;
     }
 
     if (!browserStellarConfig.promptHashContractId) {
       setSubmitError("PUBLIC_PROMPT_HASH_CONTRACT_ID is not configured.");
+      setIsSubmitting(false);
       return;
     }
 
     if (!unlockPublicKey) {
       setSubmitError("PUBLIC_UNLOCK_PUBLIC_KEY is not configured.");
+      setIsSubmitting(false);
       return;
     }
 
-    setIsSubmitting(true);
     try {
       const encrypted = await encryptPromptPlaintext(formData.fullPrompt);
       const wrappedKey = await wrapPromptKey(encrypted.keyBytes, unlockPublicKey);
