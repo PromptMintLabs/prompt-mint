@@ -303,3 +303,89 @@ export const TestPromptProxy = async (
     });
   }
 };
+
+/* NOTIFICATION PREFERENCES CONTROLLERS */
+
+export const GetUserPreferences = async (
+  req: Request,
+  res: Response
+): Promise<Response<any>> => {
+  try {
+    await connectDb();
+
+    const walletAddress = (req.query.walletAddress as string) || (req.params as any).walletAddress;
+    if (!walletAddress) {
+      return res.status(400).json({ error: "Wallet address is required" });
+    }
+
+    const user = await User.findOne({ walletAddress: walletAddress.toLowerCase() });
+    const defaultPrefs = {
+      promptPurchased: true,
+      promptUpdated: true,
+      newReviews: true,
+      priceAlerts: true,
+      emailNotifications: true,
+    };
+
+    if (!user) {
+      return res.json({ preferences: defaultPrefs });
+    }
+
+    return res.json({
+      preferences: {
+        ...defaultPrefs,
+        ...(user.notificationPreferences?.toObject?.() || user.notificationPreferences || {}),
+      },
+    });
+  } catch (error) {
+    console.error("Get preferences error:", error);
+    return res.status(500).json({
+      error: (error as Error).message || "Failed to fetch notification preferences",
+    });
+  }
+};
+
+export const UpdateUserPreferences = async (
+  req: Request,
+  res: Response
+): Promise<Response<any>> => {
+  try {
+    await connectDb();
+
+    const { walletAddress, preferences } = req.body;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: "Wallet address is required" });
+    }
+
+    if (!preferences || typeof preferences !== "object") {
+      return res.status(400).json({ error: "Preferences object is required" });
+    }
+
+    let user = await User.findOne({ walletAddress: walletAddress.toLowerCase() });
+    if (!user) {
+      user = new User({
+        walletAddress: walletAddress.toLowerCase(),
+        username: `user${Math.floor(100000 + Math.random() * 900000)}`,
+        notificationPreferences: preferences,
+      });
+    } else {
+      user.notificationPreferences = {
+        ...(user.notificationPreferences || {}),
+        ...preferences,
+      };
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Preferences updated successfully",
+      preferences: user.notificationPreferences,
+    });
+  } catch (error) {
+    console.error("Update preferences error:", error);
+    return res.status(500).json({
+      error: (error as Error).message || "Failed to update notification preferences",
+    });
+  }
+};

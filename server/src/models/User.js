@@ -22,6 +22,13 @@ const userSchema = new mongoose.Schema(
       min: 1,
       max: 5,
     },
+    notificationPreferences: {
+      promptPurchased: { type: Boolean, default: true },
+      promptUpdated: { type: Boolean, default: true },
+      newReviews: { type: Boolean, default: true },
+      priceAlerts: { type: Boolean, default: true },
+      emailNotifications: { type: Boolean, default: true },
+    },
   },
   {
     timestamps: true,
