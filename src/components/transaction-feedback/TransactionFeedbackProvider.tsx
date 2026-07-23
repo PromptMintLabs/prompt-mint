@@ -51,7 +51,7 @@ export const TransactionFeedbackProvider = ({ children }: { children: ReactNode 
     <TransactionFeedbackContext.Provider value={contextValue}>
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         <span key={announcementId}>
-          {status === "pending" && t("errors:transaction.pending")}
+          {status === "pending" && t("errors.transaction.pending", "Processing transaction on the Stellar network...")}
           {status === "success" && "Transaction successful."}
           {status === "error" && error}
         </span>

@@ -4,7 +4,6 @@ import { StarRating } from "./StarRating";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { Loader2, Send } from "lucide-react";
-import { formatValidationError } from "../../lib/i18n-errors";
 
 interface ReviewFormProps {
   promptId: string;
@@ -24,12 +23,12 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
     setError("");
 
     if (rating === 0) {
-      setError(t("errors:validation.required"));
+      setError(t("errors.validation.required"));
       return;
     }
 
     if (reviewText.trim().length < 10) {
-      setError(t("errors:validation.review_text_short"));
+      setError(t("errors.validation.review_text_short"));
       return;
     }
 
@@ -39,7 +38,7 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
       setRating(0);
       setReviewText("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errors:transaction.unknown"));
+      setError(err instanceof Error ? err.message : t("errors.transaction.unknown"));
     } finally {
       setIsSubmitting(false);
     }
@@ -48,12 +47,12 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <span id={`rating-label-${promptId}`} className="text-sm font-semibold text-white block">{t("create:title")}</span>
+        <span id={`rating-label-${promptId}`} className="text-sm font-semibold text-white block">Your Rating</span>
         <StarRating rating={rating} onRatingChange={setRating} size="lg" />
       </div>
 
       <div className="space-y-2">
-        <label htmlFor={`review-textarea-${promptId}`} className="text-sm font-semibold text-white">{t("create:title")}</label>
+        <label htmlFor={`review-textarea-${promptId}`} className="text-sm font-semibold text-white">Your Review</label>
         <Textarea
           id={`review-textarea-${promptId}`}
           value={reviewText}
@@ -93,7 +92,7 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
           ) : (
             <>
               <Send className="h-4 w-4 mr-2" />
-              {t("create:submit")}
+              Submit Review
             </>
           )}
         </Button>

@@ -6,14 +6,7 @@ describe("Moderation Audit Log Viewer", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows connect wallet prompt when no address provided", () => {
-    const TestComponent = AuditLogViewer as unknown as (props: Record<string, unknown>) => JSX.Element;
-    const { container } = require("@testing-library/react");
-    const { render } = container ? { render: () => null } : { render: () => null };
-
-    // Verify the component renders correctly when no address is provided
-    // by checking the early return path. Since we can't easily render in this env,
-    // we verify the logic path.
+  it("component is defined and exports correctly", () => {
     expect(AuditLogViewer).toBeDefined();
   });
 
