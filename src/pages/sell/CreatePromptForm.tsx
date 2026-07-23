@@ -306,9 +306,11 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             autoComplete="url"
             placeholder="https://example.com/prompt-cover.png"
             className={errors.imageUrl ? "border-red-500" : ""}
+            aria-invalid={!!errors.imageUrl}
+            aria-describedby={errors.imageUrl ? "imageUrl-error" : undefined}
           />
           {errors.imageUrl ? (
-            <p className="flex items-center gap-1 text-sm text-red-400">
+            <p id="imageUrl-error" className="flex items-center gap-1 text-sm text-red-400">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.imageUrl}
             </p>
@@ -326,12 +328,14 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             autoComplete="off"
             placeholder="Board-ready launch plan"
             className={errors.title ? "border-red-500" : ""}
+            aria-invalid={!!errors.title}
+            aria-describedby={errors.title ? "title-error" : undefined}
           />
           <p className="text-xs text-slate-400">
             {formData.title.length}/{limits.title}
           </p>
           {errors.title ? (
-            <p className="flex items-center gap-1 text-sm text-red-400">
+            <p id="title-error" className="flex items-center gap-1 text-sm text-red-400">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.title}
             </p>
@@ -349,15 +353,18 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             name="previewText"
             value={formData.previewText}
             onChange={handleChange}
-            placeholder="This public preview is visible on browse cards and modals."
-            rows={4}
-            className={errors.previewText ? "border-red-500" : ""}
+            placeholder="Brief description of the prompt. This will be publicly visible."
+            className={`min-h-[120px] resize-none ${
+              errors.previewText ? "border-red-500" : ""
+            }`}
+            aria-invalid={!!errors.previewText}
+            aria-describedby={errors.previewText ? "previewText-error" : undefined}
           />
           <p className="text-xs text-slate-400">
-            {formData.previewText.length}/{limits.preview}
+            {formData.previewText.length}/{limits.previewText}
           </p>
           {errors.previewText ? (
-            <p className="flex items-center gap-1 text-sm text-red-400">
+            <p id="previewText-error" className="flex items-center gap-1 text-sm text-red-400">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.previewText}
             </p>
@@ -397,13 +404,15 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             name="priceXlm"
             value={formData.priceXlm}
             onChange={handleChange}
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="2.5"
+            type="number"
+            min="1"
+            step="1"
             className={errors.priceXlm ? "border-red-500" : ""}
+            aria-invalid={!!errors.priceXlm}
+            aria-describedby={errors.priceXlm ? "priceXlm-error" : undefined}
           />
           {errors.priceXlm ? (
-            <p className="flex items-center gap-1 text-sm text-red-400">
+            <p id="priceXlm-error" className="flex items-center gap-1 text-sm text-red-400">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.priceXlm}
             </p>

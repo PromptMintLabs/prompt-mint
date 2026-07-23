@@ -72,14 +72,22 @@ function PromptModal({ prompt, onClose }) {
     <div
       onClick={handleOverlayClick}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
     >
       <div
+        role="document"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+        onKeyDown={(e) => {
+          if (e.key === "Escape") onClose();
+        }}
         className="bg-gray-800 text-white rounded-lg shadow-lg max-w-4xl w-full mx-4 p-6 relative max-h-[95vh] overflow-y-auto"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col">
-            <h2 className="text-2xl font-bold mb-4">{prompt.title}</h2>
+            <h2 id="modal-title" className="text-2xl font-bold mb-4">{prompt.title}</h2>
             <img
               src={prompt.image || "/placeholder.svg"}
               alt={prompt.title}
