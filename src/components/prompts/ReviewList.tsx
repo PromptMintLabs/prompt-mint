@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { StarRating } from "./StarRating";
-import { User } from "lucide-react";
+import { User, ThumbsUp, MessageSquare } from "lucide-react";
+import { ReviewClient, type Review } from "../../lib/reviews/reviewClient";
+import { Button } from "../ui/button";
 
-// Simple date formatting utility (replaces date-fns)
 const formatDistanceToNow = (date: Date, options?: { addSuffix?: boolean }) => {
   const now = Date.now();
   const diff = now - date.getTime();
@@ -22,19 +24,13 @@ const formatDistanceToNow = (date: Date, options?: { addSuffix?: boolean }) => {
   return `${seconds} second${seconds !== 1 ? "s" : ""}${suffix}`;
 };
 
-export interface Review {
-  id: string;
-  promptId: string;
-  userAddress: string;
-  rating: number;
-  text: string;
-  createdAt: number;
-  verified: boolean;
-}
-
 interface ReviewListProps {
   reviews: Review[];
   isLoading?: boolean;
+  currentUserAddress?: string;
+  sellerAddress?: string;
+  promptId?: string;
+  onReviewUpdate?: () => void;
 }
 
 const formatAddress = (address: string) => {
@@ -50,7 +46,53 @@ const formatDate = (timestamp: number) => {
   }
 };
 
-export const ReviewList = ({ reviews, isLoading }: ReviewListProps) => {
+export const ReviewList = ({
+  reviews,
+  isLoading,
+  currentUserAddress,
+  sellerAddress,
+  promptId,
+  onReviewUpdate,
+}: ReviewListProps) => {
+  const [voteLoading, setVoteLoading] = useState<Set<string>>(new Set());
+  const [voteError, setVoteError] = useState<string | null>(null);
+  const [respondToReviewId, setRespondToReviewId] = useState<string | null>(null);
+  const [responseText, setResponseText] = useState("");
+  const [responseLoading, setResponseLoading] = useState(false);
+
+  const handleVote = async (reviewId: string) => {
+    if (!currentUserAddress || !promptId) return;
+    setVoteLoading((prev) => new Set(prev).add(reviewId));
+    setVoteError(null);
+    try {
+      await ReviewClient.voteReview(promptId, reviewId, currentUserAddress);
+      onReviewUpdate?.();
+    } catch (err) {
+      setVoteError(err instanceof Error ? err.message : "Failed to vote");
+    } finally {
+      setVoteLoading((prev) => {
+        const next = new Set(prev);
+        next.delete(reviewId);
+        return next;
+      });
+    }
+  };
+
+  const handleSubmitResponse = async (reviewId: string) => {
+    if (!currentUserAddress || !promptId || !responseText.trim()) return;
+    setResponseLoading(true);
+    try {
+      await ReviewClient.submitSellerResponse(promptId, reviewId, currentUserAddress, responseText.trim());
+      setRespondToReviewId(null);
+      setResponseText("");
+      onReviewUpdate?.();
+    } catch (err) {
+      setVoteError(err instanceof Error ? err.message : "Failed to submit response");
+    } finally {
+      setResponseLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -82,8 +124,16 @@ export const ReviewList = ({ reviews, isLoading }: ReviewListProps) => {
     );
   }
 
+  const isSeller = (address: string) =>
+    sellerAddress && address.toLowerCase() === sellerAddress.toLowerCase();
+
   return (
     <div className="space-y-4">
+      {voteError && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          {voteError}
+        </div>
+      )}
       {reviews.map((review) => (
         <div
           key={review.id}
@@ -115,9 +165,101 @@ export const ReviewList = ({ reviews, isLoading }: ReviewListProps) => {
             <StarRating rating={review.rating} readonly size="sm" />
           </div>
 
-          <p className="text-sm text-slate-300 leading-relaxed">
+          <p className="text-sm text-slate-300 leading-relaxed mb-3">
             {review.text}
           </p>
+
+          <div className="flex items-center gap-4">
+            {currentUserAddress && currentUserAddress.toLowerCase() !== review.userAddress.toLowerCase() && promptId && (
+              <button
+                onClick={() => handleVote(review.id)}
+                disabled={voteLoading.has(review.id)}
+                className={`inline-flex items-center gap-1.5 text-xs font-medium transition-colors ${
+                  voteLoading.has(review.id)
+                    ? "text-slate-600"
+                    : "text-slate-400 hover:text-emerald-400"
+                }`}
+                aria-label={`${review.helpfulVotes} found this helpful. Click to vote.`}
+              >
+                <ThumbsUp className="h-3.5 w-3.5" />
+                <span>Helpful ({review.helpfulVotes})</span>
+              </button>
+            )}
+            {!currentUserAddress && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+                <ThumbsUp className="h-3.5 w-3.5" />
+                <span>Helpful ({review.helpfulVotes})</span>
+              </span>
+            )}
+            {currentUserAddress === review.userAddress && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+                <ThumbsUp className="h-3.5 w-3.5" />
+                <span>{review.helpfulVotes}</span>
+              </span>
+            )}
+          </div>
+
+          {review.sellerResponse && (
+            <div className="mt-4 ml-6 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                  Seller Response
+                </span>
+                <span className="text-xs text-slate-500">
+                  {formatDate(review.sellerResponse.createdAt)}
+                </span>
+              </div>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                {review.sellerResponse.text}
+              </p>
+            </div>
+          )}
+
+          {isSeller(currentUserAddress ?? "") &&
+            !review.sellerResponse &&
+            respondToReviewId !== review.id && (
+              <button
+                onClick={() => setRespondToReviewId(review.id)}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Respond as seller
+              </button>
+            )}
+
+          {respondToReviewId === review.id && (
+            <div className="mt-4 space-y-3">
+              <textarea
+                value={responseText}
+                onChange={(e) => setResponseText(e.target.value)}
+                placeholder="Write your response as the seller..."
+                className="w-full min-h-[80px] p-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-slate-500 resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500/30"
+                maxLength={1000}
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleSubmitResponse(review.id)}
+                  disabled={responseLoading || !responseText.trim()}
+                  size="sm"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold"
+                >
+                  {responseLoading ? "Submitting..." : "Submit Response"}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setRespondToReviewId(null);
+                    setResponseText("");
+                  }}
+                  variant="ghost"
+                  size="sm"
+                  className="text-slate-400"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       ))}
     </div>

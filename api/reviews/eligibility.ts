@@ -1,26 +1,5 @@
-/**
- * Review Eligibility Endpoint
- *
- * Verifies if a user address is eligible to submit a review for a specific prompt.
- * Requirements:
- * 1. Verified purchase access on-chain.
- * 2. Has not already submitted a review for this prompt.
- */
-
 import { hasAccess, type PromptHashConfig } from "../../src/lib/stellar/promptHashClient";
-
-interface StoredReview {
-  id: string;
-  promptId: string;
-  userAddress: string;
-  rating: number;
-  text: string;
-  createdAt: number;
-  verified: boolean;
-}
-
-// In-memory review storage reference
-const reviewStorage = new Map<string, StoredReview[]>();
+import { getReviews } from "./data";
 
 function getServerConfig(): PromptHashConfig {
   const rpcUrl = process.env.PUBLIC_STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org";
@@ -60,12 +39,10 @@ export default async function handler(req: any, res: any) {
   try {
     const config = getServerConfig();
 
-    // Check on-chain verified purchase access
     let verified = false;
     try {
       verified = await hasAccess(config, userAddress, promptId);
     } catch {
-      // In dev or test environments without contract ID, default to false unless simulation mode
       verified = false;
     }
 
@@ -79,8 +56,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // Check for previous review submission
-    const existingReviews = reviewStorage.get(promptId) || [];
+    const existingReviews = getReviews(promptId);
     const alreadyReviewed = existingReviews.some(
       (r) => r.userAddress.toLowerCase() === userAddress.toLowerCase()
     );
