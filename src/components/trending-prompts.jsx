@@ -88,9 +88,9 @@ function PromptModal({ prompt, onClose }) {
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col">
-            <h2 id="modal-title" className="text-2xl font-bold mb-4">{prompt.title}</h2>
-            <img
-            <h2 className="text-2xl font-bold mb-4">{prompt.title}</h2>
+            <h2 id="modal-title" className="text-2xl font-bold mb-4">
+              {prompt.title}
+            </h2>
             <SafeImage
               src={prompt.image || "/placeholder.svg"}
               alt={prompt.title}

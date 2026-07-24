@@ -372,7 +372,7 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             aria-describedby={errors.previewText ? "previewText-error" : undefined}
           />
           <p className="text-xs text-slate-400">
-            {formData.previewText.length}/{limits.previewText}
+            {formData.previewText.length}/{limits.preview}
           </p>
           {errors.previewText ? (
             <p id="previewText-error" className="flex items-center gap-1 text-sm text-red-400">
