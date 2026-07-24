@@ -672,6 +672,108 @@ impl PromptHashTrait for PromptHashContract {
         Storage::set_moderator_address(&env, &moderator);
         Ok(())
     }
+
+    // ─── Promotional Pricing ──────────────────────────────────────────────
+
+    fn create_promotion(
+        env: Env,
+        creator: Address,
+        prompt_id: u128,
+        start_time: u64,
+        end_time: u64,
+        price: i128,
+        asset: Address,
+    ) -> Result<u128, Error> {
+        creator.require_auth();
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        ensure(prompt.creator == creator, Error::Unauthorized)?;
+
+        // Validate promotion time bounds
+        validate_promotion_time(&env, start_time, end_time)?;
+
+        // Validate price
+        ensure(price > 0, Error::InvalidPrice)?;
+
+        // Validate asset implements token interface
+        let _ = token::Client::new(&env, &asset).decimals();
+
+        // Check for overlapping promotions
+        check_promotion_overlap(&env, prompt_id, start_time, end_time)?;
+
+        // Generate promotion ID
+        let promotion_id = Storage::get_prompt_counter(&env);
+
+        let promotion = super::types::Promotion {
+            prompt_id,
+            creator: creator.clone(),
+            start_time,
+            end_time,
+            price,
+            asset: asset.clone(),
+        };
+
+        // Store the promotion
+        Storage::set_active_promotion(&env, prompt_id, &promotion);
+        Storage::add_promotion_to_history(&env, prompt_id, &promotion);
+
+        // Emit event
+        Events::emit_promotion_created(
+            &env,
+            prompt_id,
+            promotion_id,
+            creator,
+            start_time,
+            end_time,
+            price,
+            asset,
+        );
+
+        Ok(promotion_id)
+    }
+
+    fn cancel_promotion(
+        env: Env,
+        creator: Address,
+        prompt_id: u128,
+    ) -> Result<(), Error> {
+        creator.require_auth();
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        ensure(prompt.creator == creator, Error::Unauthorized)?;
+
+        let promotion = Storage::get_active_promotion(&env, prompt_id)
+            .ok_or(Error::PromotionNotFound)?;
+
+        ensure(promotion.creator == creator, Error::UnauthorizedPromotion)?;
+
+        // Clear the active promotion
+        Storage::clear_active_promotion(&env, prompt_id);
+
+        // Emit event
+        Events::emit_promotion_cancelled(
+            &env,
+            prompt_id,
+            promotion.prompt_id, // Using prompt_id as promotion_id for simplicity
+            creator,
+        );
+
+        Ok(())
+    }
+
+    fn get_active_promotion(env: Env, prompt_id: u128) -> Result<Option<super::types::Promotion>, Error> {
+        Ok(Storage::get_active_promotion(&env, prompt_id))
+    }
+
+    fn get_promotion_history(env: Env, prompt_id: u128) -> Result<Vec<super::types::Promotion>, Error> {
+        Ok(Storage::get_promotion_history(&env, prompt_id))
+    }
+
+    fn get_effective_price(env: Env, prompt_id: u128) -> Result<(i128, Address, bool), Error> {
+        get_effective_price_for_prompt(&env, prompt_id)
+    }
 }
 
 #[default_impl]
@@ -787,8 +889,12 @@ fn execute_buy(
         )?;
     }
 
+    // Check for active promotion and use promotional price if applicable
+    let (effective_price, _effective_asset, is_promotional) = 
+        get_effective_price_for_prompt(env, prompt_id)?;
+
     // Apply voucher discount if provided
-    let mut required_price = prompt.price_stroops;
+    let mut required_price = effective_price;
     if let Some(code) = voucher {
         let hashed_raw = env.crypto().sha256(&code);
         let hashed = BytesN::from_array(env, &hashed_raw.to_array());
@@ -803,6 +909,20 @@ fn execute_buy(
             Storage::remove_voucher(env, prompt_id, &hashed);
         } else {
             return Err(Error::InvalidVoucher);
+        }
+    }
+
+    // Emit promotion applied event if a promotion was used
+    if is_promotional {
+        if let Some(promo) = Storage::get_active_promotion(env, prompt_id) {
+            Events::emit_promotion_applied(
+                env,
+                prompt_id,
+                prompt_id, // Using prompt_id as promotion_id for simplicity
+                buyer.clone(),
+                required_price,
+                prompt.price_stroops,
+            );
         }
     }
 
@@ -1032,4 +1152,50 @@ fn validate_safety_flags(env: &Env, flags: &Vec<String>) -> Result<(), Error> {
         ensure(is_valid, Error::InvalidDisclosureFlags)?;
     }
     Ok(())
+}
+
+// ─── Promotional Pricing Functions ──────────────────────────────────────
+
+fn validate_promotion_time(env: &Env, start_time: u64, end_time: u64) -> Result<(), Error> {
+    let now = env.ledger().timestamp();
+    ensure(start_time > now, Error::InvalidPromotionTime)?;
+    ensure(end_time > start_time, Error::InvalidPromotionTime)?;
+    Ok(())
+}
+
+fn check_promotion_overlap(env: &Env, prompt_id: u128, start_time: u64, end_time: u64) -> Result<(), Error> {
+    let active = Storage::get_active_promotion(env, prompt_id);
+    if let Some(promo) = active {
+        // Check if the new promotion overlaps with the active one
+        if start_time < promo.end_time && end_time > promo.start_time {
+            return Err(Error::PromotionOverlap);
+        }
+    }
+    
+    // Also check historical promotions that haven't expired yet
+    let history = Storage::get_promotion_history(env, prompt_id);
+    for i in 0..history.len() {
+        if let Some(promo) = history.get(i) {
+            if start_time < promo.end_time && end_time > promo.start_time {
+                return Err(Error::PromotionOverlap);
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+fn get_effective_price_for_prompt(env: &Env, prompt_id: u128) -> Result<(i128, Address, bool), Error> {
+    let prompt = Storage::require_prompt(env, prompt_id)?;
+    let now = env.ledger().timestamp();
+    
+    // Check if there's an active promotion
+    if let Some(promo) = Storage::get_active_promotion(env, prompt_id) {
+        if now >= promo.start_time && now < promo.end_time {
+            return Ok((promo.price, promo.asset, true));
+        }
+    }
+    
+    // No active promotion, use base price
+    Ok((prompt.price_stroops, prompt.asset, false))
 }

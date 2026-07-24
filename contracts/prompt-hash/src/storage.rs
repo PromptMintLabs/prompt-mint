@@ -431,4 +431,57 @@ impl Storage {
         }
         addr
     }
+
+    // ─── Promotional Pricing ──────────────────────────────────────────────
+
+    pub fn set_active_promotion(env: &Env, prompt_id: u128, promotion: &super::types::Promotion) {
+        let key = DataKey::ActivePromotion(prompt_id);
+        env.storage().persistent().set(&key, promotion);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_active_promotion(env: &Env, prompt_id: u128) -> Option<super::types::Promotion> {
+        let key = DataKey::ActivePromotion(prompt_id);
+        let promotion = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        promotion
+    }
+
+    pub fn clear_active_promotion(env: &Env, prompt_id: u128) {
+        let key = DataKey::ActivePromotion(prompt_id);
+        env.storage().persistent().remove(&key);
+    }
+
+    pub fn add_promotion_to_history(env: &Env, prompt_id: u128, promotion: &super::types::Promotion) {
+        let key = DataKey::PromotionHistory(prompt_id);
+        let mut history: Vec<super::types::Promotion> = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| Vec::new(env));
+        history.push_back(promotion.clone());
+        env.storage().persistent().set(&key, &history);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_promotion_history(env: &Env, prompt_id: u128) -> Vec<super::types::Promotion> {
+        let key = DataKey::PromotionHistory(prompt_id);
+        let history: Vec<super::types::Promotion> = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| Vec::new(env));
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        history
+    }
+
+    pub fn get_promotion_counter(env: &Env) -> u128 {
+        let key = DataKey::PromptCounter; // Reuse prompt counter for promotion IDs
+        let count = env.storage().persistent().get(&key).unwrap_or(0);
+        count
+    }
 }

@@ -43,6 +43,19 @@ export interface PromptRecord {
   // #131 – content classification and safety disclosures
   classification?: string;
   safetyFlags?: string[];
+  // Promotional pricing
+  activePromotion?: Promotion;
+  effectivePrice?: bigint;
+  isPromotional?: boolean;
+}
+
+export interface Promotion {
+  promptId: bigint;
+  creator: string;
+  startTime: number;
+  endTime: number;
+  price: bigint;
+  asset: string;
 }
 
 export type CreatePromptInput = unknown;
@@ -183,6 +196,76 @@ export class PromptHashClient {
   ) {
     warnMockUse();
     return { success: true };
+  }
+
+  /**
+   * Creates a time-bounded promotional price for a prompt.
+   */
+  static async createPromotion(
+    _config: PromptHashConfig,
+    _walletSignerLike: any,
+    _address: string,
+    _promptId: string,
+    _startTime: number,
+    _endTime: number,
+    _price: bigint,
+    _asset: string,
+    options?: { forceFailure?: string; delay?: number },
+  ): Promise<{ txHash: string; success: boolean; promotionId: number }> {
+    warnMockUse();
+    return new Promise((resolve, reject) => {
+      const delay = options?.delay ?? 2000;
+      setTimeout(() => {
+        if (options?.forceFailure) {
+          return reject(new Error(options.forceFailure));
+        }
+        const mockHash = "tx_promo_" + Math.random().toString(16).slice(2, 14).padStart(12, "0");
+        resolve({ txHash: mockHash, success: true, promotionId: Math.floor(Math.random() * 1000) });
+      }, delay);
+    });
+  }
+
+  /**
+   * Cancels an active promotion for a prompt.
+   */
+  static async cancelPromotion(
+    _config: PromptHashConfig,
+    _walletSignerLike: any,
+    _address: string,
+    _promptId: string,
+    options?: { forceFailure?: string; delay?: number },
+  ): Promise<{ txHash: string; success: boolean }> {
+    warnMockUse();
+    return new Promise((resolve, reject) => {
+      const delay = options?.delay ?? 2000;
+      setTimeout(() => {
+        if (options?.forceFailure) {
+          return reject(new Error(options.forceFailure));
+        }
+        const mockHash = "tx_cancel_" + Math.random().toString(16).slice(2, 14).padStart(12, "0");
+        resolve({ txHash: mockHash, success: true });
+      }, delay);
+    });
+  }
+
+  /**
+   * Gets the active promotion for a prompt.
+   */
+  static async getActivePromotion(
+    _promptId: string,
+  ): Promise<Promotion | null> {
+    warnMockUse();
+    return null;
+  }
+
+  /**
+   * Gets the effective price for a prompt, considering any active promotion.
+   */
+  static async getEffectivePrice(
+    _promptId: string,
+  ): Promise<{ price: bigint; asset: string; isPromotional: boolean }> {
+    warnMockUse();
+    return { price: 0n, asset: "", isPromotional: false };
   }
 }
 
