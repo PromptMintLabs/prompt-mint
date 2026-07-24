@@ -36,6 +36,14 @@ export const ErrorCode = {
   /** Too many requests from this wallet address. */
   RATE_LIMIT_WALLET: "RATE_LIMIT_WALLET",
 
+  // ── Analytics errors (4xx) ────────────────────────────────────────────────
+
+  /** The event name is not part of the registered analytics taxonomy. */
+  UNKNOWN_EVENT: "UNKNOWN_EVENT",
+
+  /** The event payload failed validation against its taxonomy schema. */
+  INVALID_EVENT_PAYLOAD: "INVALID_EVENT_PAYLOAD",
+
   // ── Server errors (5xx) ───────────────────────────────────────────────────
 
   /** The server is missing required configuration (never expose details). */
@@ -89,6 +97,8 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   ACCESS_NOT_PURCHASED: "You have not purchased access to this prompt.",
   RATE_LIMIT_IP: "Too many requests. Please wait a moment and try again.",
   RATE_LIMIT_WALLET: "Too many unlock attempts for this wallet. Please wait and try again.",
+  UNKNOWN_EVENT: "This event type is not recognized.",
+  INVALID_EVENT_PAYLOAD: "The event payload did not match the expected shape.",
   CONFIGURATION_ERROR: "A server configuration error occurred. Please try again later.",
   INTEGRITY_FAILURE: "Prompt content could not be verified. Please contact support.",
   TEMPORARY_FAILURE: "A temporary error occurred. Please try again in a moment.",
