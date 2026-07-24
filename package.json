@@ -24,7 +24,10 @@
     "prepare": "husky",
     "check:setup": "node scripts/check-local-setup.mjs",
     "check:runbook": "node scripts/runbook-check.mjs",
-    "test:synthetic": "npx tsx scripts/synthetic-unlock.ts"
+    "test:synthetic": "npx tsx scripts/synthetic-unlock.ts",
+    "load:fixtures": "node scripts/load/generate-unlock-fixtures.mjs",
+    "load:test": "k6 run load-tests/prompt-mint.js",
+    "load:compare": "node scripts/load/compare-results.mjs"
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^1.9.5",
