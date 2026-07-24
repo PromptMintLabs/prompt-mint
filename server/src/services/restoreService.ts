@@ -5,7 +5,7 @@ import { pipeline, PassThrough } from "stream";
 import { promisify } from "util";
 import { BackupRun } from "./backupService";
 import { RestoreRun } from "../models/RestoreRun";
-import fetch from "node-fetch";
+// import fetch from "node-fetch"; // removed in favor of native fetch
 
 const pipelineAsync = promisify(pipeline);
 

@@ -88,3 +88,15 @@ export function updateReview(promptId: string, reviewId: string, update: Partial
   reviewStorage.set(promptId, reviews);
   return reviews[index];
 }
+
+export function getReviewsByUser(userAddress: string): StoredReview[] {
+  const result: StoredReview[] = [];
+  for (const reviews of reviewStorage.values()) {
+    for (const r of reviews) {
+      if (r.userAddress === userAddress) {
+        result.push(r);
+      }
+    }
+  }
+  return result;
+}

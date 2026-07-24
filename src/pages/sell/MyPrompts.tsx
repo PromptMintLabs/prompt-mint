@@ -40,7 +40,7 @@ function getCachedCreatorPrompts(address?: string): CachedPromptsList | null {
   try {
     const raw = window.localStorage.getItem(`prompt-mint:created-prompts-cache:${address}`);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch { /* empty */ }
   return null;
 }
 
@@ -50,7 +50,7 @@ function setCachedCreatorPrompts(address: string, prompts: PromptRecord[]) {
       `prompt-mint:created-prompts-cache:${address}`,
       JSON.stringify({ timestamp: Date.now(), prompts }),
     );
-  } catch {}
+  } catch { /* empty */ }
 }
 
 const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
@@ -179,9 +179,7 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
       updateError("Connect a wallet before updating prompt prices.");
       return;
     }
-      updateError("Connect a wallet before updating prompt prices.");
-      return;
-    }
+
 
     setBusyPromptId(promptId.toString());
     try {
