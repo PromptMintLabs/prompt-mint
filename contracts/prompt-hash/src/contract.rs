@@ -1,7 +1,8 @@
 use super::events::Events;
 use super::storage::Storage;
 use super::types::{
-    DataKey, Error, ListingConfig, Prompt, PromptHashTrait, Split, Subscription, SubscriptionConfig,
+    ALL_CLASSIFICATIONS, DataKey, Error, ListingConfig, ClassificationOverride, Prompt,
+    PromptHashTrait, Split, Subscription, SubscriptionConfig, VALID_DISCLOSURE_FLAGS,
 };
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Vec};
 use stellar_access::ownable::{self as ownable, Ownable};
@@ -20,6 +21,10 @@ const MAX_IV_LEN: u32 = 64;
 const LEASE_PRICE_BPS: u32 = 4_000;
 const MAX_ACCESS_EXPIRY: u64 = u64::MAX;
 const MAX_SUBSCRIPTION_DURATION_SECS: u64 = 31_536_000;
+const MAX_CLASSIFICATION_LEN: u32 = 20;
+const MAX_SAFETY_FLAGS_COUNT: u32 = 10;
+const MAX_FLAG_LEN: u32 = 30;
+const MAX_REASON_LEN: u32 = 256;
 
 #[contract]
 pub struct PromptHashContract;
@@ -85,6 +90,10 @@ impl PromptHashTrait for PromptHashContract {
         // #50: validate revenue splits
         validate_splits(&env, &listing.splits)?;
 
+        // #131: default classification
+        let classification = String::from_str(&env, "general");
+        let safety_flags: Vec<String> = Vec::new(&env);
+
         let prompt_id = Storage::get_prompt_counter(&env);
         let prompt = Prompt {
             id: prompt_id,
@@ -104,6 +113,8 @@ impl PromptHashTrait for PromptHashContract {
             max_supply: 0,
             expires_at: listing.expires_at,
             splits: listing.splits,
+            classification,
+            safety_flags,
         };
 
         Storage::save_prompt(&env, &prompt)?;
@@ -581,6 +592,86 @@ impl PromptHashTrait for PromptHashContract {
         Storage::extend_key_ttl(&env, &key);
         Ok(())
     }
+
+    // ─── #131: Content Classification ──────────────────────────────────────
+
+    fn set_classification(
+        env: Env,
+        creator: Address,
+        prompt_id: u128,
+        classification: String,
+        safety_flags: Vec<String>,
+    ) -> Result<(), Error> {
+        creator.require_auth();
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+        let mut prompt = Storage::require_prompt(&env, prompt_id)?;
+        ensure(prompt.creator == creator, Error::Unauthorized)?;
+        validate_classification(&env, &classification)?;
+        validate_safety_flags(&env, &safety_flags)?;
+
+        prompt.classification = classification.clone();
+        prompt.safety_flags = safety_flags.clone();
+        Storage::update_prompt(&env, &prompt);
+        Events::emit_classification_set(&env, prompt_id, classification, safety_flags);
+        Ok(())
+    }
+
+    fn get_classification(env: Env, prompt_id: u128) -> Result<(String, Vec<String>), Error> {
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        Ok((prompt.classification, prompt.safety_flags))
+    }
+
+    fn set_moderator_override(
+        env: Env,
+        moderator: Address,
+        prompt_id: u128,
+        classification: String,
+        safety_flags: Vec<String>,
+        reason: String,
+    ) -> Result<(), Error> {
+        moderator.require_auth();
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+        let stored_moderator = Storage::get_moderator_address(&env)
+            .ok_or(Error::NotModerator)?;
+        ensure(moderator == stored_moderator, Error::NotModerator)?;
+        ensure(!reason.is_empty() && reason.len() <= MAX_REASON_LEN, Error::InvalidClassification)?;
+        validate_classification(&env, &classification)?;
+        validate_safety_flags(&env, &safety_flags)?;
+
+        let now = env.ledger().timestamp();
+        let override_entry = ClassificationOverride {
+            classifier: moderator.clone(),
+            classification: classification.clone(),
+            safety_flags: safety_flags.clone(),
+            reason: reason.clone(),
+            reviewed_at: now,
+        };
+        Storage::set_moderator_override(&env, prompt_id, &override_entry);
+        Events::emit_classification_overridden(
+            &env, prompt_id, moderator, classification, safety_flags, reason,
+        );
+        Ok(())
+    }
+
+    fn get_active_classification(env: Env, prompt_id: u128) -> Result<(String, Vec<String>), Error> {
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        // Moderator override takes precedence if it exists
+        if let Some(override_entry) = Storage::get_moderator_override(&env, prompt_id) {
+            return Ok((override_entry.classification, override_entry.safety_flags));
+        }
+        Ok((prompt.classification, prompt.safety_flags))
+    }
+
+    fn get_moderator_override(env: Env, prompt_id: u128) -> Result<ClassificationOverride, Error> {
+        Storage::get_moderator_override(&env, prompt_id).ok_or(Error::PromptNotFound)
+    }
+
+    #[only_owner]
+    fn set_moderator_address(env: Env, admin: Address, moderator: Address) -> Result<(), Error> {
+        admin.require_auth();
+        Storage::set_moderator_address(&env, &moderator);
+        Ok(())
+    }
 }
 
 #[default_impl]
@@ -903,4 +994,42 @@ fn ensure(condition: bool, error: Error) -> Result<(), Error> {
     } else {
         Err(error)
     }
+}
+
+// ─── #131: Classification validation helpers ────────────────────────────────
+
+fn validate_classification(env: &Env, classification: &String) -> Result<(), Error> {
+    ensure(
+        !classification.is_empty() && classification.len() <= MAX_CLASSIFICATION_LEN,
+        Error::InvalidClassification,
+    )?;
+    let mut valid = false;
+    for &cat in ALL_CLASSIFICATIONS {
+        if &String::from_str(env, cat) == classification {
+            valid = true;
+            break;
+        }
+    }
+    ensure(valid, Error::InvalidClassification)?;
+    Ok(())
+}
+
+fn validate_safety_flags(env: &Env, flags: &Vec<String>) -> Result<(), Error> {
+    ensure(
+        flags.len() <= MAX_SAFETY_FLAGS_COUNT,
+        Error::InvalidSafetyFlagsLength,
+    )?;
+    for i in 0..flags.len() {
+        let flag = flags.get(i).unwrap();
+        ensure(!flag.is_empty() && flag.len() <= MAX_FLAG_LEN, Error::InvalidDisclosureFlags)?;
+        // Allow "none" only as the sole flag
+        if flag == String::from_str(env, "none") {
+            ensure(flags.len() == 1, Error::InvalidDisclosureFlags)?;
+        }
+        let is_valid = VALID_DISCLOSURE_FLAGS
+            .iter()
+            .any(|f| String::from_str(env, f) == flag);
+        ensure(is_valid, Error::InvalidDisclosureFlags)?;
+    }
+    Ok(())
 }

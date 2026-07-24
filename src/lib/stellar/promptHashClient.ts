@@ -40,6 +40,9 @@ export interface PromptRecord {
   encryptedPrompt?: string;
   encryptionIv?: string;
   wrappedKey?: string;
+  // #131 – content classification and safety disclosures
+  classification?: string;
+  safetyFlags?: string[];
 }
 
 export type CreatePromptInput = unknown;
@@ -116,6 +119,8 @@ export class PromptHashClient {
         salesCount: 12,
         active: true,
         contentHash: "mock_hash_000000000001",
+        classification: "technical",
+        safetyFlags: ["ai-generated"],
       },
       {
         id: 2n,
@@ -132,6 +137,8 @@ export class PromptHashClient {
         salesCount: 45,
         active: true,
         contentHash: "mock_hash_000000000002",
+        classification: "creative",
+        safetyFlags: [],
       },
     ];
   }

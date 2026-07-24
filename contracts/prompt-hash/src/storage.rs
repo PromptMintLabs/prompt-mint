@@ -1,4 +1,4 @@
-use super::types::{DataKey, Error, Prompt, Purchase, Subscription, SubscriptionConfig};
+use super::types::{DataKey, Error, ClassificationOverride, Prompt, Purchase, Subscription, SubscriptionConfig};
 use soroban_sdk::{token, Address, BytesN, Env, Vec};
 
 pub const DAY_IN_LEDGERS: u32 = 17280;
@@ -398,5 +398,37 @@ impl Storage {
             Self::extend_key_ttl(env, &key);
         }
         discount
+    }
+
+    // ─── #131: Content Classification ───────────────────────────────────────
+
+    pub fn set_moderator_override(env: &Env, prompt_id: u128, override_entry: &ClassificationOverride) {
+        let key = DataKey::ClassificationOverride(prompt_id);
+        env.storage().persistent().set(&key, override_entry);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_moderator_override(env: &Env, prompt_id: u128) -> Option<ClassificationOverride> {
+        let key = DataKey::ClassificationOverride(prompt_id);
+        let override_entry = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        override_entry
+    }
+
+    pub fn set_moderator_address(env: &Env, moderator: &Address) {
+        let key = DataKey::ModeratorAddress;
+        env.storage().persistent().set(&key, moderator);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_moderator_address(env: &Env) -> Option<Address> {
+        let key = DataKey::ModeratorAddress;
+        let addr = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        addr
     }
 }

@@ -2578,3 +2578,338 @@ fn test_catalog_changes_transfers_and_direct_purchases_are_independent() {
         subscriber
     );
 }
+
+// ─── #131: Content Classification Tests ──────────────────────────────────────
+
+#[test]
+fn test_create_prompt_default_classification() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Default Class", 10_000, &context.xlm);
+
+    let prompt = client.get_prompt(&prompt_id);
+    assert_eq!(prompt.classification, String::from_str(&env, "general"));
+    assert_eq!(prompt.safety_flags.len(), 0);
+}
+
+#[test]
+fn test_set_classification_valid_values() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Class Test", 10_000, &context.xlm);
+
+    client.set_classification(
+        &creator,
+        &prompt_id,
+        &String::from_str(&env, "educational"),
+        &Vec::new(&env),
+    );
+
+    let prompt = client.get_prompt(&prompt_id);
+    assert_eq!(prompt.classification, String::from_str(&env, "educational"));
+
+    client.set_classification(
+        &creator,
+        &prompt_id,
+        &String::from_str(&env, "technical"),
+        &{
+            let mut v = Vec::new(&env);
+            v.push_back(String::from_str(&env, "ai-generated"));
+            v
+        },
+    );
+
+    let prompt = client.get_prompt(&prompt_id);
+    assert_eq!(prompt.classification, String::from_str(&env, "technical"));
+    assert_eq!(prompt.safety_flags.len(), 1);
+    assert_eq!(
+        prompt.safety_flags.get(0).unwrap(),
+        String::from_str(&env, "ai-generated")
+    );
+}
+
+#[test]
+fn test_set_classification_invalid_rejected() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Invalid Class", 10_000, &context.xlm);
+
+    let result = client.try_set_classification(
+        &creator,
+        &prompt_id,
+        &String::from_str(&env, "invalid-category"),
+        &Vec::new(&env),
+    );
+    assert!(matches!(result, Err(Ok(Error::InvalidClassification))));
+
+    let result = client.try_set_classification(
+        &creator,
+        &prompt_id,
+        &String::from_str(&env, "educational"),
+        &{
+            let mut v = Vec::new(&env);
+            v.push_back(String::from_str(&env, "invalid-flag"));
+            v
+        },
+    );
+    assert!(matches!(result, Err(Ok(Error::InvalidDisclosureFlags))));
+}
+
+#[test]
+fn test_set_classification_unauthorized_rejected() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let impostor = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Auth Class", 10_000, &context.xlm);
+
+    let result = client.try_set_classification(
+        &impostor,
+        &prompt_id,
+        &String::from_str(&env, "creative"),
+        &Vec::new(&env),
+    );
+    assert!(matches!(result, Err(Ok(Error::Unauthorized))));
+}
+
+#[test]
+fn test_get_active_classification_without_override() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Active Class", 10_000, &context.xlm);
+
+    client.set_classification(
+        &creator,
+        &prompt_id,
+        &String::from_str(&env, "sensitive"),
+        &{
+            let mut v = Vec::new(&env);
+            v.push_back(String::from_str(&env, "political"));
+            v
+        },
+    );
+
+    // Without override, get_active_classification returns creator-set values
+    let (classification, flags) = client.get_active_classification(&prompt_id);
+    assert_eq!(classification, String::from_str(&env, "sensitive"));
+    assert_eq!(flags.len(), 1);
+    assert_eq!(flags.get(0).unwrap(), String::from_str(&env, "political"));
+}
+
+#[test]
+fn test_moderator_override_overrides_creator_classification() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Override Test", 10_000, &context.xlm);
+
+    // Creator sets classification as "general"
+    client.set_classification(
+        &creator,
+        &prompt_id,
+        &String::from_str(&env, "general"),
+        &Vec::new(&env),
+    );
+
+    // Admin sets moderator address
+    client.set_moderator_address(&context.admin, &context.admin);
+
+    // Moderator overrides to "restricted"
+    client.set_moderator_override(
+        &context.admin,
+        &prompt_id,
+        &String::from_str(&env, "restricted"),
+        &{
+            let mut v = Vec::new(&env);
+            v.push_back(String::from_str(&env, "ai-generated"));
+            v.push_back(String::from_str(&env, "political"));
+            v
+        },
+        &String::from_str(&env, "Contains political content that requires restriction"),
+    );
+
+    // get_active_classification should return moderator override
+    let (classification, flags) = client.get_active_classification(&prompt_id);
+    assert_eq!(classification, String::from_str(&env, "restricted"));
+    assert_eq!(flags.len(), 2);
+
+    // get_classification should still return creator's original
+    let (creator_class, _) = client.get_classification(&prompt_id);
+    assert_eq!(creator_class, String::from_str(&env, "general"));
+}
+
+#[test]
+fn test_moderator_override_unauthorized_rejected() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let impostor = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Override Auth", 10_000, &context.xlm);
+
+    // No moderator has been set yet
+    let result = client.try_set_moderator_override(
+        &impostor,
+        &prompt_id,
+        &String::from_str(&env, "restricted"),
+        &Vec::new(&env),
+        &String::from_str(&env, "Test override"),
+    );
+    assert!(matches!(result, Err(Ok(Error::NotModerator))));
+}
+
+#[test]
+fn test_classification_with_safety_flags_none() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Flags Test", 10_000, &context.xlm);
+
+    // "none" flag should be valid alone
+    client.set_classification(
+        &creator,
+        &prompt_id,
+        &String::from_str(&env, "general"),
+        &{
+            let mut v = Vec::new(&env);
+            v.push_back(String::from_str(&env, "none"));
+            v
+        },
+    );
+
+    let prompt = client.get_prompt(&prompt_id);
+    assert_eq!(prompt.safety_flags.len(), 1);
+    assert_eq!(
+        prompt.safety_flags.get(0).unwrap(),
+        String::from_str(&env, "none")
+    );
+}
+
+#[test]
+fn test_classification_missing_rejected() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Missing Class", 10_000, &context.xlm);
+
+    // Empty classification should be rejected
+    let result = client.try_set_classification(
+        &creator,
+        &prompt_id,
+        &String::from_str(&env, ""),
+        &Vec::new(&env),
+    );
+    assert!(matches!(result, Err(Ok(Error::InvalidClassification))));
+}
+
+#[test]
+fn test_classification_conflicting_change_emits_correct_values() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Conflict Test", 10_000, &context.xlm);
+
+    // Set initial classification as "educational"
+    client.set_classification(
+        &creator,
+        &prompt_id,
+        &String::from_str(&env, "educational"),
+        &{
+            let mut v = Vec::new(&env);
+            v.push_back(String::from_str(&env, "none"));
+            v
+        },
+    );
+
+    // Change to "technical" — this should overwrite
+    client.set_classification(
+        &creator,
+        &prompt_id,
+        &String::from_str(&env, "technical"),
+        &{
+            let mut v = Vec::new(&env);
+            v.push_back(String::from_str(&env, "ai-generated"));
+            v
+        },
+    );
+
+    let prompt = client.get_prompt(&prompt_id);
+    assert_eq!(prompt.classification, String::from_str(&env, "technical"));
+    assert_eq!(prompt.safety_flags.len(), 1);
+    assert_eq!(
+        prompt.safety_flags.get(0).unwrap(),
+        String::from_str(&env, "ai-generated")
+    );
+    // Classification changed from "educational" to "technical" -- the latest sticks
+    assert_ne!(prompt.classification, String::from_str(&env, "educational"));
+}
+
+#[test]
+fn test_moderator_address_allows_admin() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let moderator = Address::generate(&env);
+
+    // Admin can set moderator address
+    let result = client.try_set_moderator_address(&context.admin, &moderator);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_classification_with_all_valid_categories() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "All Classes", 10_000, &context.xlm);
+
+    let valid_categories = [
+        "general",
+        "educational",
+        "professional",
+        "creative",
+        "technical",
+        "sensitive",
+        "restricted",
+    ];
+
+    for &cat in &valid_categories {
+        let result = client.try_set_classification(
+            &creator,
+            &prompt_id,
+            &String::from_str(&env, cat),
+            &Vec::new(&env),
+        );
+        assert!(
+            result.is_ok(),
+            "Expected '{}' to be a valid classification",
+            cat
+        );
+    }
+}
