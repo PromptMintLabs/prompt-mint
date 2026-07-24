@@ -65,3 +65,7 @@ packages/*
 !packages/.gitkeep
 !src/contracts/util.ts
 .omx/
+
+# Load-test secrets and generated results
+load-tests/fixtures/generated.json
+load-results/

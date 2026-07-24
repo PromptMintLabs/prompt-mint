@@ -1,0 +1,9 @@
+[
+  {
+    "fixtureTag": "promptmint-load-test",
+    "address": "G_REPLACE_WITH_DEDICATED_TESTNET_ACCOUNT",
+    "promptId": "REPLACE_WITH_LOAD_FIXTURE_PROMPT_ID",
+    "token": "REPLACE_WITH_FRESH_CHALLENGE_TOKEN",
+    "signedMessage": "REPLACE_WITH_BASE64_SIGNATURE"
+  }
+]
