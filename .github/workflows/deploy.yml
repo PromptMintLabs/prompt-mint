@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
 jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
@@ -28,6 +33,26 @@ jobs:
         env:
           CI: true
 
+      - name: Generate frontend checksums
+        run: |
+          cd dist
+          find . -type f -exec sha256sum {} \; > ../frontend-checksums.txt
+          sha256sum ../frontend-checksums.txt > ../frontend-checksums.txt.sha256
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-build-${{ github.sha }}
+          path: dist/
+          retention-days: 30
+
+      - name: Upload frontend checksums
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-checksums-${{ github.sha }}
+          path: frontend-checksums.txt
+          retention-days: 30
+
       - name: Deploy to Vercel
         uses: vercel/action@v5
         with:
@@ -46,6 +71,10 @@ jobs:
 
   contract-build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
 
     steps:
       - uses: actions/checkout@v4
@@ -87,6 +116,12 @@ jobs:
       - name: List WASM artifacts
         run: ls -lah target/wasm32-unknown-unknown/release/*.wasm
 
+      - name: Generate WASM checksums
+        run: |
+          cd target/wasm32-unknown-unknown/release
+          sha256sum *.wasm > ../../../wasm-checksums.txt
+          sha256sum ../../../wasm-checksums.txt > ../../../wasm-checksums.txt.sha256
+
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -95,32 +130,150 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-  create-release:
-    needs: [contract-build]
+      - name: Upload WASM checksums
+        uses: actions/upload-artifact@v3
+        with:
+          name: wasm-checksums-${{ github.sha }}
+          path: wasm-checksums.txt
+          retention-days: 30
+
+  sign-artifacts:
+    needs: [contract-build, deploy-frontend]
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+      id-token: write
+      attestations: write
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download artifacts
+      - name: Set up cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.3'
+
+      - name: Download WASM artifacts
         uses: actions/download-artifact@v3
         with:
           name: contract-wasm-${{ github.sha }}
-          path: ./wasm-artifacts
+          path: ./artifacts/wasm
+
+      - name: Download WASM checksums
+        uses: actions/download-artifact@v3
+        with:
+          name: wasm-checksums-${{ github.sha }}
+          path: ./artifacts
+
+      - name: Download frontend checksums
+        uses: actions/download-artifact@v3
+        with:
+          name: frontend-checksums-${{ github.sha }}
+          path: ./artifacts
+
+      - name: Create combined checksum manifest
+        run: |
+          cat ./artifacts/wasm-checksums.txt ./artifacts/frontend-checksums.txt > ./artifacts/release-checksums.txt
+          echo "" >> ./artifacts/release-checksums.txt
+          echo "# Release ${{ github.sha }}" >> ./artifacts/release-checksums.txt
+          echo "# Build timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> ./artifacts/release-checksums.txt
+          echo "# Repository: ${{ github.repository }}" >> ./artifacts/release-checksums.txt
+          echo "# Workflow: ${{ github.workflow }}" >> ./artifacts/release-checksums.txt
+          echo "# Run ID: ${{ github.run_id }}" >> ./artifacts/release-checksums.txt
+          sha256sum ./artifacts/release-checksums.txt > ./artifacts/release-checksums.txt.sha256
+
+      - name: Sign checksums with cosign
+        run: |
+          cosign sign-blob \
+            --yes \
+            --bundle ./artifacts/release-checksums.txt.sig \
+            ./artifacts/release-checksums.txt
+
+      - name: Sign WASM artifacts with cosign
+        run: |
+          for wasm in ./artifacts/wasm/*.wasm; do
+            cosign sign-blob \
+              --yes \
+              --bundle "${wasm}.sig" \
+              "$wasm"
+          done
+
+      - name: Generate SLSA provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            ./artifacts/wasm/*.wasm
+            ./artifacts/release-checksums.txt
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: signed-release-${{ github.sha }}
+          path: |
+            ./artifacts/release-checksums.txt
+            ./artifacts/release-checksums.txt.sha256
+            ./artifacts/release-checksums.txt.sig
+            ./artifacts/wasm/*.wasm
+            ./artifacts/wasm/*.wasm.sig
+          retention-days: 90
+
+  create-release:
+    needs: [sign-artifacts, contract-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      attestations: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download signed artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: signed-release-${{ github.sha }}
+          path: ./signed-release
+
+      - name: Download provenance attestation
+        uses: actions/download-artifact@v3
+        with:
+          name: signed-release-${{ github.sha }}
+          path: ./release-artifacts
+
+      - name: Verify signatures
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.3'
+
+      - name: Verify checksums
+        run: |
+          cd ./release-artifacts
+          sha256sum -c release-checksums.txt.sha256
+          echo "Checksum verification passed"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: ./wasm-artifacts/*.wasm
+          files: |
+            ./release-artifacts/release-checksums.txt
+            ./release-artifacts/release-checksums.txt.sha256
+            ./release-artifacts/release-checksums.txt.sig
+            ./release-artifacts/*.wasm
+            ./release-artifacts/*.wasm.sig
           tag_name: v${{ github.run_number }}
           body: |
-            Automatic release for commit ${{ github.sha }}
-            
-            **WASM Artifacts:**
-            - Contract build for Soroban deployment
-            - Build date: ${{ github.event.head_commit.timestamp }}
+            ## Release v${{ github.run_number }}
+
+            **Commit:** ${{ github.sha }}
+            **Build date:** ${{ github.event.head_commit.timestamp }}
+
+            ### Artifacts
+            - **WASM Contract**: Soroban contract binary for deployment
+            - **Checksum manifest**: `release-checksums.txt` (SHA256)
+            - **Signatures**: Cosign `.sig` bundles for each artifact
+            - **Provenance**: SLSA build provenance attestation (via `actions/attest-build-provenance`)
+
+            ### Verification
+            See [artifact-verification.md](./docs/artifact-verification.md) for instructions on verifying artifact integrity and provenance.
           draft: false
           prerelease: false
         env:
