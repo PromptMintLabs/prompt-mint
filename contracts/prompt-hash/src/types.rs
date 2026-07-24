@@ -41,6 +41,12 @@ pub enum Error {
     ReferralCodeTooShort = 33,
     ReferralReplay = 34,
     CircularReferral = 35,
+    SubscriptionConfigNotFound = 31,
+    SubscriptionInactive = 32,
+    InvalidSubscriptionDuration = 33,
+    InvalidSubscriptionPrice = 34,
+    SubscriptionNotFound = 35,
+    ListingNotEligible = 36,
 }
 
 #[contracttype]
@@ -60,6 +66,9 @@ pub enum DataKey {
     VoucherKey(u128, BytesN<32>),
     ReferralCode(BytesN<32>),
     ReferralParent(Address),
+    SubscriptionConfig(Address),
+    Subscription(Address, Address),
+    SubscriptionEligible(u128),
 }
 
 #[contracttype]
@@ -71,6 +80,12 @@ pub struct Settlement {
     pub referrer: Option<Address>,
     pub referrer_amount: i128,
     pub split_amount: i128,
+pub struct SubscriptionConfig {
+    pub creator: Address,
+    pub duration_secs: u64,
+    pub price: i128,
+    pub asset: Address,
+    pub active: bool,
 }
 
 #[contracttype]
@@ -79,6 +94,12 @@ pub struct ReferralCode {
     pub owner: Address,
     pub reward_bps: u32,
     pub active: bool,
+pub struct Subscription {
+    pub creator: Address,
+    pub subscriber: Address,
+    /// Exclusive Unix timestamp: access is valid only while `now < expires_at`.
+    pub expires_at: u64,
+    pub renewal_count: u32,
 }
 
 #[contracttype]
@@ -247,6 +268,39 @@ pub trait PromptHashTrait {
     fn get_prompts_by_creator(env: Env, creator: Address) -> Result<Vec<Prompt>, Error>;
     fn get_prompts_by_buyer(env: Env, buyer: Address) -> Result<Vec<Prompt>, Error>;
     fn get_purchase_details(env: Env, prompt_id: u128, buyer: Address) -> Result<Purchase, Error>;
+    fn configure_subscription_pass(
+        env: Env,
+        creator: Address,
+        duration_secs: u64,
+        price: i128,
+        asset: Address,
+        active: bool,
+    ) -> Result<(), Error>;
+    fn set_subscription_eligibility(
+        env: Env,
+        creator: Address,
+        prompt_id: u128,
+        eligible: bool,
+    ) -> Result<(), Error>;
+    fn subscribe_catalog(
+        env: Env,
+        subscriber: Address,
+        creator: Address,
+        payment_amount: i128,
+    ) -> Result<u64, Error>;
+    fn renew_catalog_subscription(
+        env: Env,
+        subscriber: Address,
+        creator: Address,
+        payment_amount: i128,
+    ) -> Result<u64, Error>;
+    fn get_subscription(
+        env: Env,
+        subscriber: Address,
+        creator: Address,
+    ) -> Result<Subscription, Error>;
+    fn get_subscription_config(env: Env, creator: Address) -> Result<SubscriptionConfig, Error>;
+    fn is_subscription_eligible(env: Env, prompt_id: u128) -> Result<bool, Error>;
     fn set_fee_percentage(env: Env, new_fee_percentage: u32) -> Result<(), Error>;
     fn set_fee_wallet(env: Env, new_fee_wallet: Address) -> Result<(), Error>;
     fn get_fee_percentage(env: Env) -> u32;

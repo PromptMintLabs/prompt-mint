@@ -2461,6 +2461,10 @@ fn test_buy_prompts_bulk_with_referrer() {
 
 #[test]
 fn test_referral_rules_are_snapshotted_and_settlement_is_auditable() {
+// ─── Issue #125: Creator catalog subscription passes ─────────────────────────
+
+#[test]
+fn test_subscription_scope_and_exclusive_expiry_boundary() {
     let env: Env = Default::default();
     let context = setup(&env);
     let client = PromptHashContractClient::new(&env, &context.contract);
@@ -2506,11 +2510,82 @@ fn test_referral_rules_are_snapshotted_and_settlement_is_auditable() {
             + purchase.settlement.platform_amount
             + purchase.settlement.referrer_amount
             + purchase.settlement.split_amount
+    let subscriber = Address::generate(&env);
+    let eligible = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Eligible subscription listing",
+        20_000,
+        &context.xlm,
+    );
+    let excluded = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Excluded subscription listing",
+        20_000,
+        &context.xlm,
+    );
+    env.ledger().with_mut(|ledger| ledger.timestamp = 1_000);
+    client.configure_subscription_pass(&creator, &600, &10_000, &context.xlm, &true);
+    client.set_subscription_eligibility(&creator, &eligible, &true);
+    fund_buyer(&xlm_client, &subscriber, &context.contract, 10_000);
+
+    let expires_at = client.subscribe_catalog(&subscriber, &creator, &10_000);
+    assert_eq!(expires_at, 1_600);
+    assert!(client.has_access(&subscriber, &eligible));
+    assert!(!client.has_access(&subscriber, &excluded));
+
+    env.ledger().with_mut(|ledger| ledger.timestamp = 1_599);
+    assert!(client.has_access(&subscriber, &eligible));
+    env.ledger().with_mut(|ledger| ledger.timestamp = 1_600);
+    assert!(!client.has_access(&subscriber, &eligible));
+}
+
+#[test]
+fn test_subscription_renewal_failure_is_atomic_and_success_preserves_time() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+    let creator = Address::generate(&env);
+    let subscriber = Address::generate(&env);
+    env.ledger().with_mut(|ledger| ledger.timestamp = 2_000);
+    client.configure_subscription_pass(&creator, &300, &10_000, &context.xlm, &true);
+    fund_buyer(&xlm_client, &subscriber, &context.contract, 30_000);
+    client.subscribe_catalog(&subscriber, &creator, &10_000);
+
+    client.configure_subscription_pass(&creator, &300, &12_000, &context.xlm, &true);
+    let wrong_price = client.try_renew_catalog_subscription(&subscriber, &creator, &10_000);
+    assert!(matches!(
+        wrong_price,
+        Err(Ok(Error::InvalidSubscriptionPrice))
+    ));
+    assert_eq!(
+        client.get_subscription(&subscriber, &creator).expires_at,
+        2_300
+    );
+
+    let renewed_until = client.renew_catalog_subscription(&subscriber, &creator, &12_000);
+    assert_eq!(renewed_until, 2_600);
+    assert_eq!(
+        client.get_subscription(&subscriber, &creator).renewal_count,
+        1
+    );
+
+    client.configure_subscription_pass(&creator, &300, &12_000, &context.xlm, &false);
+    let closed = client.try_renew_catalog_subscription(&subscriber, &creator, &12_000);
+    assert!(matches!(closed, Err(Ok(Error::SubscriptionInactive))));
+    assert_eq!(
+        client.get_subscription(&subscriber, &creator).expires_at,
+        2_600
     );
 }
 
 #[test]
 fn test_referral_code_guessing_replay_and_cycles_are_rejected() {
+fn test_catalog_changes_transfers_and_direct_purchases_are_independent() {
     let env: Env = Default::default();
     let context = setup(&env);
     let client = PromptHashContractClient::new(&env, &context.contract);
@@ -2552,4 +2627,42 @@ fn test_referral_code_guessing_replay_and_cycles_are_rejected() {
     let circular =
         client.try_buy_prompt(&buyer_b, &prompt_b, &Some(code_a), &price, &None::<Bytes>);
     assert!(matches!(circular, Err(Ok(Error::CircularReferral))));
+    let subscriber = Address::generate(&env);
+    let transferee = Address::generate(&env);
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Catalog changes",
+        20_000,
+        &context.xlm,
+    );
+    client.configure_subscription_pass(&creator, &600, &10_000, &context.xlm, &true);
+    client.set_subscription_eligibility(&creator, &prompt_id, &true);
+    fund_buyer(&xlm_client, &subscriber, &context.contract, 30_000);
+    client.subscribe_catalog(&subscriber, &creator, &10_000);
+    assert!(client.has_access(&subscriber, &prompt_id));
+
+    // Removing a listing revokes pass access immediately.
+    client.set_subscription_eligibility(&creator, &prompt_id, &false);
+    assert!(!client.has_access(&subscriber, &prompt_id));
+
+    // A direct purchase remains authoritative even when subscription-ineligible.
+    client.buy_prompt(
+        &subscriber,
+        &prompt_id,
+        &None::<Address>,
+        &20_000,
+        &None::<Bytes>,
+    );
+    assert!(client.has_access(&subscriber, &prompt_id));
+
+    fund_buyer(&xlm_client, &transferee, &context.contract, 15_000);
+    client.transfer_license(&subscriber, &prompt_id, &transferee, &15_000);
+    assert!(client.has_access(&transferee, &prompt_id));
+    assert!(!client.has_access(&subscriber, &prompt_id));
+    assert_eq!(
+        client.get_subscription(&subscriber, &creator).subscriber,
+        subscriber
+    );
 }

@@ -94,6 +94,33 @@ struct ListingExtended {
     pub new_expires_at: u64,
 }
 
+#[contractevent]
+struct SubscriptionConfigured {
+    #[topic]
+    pub creator: Address,
+    pub duration_secs: u64,
+    pub price: i128,
+    pub asset: Address,
+    pub active: bool,
+}
+
+#[contractevent]
+struct SubscriptionEligibilityUpdated {
+    #[topic]
+    pub prompt_id: u128,
+    pub eligible: bool,
+}
+
+#[contractevent]
+struct SubscriptionRenewed {
+    #[topic]
+    pub creator: Address,
+    pub subscriber: Address,
+    pub expires_at: u64,
+    pub paid_amount: i128,
+    pub renewal_count: u32,
+}
+
 pub struct Events;
 
 impl Events {
@@ -216,6 +243,50 @@ impl Events {
         ListingExtended {
             prompt_id,
             new_expires_at,
+        }
+        .publish(env);
+    }
+
+    pub fn emit_subscription_configured(
+        env: &Env,
+        creator: Address,
+        duration_secs: u64,
+        price: i128,
+        asset: Address,
+        active: bool,
+    ) {
+        SubscriptionConfigured {
+            creator,
+            duration_secs,
+            price,
+            asset,
+            active,
+        }
+        .publish(env);
+    }
+
+    pub fn emit_subscription_eligibility_updated(env: &Env, prompt_id: u128, eligible: bool) {
+        SubscriptionEligibilityUpdated {
+            prompt_id,
+            eligible,
+        }
+        .publish(env);
+    }
+
+    pub fn emit_subscription_renewed(
+        env: &Env,
+        creator: Address,
+        subscriber: Address,
+        expires_at: u64,
+        paid_amount: i128,
+        renewal_count: u32,
+    ) {
+        SubscriptionRenewed {
+            creator,
+            subscriber,
+            expires_at,
+            paid_amount,
+            renewal_count,
         }
         .publish(env);
     }

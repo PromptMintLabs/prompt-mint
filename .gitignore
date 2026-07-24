@@ -53,6 +53,9 @@ Thumbs.db
 *.sln
 *.sw?
 
+# Dev container — prevent env files from being tracked in git
+.devcontainer/.env*
+
 # Claude / AI tooling
 .codex
 .claude/
