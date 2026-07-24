@@ -1,4 +1,4 @@
-use super::types::{DataKey, Error, Prompt, Purchase};
+use super::types::{DataKey, Error, Prompt, Purchase, ReferralCode, Settlement};
 use soroban_sdk::{token, Address, BytesN, Env, Vec};
 
 pub const DAY_IN_LEDGERS: u32 = 17280;
@@ -210,6 +210,7 @@ impl Storage {
         buyer: &Address,
         paid_price: i128,
         expires_at: u64,
+        settlement: Settlement,
     ) {
         let key = DataKey::Purchase(prompt.id, buyer.clone());
         let purchase = Purchase {
@@ -221,6 +222,7 @@ impl Storage {
             transfer_count: 0,
             last_transferred_at: 0,
             expires_at,
+            settlement,
         };
         env.storage().persistent().set(&key, &purchase);
         Self::extend_key_ttl(env, &key);
@@ -311,6 +313,36 @@ impl Storage {
             Self::extend_key_ttl(env, &key);
         }
         fee
+    }
+
+    pub fn get_referral_code(env: &Env, code_hash: &BytesN<32>) -> Option<ReferralCode> {
+        let key = DataKey::ReferralCode(code_hash.clone());
+        let code = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        code
+    }
+
+    pub fn save_referral_code(env: &Env, code_hash: &BytesN<32>, code: &ReferralCode) {
+        let key = DataKey::ReferralCode(code_hash.clone());
+        env.storage().persistent().set(&key, code);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_referral_parent(env: &Env, buyer: &Address) -> Option<Address> {
+        let key = DataKey::ReferralParent(buyer.clone());
+        let parent = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        parent
+    }
+
+    pub fn set_referral_parent(env: &Env, buyer: &Address, referrer: &Address) {
+        let key = DataKey::ReferralParent(buyer.clone());
+        env.storage().persistent().set(&key, referrer);
+        Self::extend_key_ttl(env, &key);
     }
 
     pub fn set_pause_status(env: &Env, is_paused: bool) {
