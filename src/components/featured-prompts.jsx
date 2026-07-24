@@ -81,14 +81,28 @@ export function FeaturedPrompts({ limit = 6, title = "Featured Templates" }) {
       </section>
 
       {selectedPrompt ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-3xl border border-white/10 bg-slate-950 text-white shadow-2xl">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4"
+          onClick={() => setSelectedPrompt(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="featured-modal-title"
+        >
+          <div 
+            className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-3xl border border-white/10 bg-slate-950 text-white shadow-2xl"
+            role="document"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setSelectedPrompt(null);
+            }}
+          >
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
               <div>
                 <p className="text-xs uppercase tracking-[0.25em] text-amber-300">
                   {selectedPrompt.category}
                 </p>
-                <h3 className="mt-2 text-2xl font-semibold">
+                <h3 id="featured-modal-title" className="mt-2 text-2xl font-semibold">
                   {selectedPrompt.title}
                 </h3>
               </div>
@@ -97,6 +111,7 @@ export function FeaturedPrompts({ limit = 6, title = "Featured Templates" }) {
                 size="icon"
                 className="text-slate-200 hover:bg-white/10"
                 onClick={() => setSelectedPrompt(null)}
+                aria-label="Close modal"
               >
                 <X className="h-5 w-5" />
               </Button>
