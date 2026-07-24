@@ -48,6 +48,33 @@ export interface FetchAllPromptsProps {
   sortBy: string;
 }
 
+import { FreshnessBadge } from "@/components/FreshnessBadge";
+import { useNetworkState } from "@/hooks/useNetworkState";
+
+const MARKETPLACE_CACHE_KEY = "prompt-mint:marketplace-prompts-cache";
+
+interface CachedPrompts {
+  timestamp: number;
+  prompts: PromptRecord[];
+}
+
+function getCachedMarketplacePrompts(): CachedPrompts | null {
+  try {
+    const raw = window.localStorage.getItem(MARKETPLACE_CACHE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function setCachedMarketplacePrompts(prompts: PromptRecord[]) {
+  try {
+    window.localStorage.setItem(
+      MARKETPLACE_CACHE_KEY,
+      JSON.stringify({ timestamp: Date.now(), prompts }),
+    );
+  } catch {}
+}
+
 const FetchAllPrompts = ({
   selectedCategory,
   selectedTag,
@@ -57,6 +84,7 @@ const FetchAllPrompts = ({
 }: FetchAllPromptsProps) => {
   const queryClient = useQueryClient();
   const { address } = useWallet();
+  const networkState = useNetworkState();
   const [selectedPrompt, setSelectedPrompt] = useState<PromptRecord | null>(
     null,
   );
@@ -68,9 +96,25 @@ const FetchAllPrompts = ({
     queryKey: ["marketplace-prompts"],
     queryFn: async () => {
       if (!isMarketplaceConfigured) return [];
-      return getAllPrompts(browserStellarConfig);
+      try {
+        const livePrompts = await getAllPrompts(browserStellarConfig);
+        if (livePrompts && livePrompts.length > 0) {
+          setCachedMarketplacePrompts(livePrompts);
+        }
+        return livePrompts;
+      } catch (err) {
+        const cached = getCachedMarketplacePrompts();
+        if (cached && cached.prompts.length > 0) {
+          return cached.prompts;
+        }
+        throw err;
+      }
     },
   });
+
+  const cachedData = useMemo(() => getCachedMarketplacePrompts(), [promptsQuery.data, promptsQuery.dataUpdatedAt]);
+  const isUsingCache = promptsQuery.isError || !networkState.isOnline || (promptsQuery.isSuccess && !promptsQuery.isFetchedAfterMount);
+  const freshnessTimestamp = promptsQuery.dataUpdatedAt || cachedData?.timestamp || null;
 
   const savedPromptsQuery = useQuery({
     queryKey: ["saved-prompts", address],
@@ -252,6 +296,20 @@ const FetchAllPrompts = ({
 
   return (
     <>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <FreshnessBadge
+          timestamp={freshnessTimestamp}
+          isCached={isUsingCache}
+          isOffline={!networkState.isOnline}
+          isDegraded={networkState.isDegraded}
+        />
+        {!networkState.canTrustConfirmation && (
+          <div className="text-xs font-semibold text-rose-300 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg">
+            Read-Only Mode — On-chain actions disabled until network connection is stable
+          </div>
+        )}
+      </div>
+
       {!isMarketplaceConfigured && (
         <div className="mb-8 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm flex gap-3 items-center">
           <Loader2 className="h-4 w-4 animate-spin shrink-0" />

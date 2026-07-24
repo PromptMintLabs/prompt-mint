@@ -32,6 +32,7 @@ import { browserStellarConfig } from "../../lib/stellar/browserConfig";
 import { stroopsToXlmString } from "../../lib/stellar/format";
 import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBanner";
 import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
+import { useNetworkState } from "@/hooks/useNetworkState";
 
 export type BuyerStatus =
   | "IDLE"
@@ -254,6 +255,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({
     },
   );
 
+  const networkState = useNetworkState();
+
   const {
     execute: runPurchase,
     isLoading: isPurchasing,
@@ -261,19 +264,22 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   } = useAsyncTransaction(
     async () => {
       if (!wallet?.address) throw new Error("Wallet connection required.");
+      if (!networkState.canTrustConfirmation) {
+        throw new Error("Network connection lost or degraded. Transaction confirmation cannot be trusted.");
+      }
       
       // Check network state before purchase
-      const networkState = detectNetworkMismatch(
+      const walletNetworkState = detectNetworkMismatch(
         !!wallet.address,
         wallet.network,
         wallet.status
       );
       
-      if (networkState.type === "wrong-network") {
-        throw new Error(networkState.message || "Wrong network connected");
+      if (walletNetworkState.type === "wrong-network") {
+        throw new Error(walletNetworkState.message || "Wrong network connected");
       }
       
-      if (networkState.type === "disconnected") {
+      if (walletNetworkState.type === "disconnected") {
         throw new Error("Please connect your wallet first");
       }
       
@@ -377,6 +383,12 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                     </div>
                   </div>
 
+                  {!networkState.canTrustConfirmation && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                      Transactions disabled: Network connection lost or RPC unavailable. Reconnect to purchase.
+                    </div>
+                  )}
+
                   {status === "ERROR" && purchaseError && (
                     <StatusBanner
                       status="error"
@@ -387,12 +399,16 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                   <button
                     onClick={() => runPurchase().catch(() => {})}
                     disabled={
-                      isPurchasing || 
+                      isPurchasing ||
+                      !networkState.canTrustConfirmation ||
                       detectNetworkMismatch(!!wallet?.address, wallet?.network, wallet?.status).type !== "correct"
                     }
                     className="group w-full h-14 bg-white text-slate-950 hover:bg-emerald-400 font-black rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Confirm & Purchase <Wallet className="w-4 h-4" />
+                    {!networkState.canTrustConfirmation
+                      ? "Transactions Unavailable"
+                      : "Confirm & Purchase"}{" "}
+                    <Wallet className="w-4 h-4" />
                   </button>
                 </div>
               )}

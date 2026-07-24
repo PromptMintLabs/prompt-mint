@@ -6,6 +6,8 @@ import { browserStellarConfig } from "@/lib/stellar/browserConfig";
 import { approveNativeAssetSpend } from "@/lib/stellar/nativeAssetClient";
 import { xlmToStroops } from "@/lib/stellar/format";
 
+import { useNetworkState } from "@/hooks/useNetworkState";
+
 const PRESET_AMOUNTS = [1, 3, 5, 10];
 
 /* eslint-disable no-unused-vars */
@@ -17,6 +19,7 @@ export interface TipButtonProps {
 
 export function TipButton({ creatorAddress, onTipSent }: TipButtonProps) {
   const { address, signTransaction } = useWallet();
+  const networkState = useNetworkState();
   const [amount, setAmount] = useState(1);
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -27,7 +30,8 @@ export function TipButton({ creatorAddress, onTipSent }: TipButtonProps) {
     Boolean(signTransaction) &&
     Boolean(creatorAddress) &&
     address !== creatorAddress &&
-    amount > 0;
+    amount > 0 &&
+    networkState.canTrustConfirmation;
 
   const handleTip = async () => {
     if (!address || !signTransaction) return;
@@ -113,6 +117,11 @@ export function TipButton({ creatorAddress, onTipSent }: TipButtonProps) {
         )}
       </Button>
 
+      {!networkState.canTrustConfirmation && (
+        <p className="text-xs text-rose-400 text-center font-medium">
+          Tipping disabled: Network connection lost or RPC unavailable.
+        </p>
+      )}
       {!address && (
         <p className="text-xs text-slate-500 text-center">
           Connect a wallet to send tips.

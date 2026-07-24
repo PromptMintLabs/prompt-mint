@@ -31,6 +31,7 @@ import {
   validateListingForm,
   validateImageMetadata,
 } from "@/lib/validation/listing";
+import { useNetworkState } from "@/hooks/useNetworkState";
 
 const limits = {
   ...LISTING_LIMITS,
@@ -200,9 +201,21 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
     return Object.keys(nextErrors).length === 0;
   };
 
+  const networkState = useNetworkState();
+  const submittingGuardRef = useRef(false);
+
   const handleSubmit = async () => {
+    if (submittingGuardRef.current || isSubmitting) return;
+
     setSubmitError(null);
     setSuccessMessage(null);
+
+    if (!networkState.canTrustConfirmation) {
+      setSubmitError(
+        "Network connection lost or RPC unavailable. Your listing draft is saved locally, but on-chain submission is disabled until restored."
+      );
+      return;
+    }
 
     // Show checklist on first click so the creator can review quality
     if (!showChecklist) {
@@ -239,6 +252,8 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
       return;
     }
 
+    submittingGuardRef.current = true;
+    setIsSubmitting(true);
     try {
       const encrypted = await encryptPromptPlaintext(formData.fullPrompt);
       const wrappedKey = await wrapPromptKey(encrypted.keyBytes, unlockPublicKey);
@@ -284,6 +299,7 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
       );
     } finally {
       setIsSubmitting(false);
+      submittingGuardRef.current = false;
     }
   };
 
@@ -488,7 +504,7 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
 
       <Button
         className="w-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
-        disabled={isSubmitting || (showChecklist && checklistHasFailures)}
+        disabled={isSubmitting || !networkState.canTrustConfirmation || (showChecklist && checklistHasFailures)}
         onClick={handleSubmit}
       >
         {isSubmitting ? (
@@ -496,6 +512,8 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Encrypting and submitting...
           </>
+        ) : !networkState.canTrustConfirmation ? (
+          "Submissions Disabled (Network Offline)"
         ) : (
           "Create prompt listing"
         )}
