@@ -8,7 +8,7 @@ import {
 } from "react";
 import { wallet } from "../util/wallet";
 import storage from "../util/storage";
-import { stellarWalletNetwork } from "../lib/env";
+import { stellarNetwork } from "../lib/env";
 import { ALBEDO_ID } from "@creit.tech/stellar-wallets-kit";
 import { useAsyncTransaction } from "../components/useAsyncTransaction";
 
@@ -75,13 +75,13 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
   const getSafeNetworkInfo = useCallback(async (walletId: string) => {
     // Albedo and some other web wallets don't support getNetwork
     if (walletId === ALBEDO_ID) {
-      return { network: stellarWalletNetwork, networkPassphrase: undefined };
+      return { network: stellarNetwork, networkPassphrase: undefined };
     }
     try {
       return await wallet.getNetwork();
     } catch {
       console.warn(`Wallet ${walletId} does not support getNetwork, using env default.`);
-      return { network: stellarWalletNetwork, networkPassphrase: undefined };
+      return { network: stellarNetwork, networkPassphrase: undefined };
     }
   }, []);
 

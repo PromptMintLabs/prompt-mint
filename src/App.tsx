@@ -7,6 +7,7 @@ const SellPage = lazy(() => import("./pages/sell/page.tsx"));
 const ChatHome = lazy(() => import("./pages/chat/page.tsx"));
 const ProfilePage = lazy(() => import("./pages/profile/page.tsx"));
 const StatusPage = lazy(() => import("./pages/status/page.tsx"));
+const ModerationPage = lazy(() => import("./pages/Moderation.tsx"));
 
 const AppLayout = () => (
   <main className="min-h-screen bg-slate-950 text-white">
@@ -31,6 +32,7 @@ function App() {
           <Route path="/chat" element={<ChatHome />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/status" element={<StatusPage />} />
+          <Route path="/moderation" element={<ModerationPage />} />
           <Route path="*" element={<Home />} />
         </Route>
       </Routes>

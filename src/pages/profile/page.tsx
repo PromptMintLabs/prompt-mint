@@ -30,6 +30,7 @@ import { Navigation } from "@/components/navigation";
 import { TipButton } from "@/components/TipButton";
 import { UnlockExplainer, type UnlockState } from "@/components/UnlockExplainer";
 import { WebhookSettings } from "@/components/WebhookSettings";
+import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { PostVersionUpdate } from "@/components/PostVersionUpdate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -432,7 +433,7 @@ function PurchasedPromptCard({
                 Paid access
               </p>
               <p className="mt-1.5 text-lg font-semibold text-white">
-                {formatPriceLabel(prompt.priceStroops)}
+                {formatPriceLabel(prompt.priceStroops)} XLM
               </p>
             </div>
           </div>
@@ -568,7 +569,7 @@ function CreatedPromptCard({
                   Price
                 </p>
                 <p className="mt-1.5 text-xl font-semibold text-white">
-                  {formatPriceLabel(prompt.priceStroops)}
+                  {formatPriceLabel(prompt.priceStroops)} XLM
                 </p>
               </div>
             </div>
@@ -1092,7 +1093,10 @@ export default function ProfilePage() {
                         ))}
                       </div>
                     )}
-                    <WebhookSettings walletAddress={address} />
+                    <div className="space-y-6 mt-6">
+                      <WebhookSettings walletAddress={address} />
+                      <NotificationPreferences walletAddress={address} />
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="saved" className="mt-0 space-y-4">

@@ -1,11 +1,5 @@
-/**
- * Review Submission Endpoint
- * 
- * Allows verified buyers to submit ratings and reviews for purchased prompts.
- * Verifies wallet ownership and purchase access before accepting reviews.
- */
-
 import { hasAccess, type PromptHashConfig } from "../../src/lib/stellar/promptHashClient";
+import { addReview, getReviews, type StoredReview } from "./data";
 
 interface ReviewSubmission {
   promptId: string;
@@ -14,19 +8,6 @@ interface ReviewSubmission {
   text: string;
   signature: string;
 }
-
-interface StoredReview {
-  id: string;
-  promptId: string;
-  userAddress: string;
-  rating: number;
-  text: string;
-  createdAt: number;
-  verified: boolean;
-}
-
-// Mock storage - in production, use database
-const reviewStorage = new Map<string, StoredReview[]>();
 
 function getServerConfig(): PromptHashConfig {
   const rpcUrl = process.env.PUBLIC_STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org";
@@ -53,7 +34,6 @@ export default async function handler(req: any, res: any) {
 
   const { promptId, userAddress, rating, text }: ReviewSubmission = req.body;
 
-  // Validation
   if (!promptId || !userAddress || !rating || !text) {
     res.status(400).json({ error: "Missing required fields" });
     return;
@@ -75,28 +55,25 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    // Verify user has purchased the prompt
     const config = getServerConfig();
     const access = await hasAccess(config, userAddress, promptId);
 
     if (!access) {
-      res.status(403).json({ 
+      res.status(403).json({
         error: "Only verified buyers can submit reviews",
-        verified: false 
+        verified: false,
       });
       return;
     }
 
-    // Check if user already reviewed this prompt
-    const existingReviews = reviewStorage.get(promptId) || [];
-    const hasReviewed = existingReviews.some(r => r.userAddress === userAddress);
+    const existingReviews = getReviews(promptId);
+    const hasReviewed = existingReviews.some((r) => r.userAddress === userAddress);
 
     if (hasReviewed) {
       res.status(409).json({ error: "You have already reviewed this prompt" });
       return;
     }
 
-    // Create review
     const review: StoredReview = {
       id: `review_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       promptId,
@@ -105,12 +82,11 @@ export default async function handler(req: any, res: any) {
       text: text.trim(),
       createdAt: Date.now(),
       verified: true,
+      helpfulVotes: 0,
+      voters: [],
     };
 
-    // Store review (mock - use database in production)
-    const reviews = reviewStorage.get(promptId) || [];
-    reviews.push(review);
-    reviewStorage.set(promptId, reviews);
+    addReview(review);
 
     console.log(`✓ Review submitted for prompt ${promptId} by ${userAddress.slice(0, 8)}...`);
 

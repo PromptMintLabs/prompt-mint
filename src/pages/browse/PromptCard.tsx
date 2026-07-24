@@ -16,6 +16,7 @@ import type { PromptRecord } from "@/lib/stellar/promptHashClient";
 import { StarRating } from "@/components/prompts/StarRating";
 import { useQuery } from "@tanstack/react-query";
 import { ReviewClient } from "@/lib/reviews/reviewClient";
+import { SafeImage } from "@/components/ui/SafeImage";
 
 export const PromptCard = ({
   prompt,
@@ -59,8 +60,8 @@ export const PromptCard = ({
     >
       {/* Visual Header */}
       <div className="relative aspect-[16/10] overflow-hidden">
-        <img
-          src={prompt.imageUrl || "/images/codeguru.png"}
+        <SafeImage
+          src={prompt.imageUrl}
           alt={prompt.title}
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
@@ -156,10 +157,11 @@ export const PromptCard = ({
             <div className="text-right shrink-0">
               <p
                 className="text-lg font-black text-emerald-400 sm:text-xl font-mono tracking-tight"
-                aria-label={`Price: ${formatPriceLabel(prompt.priceStroops)}`}
+                aria-label={`Price: ${formatPriceLabel(prompt.priceStroops)} XLM`}
                 data-testid="price-label"
               >
                 <CurrencyPrice stroops={prompt.priceStroops} />
+                {formatPriceLabel(prompt.priceStroops)} XLM
               </p>
               <p className="text-[10px] text-slate-500 uppercase tracking-tighter">
                 per license

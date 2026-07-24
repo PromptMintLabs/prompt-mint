@@ -55,6 +55,7 @@ describe("marketplace purchase and unlock integration coverage", () => {
     renderWithProviders(
       <FetchAllPrompts
         selectedCategory=""
+        selectedTag=""
         priceRange={[0, 25]}
         searchQuery=""
         sortBy="recent"
@@ -168,6 +169,8 @@ describe("marketplace purchase and unlock integration coverage", () => {
       {
         wallet: {
           address: "GBUYERACCOUNT1234567890ABCDEFGH1234567890ABCDEFGH123456789",
+          status: "connected",
+          network: "TESTNET",
           signTransaction,
           signMessage,
         },
@@ -245,6 +248,8 @@ describe("marketplace purchase and unlock integration coverage", () => {
       {
         wallet: {
           address: "GBUYERACCOUNT1234567890ABCDEFGH1234567890ABCDEFGH123456789",
+          status: "connected",
+          network: "TESTNET",
           signMessage,
         },
       },

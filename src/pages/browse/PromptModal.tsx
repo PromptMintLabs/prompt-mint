@@ -32,6 +32,7 @@ import { browserStellarConfig } from "../../lib/stellar/browserConfig";
 import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBanner";
 import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
 import { CurrencyPrice } from "../../components/CurrencyPrice";
+import { useNetworkState } from "@/hooks/useNetworkState";
 
 export type BuyerStatus =
   | "IDLE"
@@ -169,6 +170,14 @@ export const PromptModal: React.FC<PromptModalProps> = ({
     enabled: isOpen,
   });
 
+  // Fetch review eligibility for connected user
+  const { data: eligibilityData } = useQuery({
+    queryKey: ["review-eligibility", itemId, wallet?.address],
+    queryFn: () => ReviewClient.checkEligibility(itemId, wallet!.address!),
+    enabled: isOpen && Boolean(wallet?.address),
+  });
+
+
   useEffect(() => {
     if (isOpen) {
       lastActiveElementRef.current = document.activeElement as HTMLElement;
@@ -245,6 +254,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({
     },
   );
 
+  const networkState = useNetworkState();
+
   const {
     execute: runPurchase,
     isLoading: isPurchasing,
@@ -252,19 +263,22 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   } = useAsyncTransaction(
     async () => {
       if (!wallet?.address) throw new Error("Wallet connection required.");
+      if (!networkState.canTrustConfirmation) {
+        throw new Error("Network connection lost or degraded. Transaction confirmation cannot be trusted.");
+      }
       
       // Check network state before purchase
-      const networkState = detectNetworkMismatch(
+      const walletNetworkState = detectNetworkMismatch(
         !!wallet.address,
         wallet.network,
         wallet.status
       );
       
-      if (networkState.type === "wrong-network") {
-        throw new Error(networkState.message || "Wrong network connected");
+      if (walletNetworkState.type === "wrong-network") {
+        throw new Error(walletNetworkState.message || "Wrong network connected");
       }
       
-      if (networkState.type === "disconnected") {
+      if (walletNetworkState.type === "disconnected") {
         throw new Error("Please connect your wallet first");
       }
       
@@ -368,6 +382,12 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                     </div>
                   </div>
 
+                  {!networkState.canTrustConfirmation && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                      Transactions disabled: Network connection lost or RPC unavailable. Reconnect to purchase.
+                    </div>
+                  )}
+
                   {status === "ERROR" && purchaseError && (
                     <StatusBanner
                       status="error"
@@ -378,12 +398,16 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                   <button
                     onClick={() => runPurchase().catch(() => {})}
                     disabled={
-                      isPurchasing || 
+                      isPurchasing ||
+                      !networkState.canTrustConfirmation ||
                       detectNetworkMismatch(!!wallet?.address, wallet?.network, wallet?.status).type !== "correct"
                     }
                     className="group w-full h-14 bg-white text-slate-950 hover:bg-emerald-400 font-black rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Confirm & Purchase <Wallet className="w-4 h-4" />
+                    {!networkState.canTrustConfirmation
+                      ? "Transactions Unavailable"
+                      : "Confirm & Purchase"}{" "}
+                    <Wallet className="w-4 h-4" />
                   </button>
                 </div>
               )}
@@ -506,32 +530,54 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                   {/* Review Section */}
                   {wallet?.address && (
                     <div className="mt-6 pt-6 border-t border-white/10">
-                      {!showReviewForm ? (
-                        <button
-                          onClick={() => setShowReviewForm(true)}
-                          className="w-full flex items-center justify-center gap-2 h-12 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-xl transition-all"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                          Write a Review
-                        </button>
+                      {eligibilityData?.alreadyReviewed ? (
+                        <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-300 flex items-center gap-2">
+                          <ShieldCheck className="h-4 w-4 text-cyan-400" />
+                          You have already reviewed this prompt. Thank you for your feedback!
+                        </div>
+                      ) : eligibilityData?.eligible || status === "SUCCESS" || status === "PURCHASED_LOCKED" ? (
+                        !showReviewForm ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+                              <ShieldCheck className="h-3.5 w-3.5" /> Verified Purchaser Access
+                            </div>
+                            <button
+                              onClick={() => setShowReviewForm(true)}
+                              className="w-full flex items-center justify-center gap-2 h-12 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-semibold rounded-xl transition-all"
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              Write a Review
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-bold text-white">Share Your Experience</h4>
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-400/10 border border-emerald-400/20">
+                                <ShieldCheck className="h-3 w-3" /> Verified Buyer
+                              </span>
+                            </div>
+                            <ReviewForm
+                              promptId={itemId}
+                              onSubmit={async (review) => {
+                                await ReviewClient.submitReview(
+                                  itemId,
+                                  wallet.address!,
+                                  review.rating,
+                                  review.text
+                                );
+                                queryClient.invalidateQueries({ queryKey: ["reviews", itemId] });
+                                queryClient.invalidateQueries({ queryKey: ["review-stats", itemId] });
+                                queryClient.invalidateQueries({ queryKey: ["review-eligibility", itemId, wallet.address] });
+                                setShowReviewForm(false);
+                              }}
+                              onCancel={() => setShowReviewForm(false)}
+                            />
+                          </div>
+                        )
                       ) : (
-                        <div className="space-y-4">
-                          <h4 className="text-sm font-bold text-white">Share Your Experience</h4>
-                          <ReviewForm
-                            promptId={itemId}
-                            onSubmit={async (review) => {
-                              await ReviewClient.submitReview(
-                                itemId,
-                                wallet.address!,
-                                review.rating,
-                                review.text
-                              );
-                              queryClient.invalidateQueries({ queryKey: ["reviews", itemId] });
-                              queryClient.invalidateQueries({ queryKey: ["review-stats", itemId] });
-                              setShowReviewForm(false);
-                            }}
-                            onCancel={() => setShowReviewForm(false)}
-                          />
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-400">
+                          {eligibilityData?.reason || "Only verified buyers with on-chain access can submit reviews."}
                         </div>
                       )}
                     </div>

@@ -107,6 +107,26 @@ export function validateListingForm(
   return errors;
 }
 
+export async function validateImageMetadata(url: string): Promise<string | null> {
+  if (!url) return "Image URL is required.";
+  
+  try {
+    const res = await fetch("/api/images/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      return data.error?.message || "Invalid image URL";
+    }
+    return null;
+  } catch {
+    return "Failed to reach the validation server.";
+  }
+}
+
 export function buildListingChecklistItems(
   input: ListingFormInput,
 ): ListingChecklistItem[] {

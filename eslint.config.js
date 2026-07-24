@@ -12,6 +12,7 @@ export default tseslint.config(
   globalIgnores([
     "dist",
     "packages",
+    "server",
     "src/debug/**",
     "src/pages/Debugger.tsx",
     "src/contracts/*",
@@ -31,6 +32,9 @@ export default tseslint.config(
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     rules: {
       // Turn all rules to warnings instead of errors

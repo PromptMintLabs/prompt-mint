@@ -14,6 +14,8 @@ import { NotificationProvider } from "./providers/NotificationProvider.tsx";
 import { ContractSyncProvider } from "./providers/ContractSyncProvider.tsx";
 import { CurrencyProvider } from "./providers/CurrencyProvider.tsx";
 
+import { NetworkStateProvider } from "./hooks/useNetworkState.ts";
+
 // Initialize the client
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,5 +41,20 @@ createRoot(document.getElementById("root") as HTMLElement).render(
         </ContractSyncProvider>
       </QueryClientProvider>
     </NotificationProvider>
+    <NetworkStateProvider>
+      <NotificationProvider>
+        <QueryClientProvider client={queryClient}>
+          <ContractSyncProvider>
+            <TransactionProvider>
+              <WalletProvider>
+                <BrowserRouter>
+                  <App />
+                </BrowserRouter>
+              </WalletProvider>
+            </TransactionProvider>
+          </ContractSyncProvider>
+        </QueryClientProvider>
+      </NotificationProvider>
+    </NetworkStateProvider>
   </StrictMode>,
 );

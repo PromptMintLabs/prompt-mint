@@ -37,7 +37,48 @@
   "errors": {
     "not_found": "Prompt no encontrado.",
     "unauthorized": "No estás autorizado.",
-    "paused": "El mercado está actualmente en pausa."
+    "paused": "El mercado está actualmente en pausa.",
+    "validation": {
+      "required": "Este campo es obligatorio.",
+      "min_length": "Debe tener al menos {{min}} caracteres.",
+      "max_length": "No debe exceder {{max}} caracteres.",
+      "invalid_url": "Ingrese una URL válida que comience con http:// o https://.",
+      "invalid_rating": "La calificación debe estar entre 1 y 5.",
+      "invalid_price": "Ingrese un precio válido mayor que cero.",
+      "invalid_address": "Dirección de billetera inválida.",
+      "review_text_short": "La reseña debe tener al menos 10 caracteres.",
+      "review_text_long": "La reseña no debe exceder 500 caracteres.",
+      "response_text_long": "La respuesta no debe exceder 1000 caracteres."
+    },
+    "transaction": {
+      "user_rejected": "Transacción rechazada por el usuario.",
+      "insufficient_funds": "Fondos insuficientes para completar esta transacción.",
+      "insufficient_gas": "Gas insuficiente para completar esta transacción.",
+      "invalid_signature": "La firma de la transacción no es válida.",
+      "network_error": "Error de red. Intente de nuevo.",
+      "expired": "La solicitud de transacción ha expirado.",
+      "unknown": "Ocurrió un error inesperado. Intente de nuevo.",
+      "pending": "Procesando transacción en la red Stellar..."
+    },
+    "wallet": {
+      "connect_required": "Conecte su billetera primero.",
+      "network_mismatch": "Red incorrecta configurada en su billetera.",
+      "disconnect_failed": "Error al desconectar la billetera."
+    },
+    "review": {
+      "self_vote": "No puede votar en su propia reseña.",
+      "duplicate_vote": "Ya ha votado en esta reseña.",
+      "not_eligible": "Solo los compradores verificados pueden enviar reseñas.",
+      "already_reviewed": "Ya ha enviado una reseña para este prompt.",
+      "seller_only": "Solo el vendedor verificado puede responder a las reseñas.",
+      "vote_success": "Voto registrado con éxito.",
+      "vote_removed": "Voto eliminado con éxito.",
+      "response_submitted": "Respuesta del vendedor enviada con éxito."
+    },
+    "moderation": {
+      "unauthorized": "Solo los moderadores autorizados pueden ver los registros de auditoría.",
+      "address_required": "Se requiere la dirección del moderador."
+    }
   },
   "language": {
     "select": "Idioma"

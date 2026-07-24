@@ -21,8 +21,33 @@ import { unlockPromptContent } from "@/lib/prompts/unlock";
 import { UnlockExplainer, type UnlockState } from "@/components/UnlockExplainer";
 import { stellarNetwork } from "@/lib/env";
 import { CurrencyPrice } from "@/components/CurrencyPrice";
+import { FreshnessBadge } from "@/components/FreshnessBadge";
+import { useNetworkState } from "@/hooks/useNetworkState";
 
 const EXPECTED_NETWORK = stellarNetwork;
+
+interface CachedBuyerLibrary {
+  timestamp: number;
+  prompts: PromptRecord[];
+}
+
+function getCachedBuyerPrompts(address?: string): CachedBuyerLibrary | null {
+  if (!address) return null;
+  try {
+    const raw = window.localStorage.getItem(`prompt-mint:buyer-library-cache:${address}`);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function setCachedBuyerPrompts(address: string, prompts: PromptRecord[]) {
+  try {
+    window.localStorage.setItem(
+      `prompt-mint:buyer-library-cache:${address}`,
+      JSON.stringify({ timestamp: Date.now(), prompts }),
+    );
+  } catch {}
+}
 
 function EmptyLibrary() {
   return (
@@ -141,6 +166,7 @@ function PromptLibraryCard({
             </p>
             <p className="mt-0.5 text-sm font-semibold text-white">
               <CurrencyPrice stroops={prompt.priceStroops} />
+              {formatPriceLabel(prompt.priceStroops)} XLM
             </p>
           </div>
         </div>
@@ -211,12 +237,33 @@ export function BuyerLibrary() {
     Boolean(network) &&
     network?.toLowerCase() !== EXPECTED_NETWORK.toLowerCase();
 
-  const { data: prompts = [], isLoading, isError, refetch } = useQuery({
+  const networkState = useNetworkState();
+
+  const query = useQuery({
     queryKey: ["buyer-library", address],
-    queryFn: () =>
-      address ? getPromptsByBuyer(browserStellarConfig, address) : [],
+    queryFn: async () => {
+      if (!address) return [];
+      try {
+        const livePrompts = await getPromptsByBuyer(browserStellarConfig, address);
+        if (livePrompts && livePrompts.length > 0) {
+          setCachedBuyerPrompts(address, livePrompts);
+        }
+        return livePrompts;
+      } catch (err) {
+        const cached = getCachedBuyerPrompts(address);
+        if (cached && cached.prompts.length > 0) {
+          return cached.prompts;
+        }
+        throw err;
+      }
+    },
     enabled: Boolean(address) && !isWrongNetwork,
   });
+
+  const cachedData = getCachedBuyerPrompts(address);
+  const prompts = query.data ?? cachedData?.prompts ?? [];
+  const isUsingCache = query.isError || !networkState.isOnline || (query.isSuccess && !query.isFetchedAfterMount);
+  const freshnessTimestamp = query.dataUpdatedAt || cachedData?.timestamp || null;
 
   const setUnlockState = (id: string, state: UnlockState) =>
     setUnlockStates((prev) => ({ ...prev, [id]: state }));
@@ -247,7 +294,7 @@ export function BuyerLibrary() {
   if (!address) return <DisconnectedState />;
   if (isWrongNetwork) return <WrongNetworkState network={network} />;
 
-  if (isLoading) {
+  if (query.isLoading && prompts.length === 0) {
     return (
       <div className="space-y-4">
         {[...Array(3)].map((_, i) => (
@@ -260,7 +307,7 @@ export function BuyerLibrary() {
     );
   }
 
-  if (isError) {
+  if (query.isError && prompts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-rose-400/20 bg-rose-400/[0.05] p-8 text-center gap-3">
         <p className="text-sm font-medium text-rose-300">Failed to load library</p>
@@ -270,7 +317,7 @@ export function BuyerLibrary() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => void refetch()}
+          onClick={() => void query.refetch()}
           className="border border-white/10 text-slate-300 hover:bg-white/10 text-xs"
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -284,6 +331,20 @@ export function BuyerLibrary() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+        <FreshnessBadge
+          timestamp={freshnessTimestamp}
+          isCached={isUsingCache}
+          isOffline={!networkState.isOnline}
+          isDegraded={networkState.isDegraded}
+        />
+        {!networkState.canTrustConfirmation && (
+          <div className="text-xs font-semibold text-rose-300 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg">
+            Unlock Service Unavailable — Reconnect to verify on-chain license
+          </div>
+        )}
+      </div>
+
       {prompts.map((prompt) => {
         const id = prompt.id.toString();
         return (

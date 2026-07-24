@@ -37,7 +37,48 @@
   "errors": {
     "not_found": "未找到提示词。",
     "unauthorized": "您无权执行此操作。",
-    "paused": "市场目前已暂停。"
+    "paused": "市场目前已暂停。",
+    "validation": {
+      "required": "此字段为必填项。",
+      "min_length": "至少需要{{min}}个字符。",
+      "max_length": "不能超过{{max}}个字符。",
+      "invalid_url": "请输入以http://或https://开头的有效URL。",
+      "invalid_rating": "评分必须在1到5之间。",
+      "invalid_price": "请输入一个大于零的有效价格。",
+      "invalid_address": "无效的钱包地址。",
+      "review_text_short": "评论至少需要10个字符。",
+      "review_text_long": "评论不能超过500个字符。",
+      "response_text_long": "回复不能超过1000个字符。"
+    },
+    "transaction": {
+      "user_rejected": "交易已被用户拒绝。",
+      "insufficient_funds": "余额不足，无法完成此交易。",
+      "insufficient_gas": "Gas不足，无法完成此交易。",
+      "invalid_signature": "交易签名无效。",
+      "network_error": "网络错误，请重试。",
+      "expired": "交易请求已过期。",
+      "unknown": "发生意外错误，请重试。",
+      "pending": "正在Stellar网络上处理交易..."
+    },
+    "wallet": {
+      "connect_required": "请先连接您的钱包。",
+      "network_mismatch": "钱包中配置的网络错误。",
+      "disconnect_failed": "断开钱包连接失败。"
+    },
+    "review": {
+      "self_vote": "您不能对自己的评论投票。",
+      "duplicate_vote": "您已经对此评论投过票。",
+      "not_eligible": "只有经过验证的买家才能提交评论。",
+      "already_reviewed": "您已经为此提示词提交过评论。",
+      "seller_only": "只有经过验证的卖家才能回复评论。",
+      "vote_success": "投票成功记录。",
+      "vote_removed": "投票已成功移除。",
+      "response_submitted": "卖家回复已成功提交。"
+    },
+    "moderation": {
+      "unauthorized": "只有授权的管理员才能查看审计日志。",
+      "address_required": "需要管理员地址。"
+    }
   },
   "language": {
     "select": "语言"

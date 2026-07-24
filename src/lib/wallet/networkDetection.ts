@@ -1,4 +1,4 @@
-import { stellarWalletNetwork } from "@/lib/env";
+import { stellarNetwork } from "@/lib/env";
 
 export type NetworkMismatchType = 
   | "correct"
@@ -47,7 +47,7 @@ export function detectNetworkMismatch(
   }
 
   // Check if wallet network matches configured app network
-  const expectedNetwork = stellarWalletNetwork.toUpperCase();
+  const expectedNetwork = stellarNetwork.toUpperCase();
   const actualNetwork = walletNetwork.toUpperCase();
 
   if (actualNetwork !== expectedNetwork) {

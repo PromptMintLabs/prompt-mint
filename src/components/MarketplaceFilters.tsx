@@ -58,8 +58,11 @@ export function MarketplaceFilters({
         </p>
         <div className="flex flex-wrap gap-2">
           <Badge
+            role="button"
+            tabIndex={0}
             onClick={() => setSelectedCategory("")}
-            className={`cursor-pointer select-none transition-colors ${
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedCategory(""); } }}
+            className={`cursor-pointer select-none transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
               !selectedCategory
                 ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400 border-transparent"
                 : "border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/10"
@@ -70,10 +73,18 @@ export function MarketplaceFilters({
           {categories.map((cat) => (
             <Badge
               key={cat}
+              role="button"
+              tabIndex={0}
               onClick={() =>
                 setSelectedCategory(selectedCategory === cat ? "" : cat)
               }
-              className={`cursor-pointer select-none transition-colors ${
+              onKeyDown={(e) => { 
+                if (e.key === "Enter" || e.key === " ") { 
+                  e.preventDefault(); 
+                  setSelectedCategory(selectedCategory === cat ? "" : cat); 
+                } 
+              }}
+              className={`cursor-pointer select-none transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
                 selectedCategory === cat
                   ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400 border-transparent"
                   : "border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/10"
@@ -92,8 +103,11 @@ export function MarketplaceFilters({
           </p>
           <div className="flex flex-wrap gap-2">
             <Badge
+              role="button"
+              tabIndex={0}
               onClick={() => setSelectedTag("")}
-              className={`cursor-pointer select-none transition-colors ${
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedTag(""); } }}
+              className={`cursor-pointer select-none transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
                 !selectedTag
                   ? "bg-slate-100 text-slate-950 hover:bg-slate-200 border-transparent"
                   : "border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/10"
@@ -104,8 +118,16 @@ export function MarketplaceFilters({
             {tags.map((tag) => (
               <Badge
                 key={tag}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedTag(selectedTag === tag ? "" : tag)}
-                className={`cursor-pointer select-none transition-colors ${
+                onKeyDown={(e) => { 
+                  if (e.key === "Enter" || e.key === " ") { 
+                    e.preventDefault(); 
+                    setSelectedTag(selectedTag === tag ? "" : tag); 
+                  } 
+                }}
+                className={`cursor-pointer select-none transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
                   selectedTag === tag
                     ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400 border-transparent"
                     : "border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/10"

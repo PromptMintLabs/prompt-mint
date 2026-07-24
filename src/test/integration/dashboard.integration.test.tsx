@@ -66,7 +66,7 @@ describe("creator dashboard refresh integration coverage", () => {
     });
 
     expect(await screen.findByText("Revenue memo builder")).toBeInTheDocument();
-    expect(screen.getByText("2 XLM")).toBeInTheDocument();
+    expect(screen.getByText("2.00 XLM")).toBeInTheDocument();
 
     const priceInput = screen.getByLabelText("Price in XLM for Revenue memo builder");
     await userEvent.clear(priceInput);
@@ -86,6 +86,6 @@ describe("creator dashboard refresh integration coverage", () => {
       expect(getPromptsByCreatorMock).toHaveBeenCalledTimes(2);
     });
 
-    expect(await screen.findByText("3.5 XLM")).toBeInTheDocument();
+    expect(await screen.findByText("3.50 XLM")).toBeInTheDocument();
   });
 });

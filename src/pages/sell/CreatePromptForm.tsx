@@ -29,7 +29,9 @@ import { createPrompt } from "@/lib/stellar/promptHashClient";
 import {
   LISTING_LIMITS,
   validateListingForm,
+  validateImageMetadata,
 } from "@/lib/validation/listing";
+import { useNetworkState } from "@/hooks/useNetworkState";
 
 const limits = {
   ...LISTING_LIMITS,
@@ -80,7 +82,7 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
   const [draftRestored, setDraftRestored] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(true);
-  const [isFirstListing, setIsFirstListing] = useState(true);
+  const [isFirstListing] = useState(true);
 
   const isConfigured = useMemo(
     () =>
@@ -199,9 +201,21 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
     return Object.keys(nextErrors).length === 0;
   };
 
+  const networkState = useNetworkState();
+  const submittingGuardRef = useRef(false);
+
   const handleSubmit = async () => {
+    if (submittingGuardRef.current || isSubmitting) return;
+
     setSubmitError(null);
     setSuccessMessage(null);
+
+    if (!networkState.canTrustConfirmation) {
+      setSubmitError(
+        "Network connection lost or RPC unavailable. Your listing draft is saved locally, but on-chain submission is disabled until restored."
+      );
+      return;
+    }
 
     // Show checklist on first click so the creator can review quality
     if (!showChecklist) {
@@ -212,21 +226,33 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
       return;
     }
 
+    setIsSubmitting(true);
+    const imageError = await validateImageMetadata(formData.imageUrl);
+    if (imageError) {
+      setErrors((prev) => ({ ...prev, imageUrl: imageError }));
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!address || !signTransaction) {
       setSubmitError("Connect a Stellar wallet before creating a prompt.");
+      setIsSubmitting(false);
       return;
     }
 
     if (!browserStellarConfig.promptHashContractId) {
       setSubmitError("PUBLIC_PROMPT_HASH_CONTRACT_ID is not configured.");
+      setIsSubmitting(false);
       return;
     }
 
     if (!unlockPublicKey) {
       setSubmitError("PUBLIC_UNLOCK_PUBLIC_KEY is not configured.");
+      setIsSubmitting(false);
       return;
     }
 
+    submittingGuardRef.current = true;
     setIsSubmitting(true);
     try {
       const encrypted = await encryptPromptPlaintext(formData.fullPrompt);
@@ -273,6 +299,7 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
       );
     } finally {
       setIsSubmitting(false);
+      submittingGuardRef.current = false;
     }
   };
 
@@ -306,9 +333,11 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             autoComplete="url"
             placeholder="https://example.com/prompt-cover.png"
             className={errors.imageUrl ? "border-red-500" : ""}
+            aria-invalid={!!errors.imageUrl}
+            aria-describedby={errors.imageUrl ? "imageUrl-error" : undefined}
           />
           {errors.imageUrl ? (
-            <p className="flex items-center gap-1 text-sm text-red-400">
+            <p id="imageUrl-error" className="flex items-center gap-1 text-sm text-red-400">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.imageUrl}
             </p>
@@ -326,12 +355,14 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             autoComplete="off"
             placeholder="Board-ready launch plan"
             className={errors.title ? "border-red-500" : ""}
+            aria-invalid={!!errors.title}
+            aria-describedby={errors.title ? "title-error" : undefined}
           />
           <p className="text-xs text-slate-400">
             {formData.title.length}/{limits.title}
           </p>
           {errors.title ? (
-            <p className="flex items-center gap-1 text-sm text-red-400">
+            <p id="title-error" className="flex items-center gap-1 text-sm text-red-400">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.title}
             </p>
@@ -349,15 +380,18 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             name="previewText"
             value={formData.previewText}
             onChange={handleChange}
-            placeholder="This public preview is visible on browse cards and modals."
-            rows={4}
-            className={errors.previewText ? "border-red-500" : ""}
+            placeholder="Brief description of the prompt. This will be publicly visible."
+            className={`min-h-[120px] resize-none ${
+              errors.previewText ? "border-red-500" : ""
+            }`}
+            aria-invalid={!!errors.previewText}
+            aria-describedby={errors.previewText ? "previewText-error" : undefined}
           />
           <p className="text-xs text-slate-400">
             {formData.previewText.length}/{limits.preview}
           </p>
           {errors.previewText ? (
-            <p className="flex items-center gap-1 text-sm text-red-400">
+            <p id="previewText-error" className="flex items-center gap-1 text-sm text-red-400">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.previewText}
             </p>
@@ -397,13 +431,15 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             name="priceXlm"
             value={formData.priceXlm}
             onChange={handleChange}
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder="2.5"
+            type="number"
+            min="1"
+            step="1"
             className={errors.priceXlm ? "border-red-500" : ""}
+            aria-invalid={!!errors.priceXlm}
+            aria-describedby={errors.priceXlm ? "priceXlm-error" : undefined}
           />
           {errors.priceXlm ? (
-            <p className="flex items-center gap-1 text-sm text-red-400">
+            <p id="priceXlm-error" className="flex items-center gap-1 text-sm text-red-400">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.priceXlm}
             </p>
@@ -468,7 +504,7 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
 
       <Button
         className="w-full bg-emerald-400 text-slate-950 hover:bg-emerald-300"
-        disabled={isSubmitting || (showChecklist && checklistHasFailures)}
+        disabled={isSubmitting || !networkState.canTrustConfirmation || (showChecklist && checklistHasFailures)}
         onClick={handleSubmit}
       >
         {isSubmitting ? (
@@ -476,6 +512,8 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Encrypting and submitting...
           </>
+        ) : !networkState.canTrustConfirmation ? (
+          "Submissions Disabled (Network Offline)"
         ) : (
           "Create prompt listing"
         )}

@@ -26,12 +26,8 @@ async function redisCheckAndStore(
   const key = `replay:${signatureHash}`;
   const ttlSec = Math.ceil(config.ttlMs / 1000);
 
-  const multi = redis!.multi();
-  multi.setnx(key, "1");
-  multi.expire(key, ttlSec, "NX");
-  const [wasSet] = (await multi.exec()) as [number, ...unknown[]];
-
-  return wasSet === 1;
+  const result = await redis!.set(key, "1", { NX: true, EX: ttlSec });
+  return result === "OK";
 }
 
 function inMemoryCheckAndStore(
@@ -41,7 +37,7 @@ function inMemoryCheckAndStore(
   if (fallbackCache.has(signatureHash)) {
     return false;
   }
-  fallbackCache.set(signatureHash, true);
+  fallbackCache.set(signatureHash, true, { ttl: config.ttlMs });
   return true;
 }
 
