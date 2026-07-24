@@ -67,5 +67,17 @@ app.listen(port, () => {
     triggerBackup();
     setInterval(triggerBackup, TWENTY_FOUR_HOURS);
     console.log("[backup] Daily backup scheduler started.");
+    // DAILY RESTORE DRILL — optional, controlled via ENABLE_RESTORE_DRILL env var
+    if (process.env.ENABLE_RESTORE_DRILL) {
+      const cron = require('node-cron');
+      const schedule = process.env.RESTORE_DRILL_CRON || '0 3 * * *'; // default 03:00 UTC daily
+      cron.schedule(schedule, () => {
+        const { runRestoreDrill } = require('./services/restoreService');
+        runRestoreDrill().catch(err => {
+          console.error('[restore] Scheduled drill failed:', err?.message ?? err);
+        });
+      });
+      console.log('[restore] Restore drill scheduler started.');
+    }
   }
 });
