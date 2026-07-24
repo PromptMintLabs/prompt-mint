@@ -48,6 +48,7 @@ vi.mock("@/lib/validation/listing", async (importOriginal) => {
   return {
     ...actual,
     validateListingForm: vi.fn().mockImplementation(actual.validateListingForm),
+    validateImageMetadata: vi.fn().mockResolvedValue(null),
   };
 });
 

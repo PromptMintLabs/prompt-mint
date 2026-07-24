@@ -39,7 +39,11 @@ async function handler(req: any, res: any) {
 
     return res.status(200).json({ valid: true, contentType, contentLength });
   } catch (error: any) {
-    req.logger?.error?.({ err: error.message }, "Error validating image URL") || console.error("Error validating image URL", error.message);
+    if (req.logger?.error) {
+      req.logger.error({ err: error.message }, "Error validating image URL");
+    } else {
+      console.error("Error validating image URL", error.message);
+    }
     return res.status(500).json(apiError(ErrorCode.TEMPORARY_FAILURE, "Failed to reach the remote image URL."));
   }
 }

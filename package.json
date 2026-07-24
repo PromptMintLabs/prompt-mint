@@ -23,7 +23,7 @@
     "format": "prettier . --write",
     "prepare": "husky",
     "check:setup": "node scripts/check-local-setup.mjs",
-    "check:runbook": "node scripts/runbook-check.mjs"
+    "check:runbook": "node scripts/runbook-check.mjs",
     "test:synthetic": "npx tsx scripts/synthetic-unlock.ts"
   },
   "dependencies": {
