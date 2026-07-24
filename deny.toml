@@ -1,0 +1,37 @@
+# cargo-deny configuration for Rust dependency license compliance.
+# See https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
+
+[graph]
+all-features = true
+
+[licenses]
+unlicensed = "deny"
+
+allow = [
+  "Apache-2.0",
+  "MIT",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+]
+
+deny = [
+  "GPL-1.0",
+  "GPL-2.0",
+  "GPL-3.0",
+  "AGPL-1.0",
+  "AGPL-3.0",
+  "LGPL-2.0",
+  "LGPL-2.1",
+  "LGPL-3.0",
+]
+
+# Per-crate exceptions to the allow / deny lists.
+# Each exception must include: crate name, optionally a version constraint,
+# and a list of licenses that are explicitly allowed for that crate.
+#
+# Example exception (uncomment and adjust):
+# [[licenses.exceptions]]
+# name    = "some-gpl-crate"
+# version = "*"
+# allow   = ["GPL-3.0"]

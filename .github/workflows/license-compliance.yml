@@ -1,0 +1,72 @@
+name: License Compliance
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "package.json"
+      - "yarn.lock"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "license-policy.json"
+      - "deny.toml"
+      - ".github/workflows/license-compliance.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "package.json"
+      - "yarn.lock"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "license-policy.json"
+      - "deny.toml"
+      - ".github/workflows/license-compliance.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  npm-license-check:
+    name: "npm: license audit"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Run license audit
+        run: node scripts/license-audit.mjs
+
+  cargo-license-check:
+    name: "cargo: license audit"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.89.0"
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+
+      - name: Run cargo-deny license check
+        run: cargo deny check licenses
