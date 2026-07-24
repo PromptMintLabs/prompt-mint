@@ -30,6 +30,8 @@ import {
   LISTING_LIMITS,
   validateListingForm,
   validateImageMetadata,
+  CONTENT_CLASSIFICATIONS,
+  SAFETY_DISCLOSURE_FLAGS,
 } from "@/lib/validation/listing";
 import { useNetworkState } from "@/hooks/useNetworkState";
 
@@ -50,6 +52,8 @@ interface FormData {
   previewText: string;
   fullPrompt: string;
   priceXlm: string;
+  classification: string;
+  safetyFlags: string[];
 }
 
 interface CreatePromptFormProps {
@@ -65,6 +69,8 @@ const createEmptyFormData = (): FormData => ({
   previewText: "",
   fullPrompt: "",
   priceXlm: "2",
+  classification: "",
+  safetyFlags: [],
 });
 
 export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
@@ -442,6 +448,101 @@ export function CreatePromptForm({ onCreated }: CreatePromptFormProps) {
             <p id="priceXlm-error" className="flex items-center gap-1 text-sm text-red-400">
               <AlertCircle className="h-3.5 w-3.5" />
               {errors.priceXlm}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      {/* #131 – Content Classification */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-4">
+        <h3 className="text-sm font-bold text-emerald-400">Content Classification & Buyer Safety</h3>
+        <p className="text-xs text-slate-400">Classify your prompt to help buyers make informed choices.</p>
+
+        <div className="space-y-2">
+          <label htmlFor="classification" className="text-sm font-medium">
+            Content Classification
+          </label>
+          <Select
+            value={formData.classification}
+            onValueChange={(value) => {
+              setFormData((prev) => ({ ...prev, classification: value }));
+              setErrors((prev) => {
+                const next = { ...prev };
+                delete next.classification;
+                return next;
+              });
+            }}
+          >
+            <SelectTrigger
+              id="classification"
+              className={errors.classification ? "border-red-500" : ""}
+            >
+              <SelectValue placeholder="Select classification" />
+            </SelectTrigger>
+            <SelectContent>
+              {CONTENT_CLASSIFICATIONS.map((cls) => (
+                <SelectItem key={cls.value} value={cls.value}>
+                  <div className="flex flex-col">
+                    <span>{cls.label}</span>
+                    <span className="text-xs text-slate-400">{cls.description}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.classification ? (
+            <p className="flex items-center gap-1 text-sm text-red-400">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.classification}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Safety Disclosure Flags</label>
+          <p className="text-xs text-slate-400">Select any that apply to your content.</p>
+          <div className="grid grid-cols-2 gap-2">
+            {SAFETY_DISCLOSURE_FLAGS.map((flag) => {
+              const isSelected = formData.safetyFlags.includes(flag.value);
+              return (
+                <button
+                  key={flag.value}
+                  type="button"
+                  onClick={() => {
+                    if (flag.value === "none") {
+                      setFormData((prev) => ({ ...prev, safetyFlags: ["none"] }));
+                    } else {
+                      setFormData((prev) => {
+                        const current = prev.safetyFlags.filter((f) => f !== "none");
+                        return {
+                          ...prev,
+                          safetyFlags: isSelected
+                            ? current.filter((f) => f !== flag.value)
+                            : [...current, flag.value],
+                        };
+                      });
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                    isSelected
+                      ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                      : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                  }`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      isSelected ? "bg-emerald-400" : "bg-slate-500"
+                    }`}
+                  />
+                  {flag.label}
+                </button>
+              );
+            })}
+          </div>
+          {errors.safetyFlags ? (
+            <p className="flex items-center gap-1 text-sm text-red-400">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {errors.safetyFlags}
             </p>
           ) : null}
         </div>

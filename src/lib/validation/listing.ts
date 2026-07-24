@@ -1,5 +1,26 @@
 import { xlmToStroops } from "@/lib/stellar/format";
 
+// #131 – Canonical content classification taxonomy
+export const CONTENT_CLASSIFICATIONS = [
+  { value: "general", label: "General", description: "General purpose content" },
+  { value: "educational", label: "Educational", description: "Educational or learning content" },
+  { value: "professional", label: "Professional", description: "Professional or business content" },
+  { value: "creative", label: "Creative", description: "Creative, artistic, or entertainment content" },
+  { value: "technical", label: "Technical", description: "Technical, programming, or engineering content" },
+  { value: "sensitive", label: "Sensitive", description: "May contain sensitive topics (politics, religion, etc.)" },
+  { value: "restricted", label: "Restricted", description: "Age-restricted or potentially offensive content" },
+] as const;
+
+// #131 – Standard safety disclosure flags
+export const SAFETY_DISCLOSURE_FLAGS = [
+  { value: "none", label: "None", description: "No specific safety concerns" },
+  { value: "ai-generated", label: "AI Generated", description: "Contains AI-generated content" },
+  { value: "financial-advice", label: "Financial Advice", description: "Contains financial or investment advice" },
+  { value: "medical", label: "Medical", description: "Contains medical or health information" },
+  { value: "legal", label: "Legal", description: "Contains legal information or advice" },
+  { value: "political", label: "Political", description: "Contains political content or commentary" },
+] as const;
+
 export const LISTING_LIMITS = {
   imageUrl: 512,
   title: 120,
@@ -15,6 +36,9 @@ export type ListingFormInput = {
   previewText: string;
   fullPrompt: string;
   priceXlm: string;
+  // #131 – content classification
+  classification: string;
+  safetyFlags: string[];
 };
 
 export type ListingValidationErrors = Partial<
@@ -104,6 +128,23 @@ export function validateListingForm(
     }
   }
 
+  // #131 – classification validation
+  if (!input.classification) {
+    errors.classification = "Select a content classification so buyers know what to expect.";
+  } else if (!CONTENT_CLASSIFICATIONS.some((c) => c.value === input.classification)) {
+    errors.classification = "Selected classification is not in the recognized taxonomy.";
+  }
+
+  // Safety flags are optional — valid if provided
+  if (input.safetyFlags.length > 0) {
+    for (const flag of input.safetyFlags) {
+      if (!SAFETY_DISCLOSURE_FLAGS.some((f) => f.value === flag)) {
+        errors.safetyFlags = `"${flag}" is not a recognized safety disclosure flag.`;
+        break;
+      }
+    }
+  }
+
   return errors;
 }
 
@@ -143,6 +184,7 @@ export function buildListingChecklistItems(
     { id: "fullPrompt", label: "Full prompt content" },
     { id: "priceXlm", label: "Price" },
     { id: "imageUrl", label: "Image URL" },
+    { id: "classification", label: "Content classification" },
   ];
 
   for (const { id, label } of fieldChecks) {

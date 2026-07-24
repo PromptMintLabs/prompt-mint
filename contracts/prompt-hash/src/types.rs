@@ -42,6 +42,13 @@ pub enum Error {
     InvalidSubscriptionPrice = 34,
     SubscriptionNotFound = 35,
     ListingNotEligible = 36,
+    // #131 – content classification
+    InvalidClassification = 37,
+    InvalidDisclosureFlags = 38,
+    InvalidContentFlagsLength = 39,
+    ClassificationAlreadyReviewed = 40,
+    NotModerator = 41,
+    InvalidSafetyFlagsLength = 42,
 }
 
 #[contracttype]
@@ -62,6 +69,21 @@ pub enum DataKey {
     SubscriptionConfig(Address),
     Subscription(Address, Address),
     SubscriptionEligible(u128),
+    // #131 – content classification
+    ClassificationOverride(u128),
+    ModeratorAddress,
+}
+
+/// A moderator-overridden classification that takes precedence
+/// over the creator's attested classification for display purposes.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ClassificationOverride {
+    pub classifier: Address,
+    pub classification: String,
+    pub safety_flags: Vec<String>,
+    pub reason: String,
+    pub reviewed_at: u64,
 }
 
 #[contracttype]
@@ -129,6 +151,38 @@ pub struct ListingConfig {
     pub splits: Vec<Split>,
 }
 
+/// Canonical taxonomy for content classification.
+/// Creators attest one of these categories for each listing.
+/// Uses `None` variant as default (unnamed).
+pub const CLASSIFICATION_GENERAL: &str = "general";
+pub const CLASSIFICATION_EDUCATIONAL: &str = "educational";
+pub const CLASSIFICATION_PROFESSIONAL: &str = "professional";
+pub const CLASSIFICATION_CREATIVE: &str = "creative";
+pub const CLASSIFICATION_TECHNICAL: &str = "technical";
+pub const CLASSIFICATION_SENSITIVE: &str = "sensitive";
+pub const CLASSIFICATION_RESTRICTED: &str = "restricted";
+
+pub const ALL_CLASSIFICATIONS: &[&str] = &[
+    CLASSIFICATION_GENERAL,
+    CLASSIFICATION_EDUCATIONAL,
+    CLASSIFICATION_PROFESSIONAL,
+    CLASSIFICATION_CREATIVE,
+    CLASSIFICATION_TECHNICAL,
+    CLASSIFICATION_SENSITIVE,
+    CLASSIFICATION_RESTRICTED,
+];
+
+/// Standard safety disclosure flags recognized by the platform.
+/// Canonical values: "none", "ai-generated", "financial-advice", "medical", "legal", "political"
+pub const VALID_DISCLOSURE_FLAGS: &[&str] = &[
+    "none",
+    "ai-generated",
+    "financial-advice",
+    "medical",
+    "legal",
+    "political",
+];
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Prompt {
@@ -152,6 +206,10 @@ pub struct Prompt {
     pub expires_at: u64,
     /// Optional co-creator revenue splits applied against the full payment.
     pub splits: Vec<Split>,
+    /// #131 – content classification attested by the creator
+    pub classification: String,
+    /// #131 – safety disclosure flags attested by the creator
+    pub safety_flags: Vec<String>,
 }
 
 pub trait PromptHashTrait {
@@ -305,4 +363,25 @@ pub trait PromptHashTrait {
     fn get_xlm_sac(env: Env) -> Option<Address>;
     fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), Error>;
     fn extend_ttl(env: Env, key: DataKey) -> Result<(), Error>;
+
+    // #131 – content classification
+    fn set_classification(
+        env: Env,
+        creator: Address,
+        prompt_id: u128,
+        classification: String,
+        safety_flags: Vec<String>,
+    ) -> Result<(), Error>;
+    fn get_classification(env: Env, prompt_id: u128) -> Result<(String, Vec<String>), Error>;
+    fn set_moderator_override(
+        env: Env,
+        moderator: Address,
+        prompt_id: u128,
+        classification: String,
+        safety_flags: Vec<String>,
+        reason: String,
+    ) -> Result<(), Error>;
+    fn get_active_classification(env: Env, prompt_id: u128) -> Result<(String, Vec<String>), Error>;
+    fn get_moderator_override(env: Env, prompt_id: u128) -> Result<ClassificationOverride, Error>;
+    fn set_moderator_address(env: Env, admin: Address, moderator: Address) -> Result<(), Error>;
 }

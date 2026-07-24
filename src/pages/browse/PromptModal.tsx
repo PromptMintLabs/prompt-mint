@@ -22,6 +22,8 @@ import {
   DollarSign,
   ShoppingBag,
   Hash,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { ReviewForm } from "../../components/prompts/ReviewForm";
 import { ReviewList } from "../../components/prompts/ReviewList";
@@ -119,7 +121,53 @@ const PromptMetadataSection: React.FC<{ itemId: string; status: BuyerStatus }> =
             {prompt.contentHash.slice(0, 8)}...
           </p>
         </div>
+
+        {/* #131 – Classification */}
+        {prompt.classification && (
+          <div className="p-3 rounded-lg bg-white/5 border border-white/5">
+            <div className="flex items-center gap-2 mb-1">
+              {prompt.classification === "sensitive" || prompt.classification === "restricted" ? (
+                <AlertTriangle className="h-3 w-3 text-slate-400" />
+              ) : (
+                <Info className="h-3 w-3 text-slate-400" />
+              )}
+              <p className="text-xs text-slate-400">Classification</p>
+            </div>
+            <p className={`text-sm font-bold ${
+              prompt.classification === "restricted"
+                ? "text-rose-400"
+                : prompt.classification === "sensitive"
+                  ? "text-amber-400"
+                  : "text-white"
+            }`}>
+              {prompt.classification.charAt(0).toUpperCase() + prompt.classification.slice(1)}
+            </p>
+          </div>
+        )}
       </div>
+
+      {/* #131 – Safety Disclosures */}
+      {prompt.safetyFlags && prompt.safetyFlags.length > 0 && !prompt.safetyFlags.includes("none") && (
+        <div className="p-4 rounded-xl bg-cyan-500/5 border border-cyan-500/20">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck className="h-4 w-4 text-cyan-400" />
+            <p className="text-xs uppercase tracking-wider text-cyan-400 font-semibold">Safety Disclosures</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {prompt.safetyFlags.map((flag) => (
+              <span
+                key={flag}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
+              >
+                {flag.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+              </span>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            These disclosures are attested by the creator. Content may be subject to moderation review.
+          </p>
+        </div>
+      )}
 
       {/* Purchase State Indicator */}
       {isPurchased && (

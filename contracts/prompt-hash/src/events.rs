@@ -1,4 +1,4 @@
-use soroban_sdk::{contractevent, Address, Env};
+use soroban_sdk::{contractevent, Address, Env, String, Vec};
 
 #[contractevent]
 struct PromptCreated {
@@ -281,4 +281,58 @@ impl Events {
         }
         .publish(env);
     }
+
+    // ─── #131: Content Classification Events ────────────────────────────────
+
+    pub fn emit_classification_set(
+        env: &Env,
+        prompt_id: u128,
+        classification: String,
+        safety_flags: Vec<String>,
+    ) {
+        ClassificationSet {
+            prompt_id,
+            classification,
+            safety_flags,
+        }
+        .publish(env);
+    }
+
+    pub fn emit_classification_overridden(
+        env: &Env,
+        prompt_id: u128,
+        moderator: Address,
+        classification: String,
+        safety_flags: Vec<String>,
+        reason: String,
+    ) {
+        ClassificationOverridden {
+            prompt_id,
+            moderator,
+            classification,
+            safety_flags,
+            reason,
+        }
+        .publish(env);
+    }
+}
+
+// ─── #131: Event Structs ───────────────────────────────────────────────────
+
+#[contractevent]
+struct ClassificationSet {
+    #[topic]
+    pub prompt_id: u128,
+    pub classification: String,
+    pub safety_flags: Vec<String>,
+}
+
+#[contractevent]
+struct ClassificationOverridden {
+    #[topic]
+    pub prompt_id: u128,
+    pub moderator: Address,
+    pub classification: String,
+    pub safety_flags: Vec<String>,
+    pub reason: String,
 }
