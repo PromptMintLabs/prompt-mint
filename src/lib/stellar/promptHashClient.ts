@@ -47,6 +47,21 @@ export interface PromptRecord {
 
 export type CreatePromptInput = unknown;
 
+export interface BulkPurchaseItem {
+  promptId: string;
+  priceStroops: bigint;
+}
+
+export interface BulkPurchaseResult {
+  txHash: string;
+  results: {
+    promptId: string;
+    success: boolean;
+    txHash?: string;
+    error?: string;
+  }[];
+}
+
 export class PromptHashClient {
   /**
    * Checks if the user already has access to the prompt.
@@ -94,6 +109,37 @@ export class PromptHashClient {
         const mockHash =
           "tx_" + Math.random().toString(16).slice(2, 14).padStart(12, "0");
         resolve({ txHash: mockHash, success: true });
+      }, delay);
+    });
+  }
+
+  /**
+   * Invokes the Soroban contract to purchase multiple prompts atomically.
+   * The entire transaction reverts if any individual purchase fails.
+   */
+  static async purchasePromptsBulk(
+    _items: BulkPurchaseItem[],
+    _userAddress: string,
+    options?: { forceFailure?: string; delay?: number },
+  ): Promise<BulkPurchaseResult> {
+    warnMockUse();
+    return new Promise((resolve, reject) => {
+      const delay = options?.delay ?? 3000;
+      setTimeout(() => {
+        if (options?.forceFailure) {
+          return reject(new Error(options.forceFailure));
+        }
+
+        const txHash =
+          "tx_bulk_" + Math.random().toString(16).slice(2, 14).padStart(12, "0");
+        
+        const results = _items.map((item) => ({
+          promptId: item.promptId,
+          success: true,
+          txHash,
+        }));
+
+        resolve({ txHash, results });
       }, delay);
     });
   }

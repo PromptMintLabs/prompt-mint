@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Activity, Menu, MessageCircle, Search, ShoppingBag, Shield, User } from "lucide-react";
+import { Activity, Menu, MessageCircle, Search, ShoppingBag, Shield, User, ShoppingCart } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import DisplayWallet from "./DisplayWallet";
 import { ThemeToggle } from "./ThemeToggle";
 import { CurrencyToggle } from "./CurrencyToggle";
 import { NotificationCenter } from "./NotificationCenter";
+import { useCart } from "@/providers/CartProvider";
+import { Cart, CartIcon } from "./Cart";
+import { Checkout } from "./Checkout";
 
 const navItems = [
   { to: "/browse", label: "Browse", icon: Search },
@@ -25,6 +29,10 @@ const linkClasses = ({ isActive }: { isActive: boolean }) =>
   ].join(" ");
 
 export function Navigation() {
+  const [showCart, setShowCart] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const { itemCount } = useCart();
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
@@ -58,6 +66,14 @@ export function Navigation() {
 
         <div className="flex items-center gap-2 md:gap-4">
           <CurrencyToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative border border-white/10 text-white hover:bg-white/10"
+            onClick={() => setShowCart(true)}
+          >
+            <CartIcon />
+          </Button>
           <NotificationCenter />
           <ThemeToggle />
           <DisplayWallet />
@@ -90,6 +106,19 @@ export function Navigation() {
           </SheetContent>
         </Sheet>
       </div>
+
+      {/* Cart Drawer */}
+      <Sheet open={showCart} onOpenChange={setShowCart}>
+        <SheetContent className="border-white/10 bg-slate-950 text-white w-[400px] max-w-[90vw]">
+          {showCheckout ? (
+            <Checkout onClose={() => { setShowCheckout(false); setShowCart(false); }} />
+          ) : (
+            <div className="p-5">
+              <Cart onCheckout={() => setShowCheckout(true)} />
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </header>
   );
 }

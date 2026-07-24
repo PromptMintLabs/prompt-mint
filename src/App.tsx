@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Outlet, Route, Routes } from "react-router-dom";
+import { CartProvider } from "./providers/CartProvider";
 import Home from "./pages/Home";
 
 const BrowsePage = lazy(() => import("./pages/browse/page.jsx"));
@@ -17,26 +18,28 @@ const AppLayout = () => (
 
 function App() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-screen bg-slate-950">
-          <div className="text-white text-lg">Loading...</div>
-        </div>
-      }
-    >
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/browse" element={<BrowsePage />} />
-          <Route path="/sell" element={<SellPage />} />
-          <Route path="/chat" element={<ChatHome />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/status" element={<StatusPage />} />
-          <Route path="/moderation" element={<ModerationPage />} />
-          <Route path="*" element={<Home />} />
-        </Route>
-      </Routes>
-    </Suspense>
+    <CartProvider>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-screen bg-slate-950">
+            <div className="text-white text-lg">Loading...</div>
+          </div>
+        }
+      >
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/sell" element={<SellPage />} />
+            <Route path="/chat" element={<ChatHome />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/status" element={<StatusPage />} />
+            <Route path="/moderation" element={<ModerationPage />} />
+            <Route path="*" element={<Home />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    </CartProvider>
   );
 }
 
