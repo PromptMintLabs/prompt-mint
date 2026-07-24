@@ -153,6 +153,29 @@ describe("unlock API integrity checks", () => {
     expect(statusCode).toBe(200);
     expect(responseData.plaintext).toBe(plaintext);
     expect(responseData.contentHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(hasAccessMock).toHaveBeenCalledTimes(1);
+    expect(hasAccessMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      buyer.publicKey(),
+      BigInt(promptId),
+    );
+  });
+
+  it("re-checks current on-chain entitlement before returning content", async () => {
+    const { buyer, promptId, challenge, signedMessage } =
+      await setupUnlockFixture();
+    hasAccessMock.mockResolvedValue(false);
+
+    const { statusCode, responseData } = await invokeUnlock({
+      token: challenge.token,
+      promptId,
+      address: buyer.publicKey(),
+      signedMessage,
+    });
+
+    expect(hasAccessMock).toHaveBeenCalledTimes(1);
+    expect(statusCode).toBe(403);
+    expect(responseData.plaintext).toBeUndefined();
   });
 
   it("fails safely when the recomputed hash does not match", async () => {

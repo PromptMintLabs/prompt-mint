@@ -1,4 +1,4 @@
-use super::types::{DataKey, Error, Prompt, Purchase};
+use super::types::{DataKey, Error, Prompt, Purchase, Subscription, SubscriptionConfig};
 use soroban_sdk::{token, Address, BytesN, Env, Vec};
 
 pub const DAY_IN_LEDGERS: u32 = 17280;
@@ -202,6 +202,58 @@ impl Storage {
         owner: &Address,
     ) -> Result<Purchase, Error> {
         Self::get_purchase(env, prompt_id, owner).ok_or(Error::LicenseNotFound)
+    }
+
+    pub fn save_subscription_config(env: &Env, config: &SubscriptionConfig) {
+        let key = DataKey::SubscriptionConfig(config.creator.clone());
+        env.storage().persistent().set(&key, config);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_subscription_config(env: &Env, creator: &Address) -> Option<SubscriptionConfig> {
+        let key = DataKey::SubscriptionConfig(creator.clone());
+        let config = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        config
+    }
+
+    pub fn save_subscription(env: &Env, subscription: &Subscription) {
+        let key = DataKey::Subscription(
+            subscription.subscriber.clone(),
+            subscription.creator.clone(),
+        );
+        env.storage().persistent().set(&key, subscription);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_subscription(
+        env: &Env,
+        subscriber: &Address,
+        creator: &Address,
+    ) -> Option<Subscription> {
+        let key = DataKey::Subscription(subscriber.clone(), creator.clone());
+        let subscription = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        subscription
+    }
+
+    pub fn set_subscription_eligibility(env: &Env, prompt_id: u128, eligible: bool) {
+        let key = DataKey::SubscriptionEligible(prompt_id);
+        env.storage().persistent().set(&key, &eligible);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn is_subscription_eligible(env: &Env, prompt_id: u128) -> bool {
+        let key = DataKey::SubscriptionEligible(prompt_id);
+        let eligible = env.storage().persistent().get(&key).unwrap_or(false);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        eligible
     }
 
     pub fn grant_purchase(
