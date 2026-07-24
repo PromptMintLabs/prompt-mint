@@ -1,0 +1,72 @@
+{
+  "name": "PromptHash Stellar",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "NODE_MAJOR": "22",
+      "RUST_VERSION": "1.89.0",
+      "YARN_VERSION": "4.9.2",
+      "STELLAR_CLI_VERSION": "22.3.0"
+    }
+  },
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "SHELL": "/bin/bash"
+  },
+  "forwardPorts": [5173, 5000],
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite Dev Server (frontend)",
+      "onAutoForward": "notify"
+    },
+    "5000": {
+      "label": "Backend Server (Express)",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/postCreateCommand.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "editorconfig.editorconfig",
+        "eamodio.gitlens",
+        "vscode-icons-team.vscode-icons",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "eslint.validate": [
+          "javascript",
+          "javascriptreact",
+          "typescript",
+          "typescriptreact"
+        ],
+        "rust-analyzer.check.command": "clippy",
+        "rust-analyzer.check.features": "all",
+        "[rust]": {
+          "editor.defaultFormatter": "rust-lang.rust-analyzer",
+          "editor.formatOnSave": true
+        },
+        "[toml]": {
+          "editor.defaultFormatter": "tamasfe.even-better-toml"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/target": true
+        },
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}
