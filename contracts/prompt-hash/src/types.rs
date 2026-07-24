@@ -49,6 +49,11 @@ pub enum Error {
     ClassificationAlreadyReviewed = 40,
     NotModerator = 41,
     InvalidSafetyFlagsLength = 42,
+    // Promotional pricing
+    InvalidPromotionTime = 43,
+    PromotionOverlap = 44,
+    PromotionNotFound = 45,
+    UnauthorizedPromotion = 46,
 }
 
 #[contracttype]
@@ -72,6 +77,9 @@ pub enum DataKey {
     // #131 – content classification
     ClassificationOverride(u128),
     ModeratorAddress,
+    // Promotional pricing
+    ActivePromotion(u128),
+    PromotionHistory(u128),
 }
 
 /// A moderator-overridden classification that takes precedence
@@ -104,6 +112,23 @@ pub struct Subscription {
     /// Exclusive Unix timestamp: access is valid only while `now < expires_at`.
     pub expires_at: u64,
     pub renewal_count: u32,
+}
+
+/// Time-bounded promotional pricing for a prompt listing.
+/// Only one promotion can be active at a time for a given prompt.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Promotion {
+    pub prompt_id: u128,
+    pub creator: Address,
+    /// Unix timestamp when the promotion starts.
+    pub start_time: u64,
+    /// Unix timestamp when the promotion ends.
+    pub end_time: u64,
+    /// Promotional price in stroops.
+    pub price: i128,
+    /// Token contract address for the promotional price.
+    pub asset: Address,
 }
 
 #[contracttype]
@@ -382,6 +407,27 @@ pub trait PromptHashTrait {
         reason: String,
     ) -> Result<(), Error>;
     fn get_active_classification(env: Env, prompt_id: u128) -> Result<(String, Vec<String>), Error>;
-    fn get_moderator_override(env: Env, prompt_id: u128) -> Result<ClassificationOverride, Error>;
-    fn set_moderator_address(env: Env, admin: Address, moderator: Address) -> Result<(), Error>;
+
+    // Promotional pricing
+    fn create_promotion(
+        env: Env,
+        creator: Address,
+        prompt_id: u128,
+        start_time: u64,
+        end_time: u64,
+        price: i128,
+        asset: Address,
+    ) -> Result<u128, Error>;
+
+    fn cancel_promotion(
+        env: Env,
+        creator: Address,
+        prompt_id: u128,
+    ) -> Result<(), Error>;
+
+    fn get_active_promotion(env: Env, prompt_id: u128) -> Result<Option<Promotion>, Error>;
+
+    fn get_promotion_history(env: Env, prompt_id: u128) -> Result<Vec<Promotion>, Error>;
+
+    fn get_effective_price(env: Env, prompt_id: u128) -> Result<(i128, Address, bool), Error>;
 }
