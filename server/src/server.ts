@@ -9,7 +9,9 @@ import { webhookRouter } from "./routes/webhookRoutes";
 import { versioningRouter } from "./routes/versioningRoutes";
 import { governanceRouter } from "./routes/governanceRoutes"; // Issue #113
 import { runBackup, getBackupHealth } from "./services/backupService";
+import { runRestoreDrill } from "./services/restoreService";
 import { IndexerState } from "./models/IndexerState"; 
+import cron from "node-cron";
 // import { startIndexer } from "./services/indexerService"; // TODO: Update path when ready
 
 const app = express();
@@ -69,11 +71,9 @@ app.listen(port, () => {
     console.log("[backup] Daily backup scheduler started.");
     // DAILY RESTORE DRILL — optional, controlled via ENABLE_RESTORE_DRILL env var
     if (process.env.ENABLE_RESTORE_DRILL) {
-      const cron = require('node-cron');
       const schedule = process.env.RESTORE_DRILL_CRON || '0 3 * * *'; // default 03:00 UTC daily
       cron.schedule(schedule, () => {
-        const { runRestoreDrill } = require('./services/restoreService');
-        runRestoreDrill().catch(err => {
+        runRestoreDrill().catch((err: any) => {
           console.error('[restore] Scheduled drill failed:', err?.message ?? err);
         });
       });
