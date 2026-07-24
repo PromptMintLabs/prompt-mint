@@ -1,0 +1,43 @@
+{
+  "_description": {
+    "purpose": "Third-party dependency license policy for the Prompt-Hash Stellar project (itself Apache-2.0). Defines allowed, denied, and review-required license categories used by CI compliance checks.",
+    "allowed": "Licenses known to be permissive and compatible with Apache-2.0. Dependencies using these are automatically approved with zero friction.",
+    "denied": "Licenses that impose reciprocal/copyleft obligations (e.g. viral open-source), restrict commercial use, or carry patent-retaliation terms incompatible with a blockchain marketplace. Dependencies using these are blocked in CI unless an exception is recorded below.",
+    "reviewRequired": "Licenses that carry nuanced or conditional obligations (e.g. weak copyleft, file-level reciprocity, attribution stacking). Dependencies using these are flagged for human review. After review they are either added to exceptions or added to allowed/denied."
+  },
+
+  "allowed": [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "CC0-1.0",
+    "Unlicense",
+    "0BSD",
+    "Python-2.0"
+  ],
+
+  "denied": [
+    "GPL-2.0",
+    "GPL-3.0",
+    "AGPL-3.0",
+    "LGPL-2.1",
+    "LGPL-3.0",
+    "BUSL-1.1",
+    "SSPL-1.0",
+    "Elastic-2.0",
+    "CC-BY-NC-4.0"
+  ],
+
+  "reviewRequired": [
+    "MPL-2.0",
+    "BSL-1.0",
+    "CC-BY-4.0",
+    "CC-BY-SA-4.0",
+    "EUPL-1.2",
+    "OSL-3.0"
+  ],
+
+  "exceptions": []
+}

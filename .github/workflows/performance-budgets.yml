@@ -1,0 +1,68 @@
+name: Performance Budgets
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "src/**"
+      - "package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  check-budgets:
+    name: Evaluate performance budgets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build production bundle
+        run: yarn build
+
+      - name: Run budget evaluation
+        id: budgets
+        run: npx tsx scripts/check-budgets.ts mobile
+        continue-on-error: true
+
+      - name: Upload budget report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: budget-report
+          path: budget-report.json
+
+      - name: Report violations
+        if: steps.budgets.outcome == 'failure'
+        run: |
+          echo "::error::Performance budget violations detected. Download the budget-report artifact for details."
+          node -e "
+            const { readFileSync } = require('fs');
+            const report = JSON.parse(readFileSync('./budget-report.json', 'utf8'));
+            const failures = report.filter(r => !r.pass);
+            for (const r of failures) {
+              console.log('::group::Route: ' + r.route + ' (' + r.profile + ')');
+              for (const v of r.violations) {
+                console.log('  ' + v.metric + ': ' + v.actual + ' exceeds budget of ' + v.budget);
+              }
+              console.log('  Top contributors:');
+              for (const c of r.topContributors) {
+                console.log('    - ' + c.name + ': ' + c.size + ' kB');
+              }
+              console.log('::endgroup::');
+            }
+          "
+          exit 1
