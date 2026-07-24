@@ -105,9 +105,9 @@ describe("Purchase Button States", () => {
       signMessage: vi.fn(),
     };
 
-    // Mock purchase to delay
+    // Keep the purchase pending so the loading state remains observable.
     vi.mocked(PromptHashClient.purchasePrompt).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ txHash: "test", success: true }), 100))
+      () => new Promise<never>(() => {}),
     );
 
     renderWithProviders(

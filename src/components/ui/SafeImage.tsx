@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-interface SafeImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface SafeImageProps
+  extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src"> {
   src?: string | null;
   alt: string;
   fallbackSrc?: string;
