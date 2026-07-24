@@ -1,0 +1,65 @@
+{
+  "title": "Prompt Mint: Unlock Services Dashboard",
+  "description": "Visualizes API health, unlock outcomes, and latency. Separates service failures from user errors.",
+  "panels": [
+    {
+      "title": "Service Failures (5xx Errors)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(api_request_error_total[5m])) by (path)",
+          "legendFormat": "{{path}} errors"
+        }
+      ],
+      "description": "Unexpected API failures indicating a service degradation."
+    },
+    {
+      "title": "API Request Duration (P99)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(api_request_duration_ms_bucket[5m])) by (le, path))",
+          "legendFormat": "{{path}} P99 latency"
+        }
+      ],
+      "description": "API latency monitoring RPC delays or indexer lag."
+    },
+    {
+      "title": "User Errors (Unlock Failures by Reason)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(unlock_failure_total[5m])) by (reason)",
+          "legendFormat": "{{reason}}"
+        }
+      ],
+      "description": "User-facing errors such as invalid_signature or no_access (purchase failures/delays)."
+    },
+    {
+      "title": "Unlock Success vs Challenge Issued",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(unlock_success_total[5m]))",
+          "legendFormat": "Successful Unlocks"
+        },
+        {
+          "expr": "sum(rate(challenge_issued_total[5m]))",
+          "legendFormat": "Challenges Issued"
+        }
+      ],
+      "description": "Conversion rate from challenge to successful unlock."
+    },
+    {
+      "title": "Rate Limits Hit",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(rate_limit_hit_total[5m])) by (type)",
+          "legendFormat": "{{type}} rate limits"
+        }
+      ],
+      "description": "Volume of requests blocked by rate limiting."
+    }
+  ]
+}
