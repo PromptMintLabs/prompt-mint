@@ -17,9 +17,10 @@ import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/useWallet";
 import { browserStellarConfig } from "@/lib/stellar/browserConfig";
 import { getPromptsByBuyer, type PromptRecord } from "@/lib/stellar/promptHashClient";
-import { formatPriceLabel } from "@/lib/stellar/format";
 import { unlockPromptContent } from "@/lib/prompts/unlock";
 import { UnlockExplainer, type UnlockState } from "@/components/UnlockExplainer";
+import { stellarNetwork } from "@/lib/env";
+import { CurrencyPrice } from "@/components/CurrencyPrice";
 import { FreshnessBadge } from "@/components/FreshnessBadge";
 import { useNetworkState } from "@/hooks/useNetworkState";
 
@@ -164,6 +165,7 @@ function PromptLibraryCard({
               Paid
             </p>
             <p className="mt-0.5 text-sm font-semibold text-white">
+              <CurrencyPrice stroops={prompt.priceStroops} />
               {formatPriceLabel(prompt.priceStroops)} XLM
             </p>
           </div>

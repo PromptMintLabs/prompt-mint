@@ -12,6 +12,7 @@ import { WalletProvider } from "./providers/WalletProvider.tsx";
 import { TransactionProvider } from "./components/TransactionProvider.tsx";
 import { NotificationProvider } from "./providers/NotificationProvider.tsx";
 import { ContractSyncProvider } from "./providers/ContractSyncProvider.tsx";
+import { CurrencyProvider } from "./providers/CurrencyProvider.tsx";
 
 import { NetworkStateProvider } from "./hooks/useNetworkState.ts";
 
@@ -27,6 +28,19 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById("root") as HTMLElement).render(
   <StrictMode>
+    <NotificationProvider>
+      <QueryClientProvider client={queryClient}>
+        <ContractSyncProvider>
+          <TransactionProvider>
+            <WalletProvider>
+              <BrowserRouter>
+                <CurrencyProvider><App /></CurrencyProvider>
+              </BrowserRouter>
+            </WalletProvider>
+          </TransactionProvider>
+        </ContractSyncProvider>
+      </QueryClientProvider>
+    </NotificationProvider>
     <NetworkStateProvider>
       <NotificationProvider>
         <QueryClientProvider client={queryClient}>

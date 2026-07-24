@@ -29,9 +29,9 @@ import { StarRating } from "../../components/prompts/StarRating";
 import { ReviewClient } from "../../lib/reviews/reviewClient";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { browserStellarConfig } from "../../lib/stellar/browserConfig";
-import { stroopsToXlmString } from "../../lib/stellar/format";
 import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBanner";
 import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
+import { CurrencyPrice } from "../../components/CurrencyPrice";
 import { useNetworkState } from "@/hooks/useNetworkState";
 
 export type BuyerStatus =
@@ -72,7 +72,6 @@ const PromptMetadataSection: React.FC<{ itemId: string; status: BuyerStatus }> =
   if (!prompt) return null;
 
   const isPurchased = status === "PURCHASED_LOCKED" || status === "SUCCESS";
-  const priceXlm = stroopsToXlmString(prompt.priceStroops);
 
   return (
     <div className="mb-6 space-y-4">
@@ -99,7 +98,7 @@ const PromptMetadataSection: React.FC<{ itemId: string; status: BuyerStatus }> =
             <DollarSign className="h-3 w-3 text-slate-400" />
             <p className="text-xs text-slate-400">Price</p>
           </div>
-          <p className="text-sm font-bold text-white">{priceXlm} XLM</p>
+          <p className="text-sm font-bold text-white"><CurrencyPrice stroops={prompt.priceStroops} /></p>
         </div>
 
         <div className="p-3 rounded-lg bg-white/5 border border-white/5">

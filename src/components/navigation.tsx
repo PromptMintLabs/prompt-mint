@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import DisplayWallet from "./DisplayWallet";
 import { ThemeToggle } from "./ThemeToggle";
+import { CurrencyToggle } from "./CurrencyToggle";
 import { NotificationCenter } from "./NotificationCenter";
 
 const navItems = [
@@ -56,6 +57,7 @@ export function Navigation() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
+          <CurrencyToggle />
           <NotificationCenter />
           <ThemeToggle />
           <DisplayWallet />
@@ -80,6 +82,7 @@ export function Navigation() {
                 </NavLink>
               ))}
               <div className="flex items-center gap-2 border-t border-white/10 pt-4">
+                <CurrencyToggle />
                 <ThemeToggle />
                 <DisplayWallet />
               </div>
