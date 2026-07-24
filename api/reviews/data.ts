@@ -8,11 +8,27 @@ export interface StoredReview {
   verified: boolean;
   helpfulVotes: number;
   voters: string[];
+  editedAt?: number;
+  editHistory: ReviewEditAuditEntry[];
+  moderation?: {
+    status: "approved" | "removed";
+    moderatorAddress: string;
+    reason: string;
+    updatedAt: number;
+  };
   sellerResponse?: {
     text: string;
     createdAt: number;
     editedAt?: number;
   };
+}
+
+/** Immutable snapshots retained whenever an author changes a review. */
+export interface ReviewEditAuditEntry {
+  editedAt: number;
+  editorAddress: string;
+  previousRating: number;
+  previousText: string;
 }
 
 const reviewStorage = new Map<string, StoredReview[]>();
@@ -29,6 +45,7 @@ function seedMockReviews() {
       verified: true,
       helpfulVotes: 3,
       voters: ["GBCD234ABC567EFG890HIJ123KLM456NOP789QRS012TUV345WXY678ZA"],
+      editHistory: [],
     },
     {
       id: "review_2",
@@ -40,6 +57,7 @@ function seedMockReviews() {
       verified: true,
       helpfulVotes: 1,
       voters: [],
+      editHistory: [],
     },
     {
       id: "review_3",
@@ -51,6 +69,7 @@ function seedMockReviews() {
       verified: true,
       helpfulVotes: 0,
       voters: [],
+      editHistory: [],
     },
   ];
 
@@ -99,4 +118,12 @@ export function getReviewsByUser(userAddress: string): StoredReview[] {
     }
   }
   return result;
+}
+
+export function findReviewById(reviewId: string): StoredReview | undefined {
+  for (const reviews of reviewStorage.values()) {
+    const review = reviews.find((item) => item.id === reviewId);
+    if (review) return review;
+  }
+  return undefined;
 }
