@@ -35,6 +35,7 @@ import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBa
 import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
 import { CurrencyPrice } from "../../components/CurrencyPrice";
 import { useNetworkState } from "@/hooks/useNetworkState";
+import { useTrackPromptView } from "@/hooks/useRecentlyViewed";
 
 export type BuyerStatus =
   | "IDLE"
@@ -210,6 +211,9 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const lastActiveElementRef = useRef<HTMLElement | null>(null);
+
+  // Track this prompt view in recently viewed (privacy-controlled)
+  useTrackPromptView(wallet?.address ?? null, itemId, isOpen);
 
   // Fetch reviews for this prompt
   const { data: reviewData, isLoading: reviewsLoading } = useQuery({

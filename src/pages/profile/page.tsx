@@ -9,6 +9,7 @@ import {
   Boxes,
   CheckCircle2,
   CircleOff,
+  Clock,
   Copy,
   Eye,
   KeyRound,
@@ -32,6 +33,7 @@ import { UnlockExplainer, type UnlockState } from "@/components/UnlockExplainer"
 import { WebhookSettings } from "@/components/WebhookSettings";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { PostVersionUpdate } from "@/components/PostVersionUpdate";
+import { RecentlyViewed } from "@/components/RecentlyViewed";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -988,7 +990,7 @@ export default function ProfilePage() {
                     </p>
                   </div>
 
-                  <TabsList className="mb-6 grid h-auto w-full grid-cols-3 rounded-xl border border-white/10 bg-white/[0.03] p-1.5 sm:w-[48rem]">
+                  <TabsList className="mb-6 grid h-auto w-full grid-cols-4 rounded-xl border border-white/10 bg-white/[0.03] p-1.5 sm:w-[48rem]">
                     <TabsTrigger
                       value="purchased"
                       aria-label="Open my library tab"
@@ -1021,6 +1023,14 @@ export default function ProfilePage() {
                       <span className="ml-1 rounded-full bg-slate-950/10 px-1.5 py-0.5 text-xs">
                         {savedPrompts.length}
                       </span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="recently-viewed"
+                      aria-label="Open recently viewed tab"
+                      className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-slate-400 transition-all data-[state=active]:bg-purple-300 data-[state=active]:text-slate-950 data-[state=active]:shadow-sm"
+                    >
+                      <Clock className="h-4 w-4" />
+                      Recent
                     </TabsTrigger>
                   </TabsList>
 
@@ -1128,6 +1138,10 @@ export default function ProfilePage() {
                         ))}
                       </div>
                     )}
+                  </TabsContent>
+
+                  <TabsContent value="recently-viewed" className="mt-0 space-y-4">
+                    <RecentlyViewed walletAddress={address} />
                   </TabsContent>
                 </Tabs>
               </section>
