@@ -31,6 +31,9 @@ struct PromptPurchased {
     pub creator: Address,
     pub price_stroops: i128,
     pub referrer: Option<Address>,
+    pub creator_amount: i128,
+    pub platform_amount: i128,
+    pub referrer_amount: i128,
 }
 
 #[contractevent]
@@ -156,6 +159,9 @@ impl Events {
         creator: Address,
         price_stroops: i128,
         referrer: Option<Address>,
+        creator_amount: i128,
+        platform_amount: i128,
+        referrer_amount: i128,
     ) {
         PromptPurchased {
             prompt_id,
@@ -163,6 +169,9 @@ impl Events {
             creator,
             price_stroops,
             referrer,
+            creator_amount,
+            platform_amount,
+            referrer_amount,
         }
         .publish(env);
     }

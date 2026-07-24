@@ -36,6 +36,11 @@ pub enum Error {
     ListingExpired = 28,
     LicenseNotFound = 29,
     InvalidLicenseTransfer = 30,
+    ReferralCodeNotFound = 31,
+    ReferralCodeAlreadyExists = 32,
+    ReferralCodeTooShort = 33,
+    ReferralReplay = 34,
+    CircularReferral = 35,
     SubscriptionConfigNotFound = 31,
     SubscriptionInactive = 32,
     InvalidSubscriptionDuration = 33,
@@ -59,6 +64,8 @@ pub enum DataKey {
     ReferralPercentage,
     IsPaused,
     VoucherKey(u128, BytesN<32>),
+    ReferralCode(BytesN<32>),
+    ReferralParent(Address),
     SubscriptionConfig(Address),
     Subscription(Address, Address),
     SubscriptionEligible(u128),
@@ -66,6 +73,13 @@ pub enum DataKey {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Settlement {
+    pub buyer_amount: i128,
+    pub creator_amount: i128,
+    pub platform_amount: i128,
+    pub referrer: Option<Address>,
+    pub referrer_amount: i128,
+    pub split_amount: i128,
 pub struct SubscriptionConfig {
     pub creator: Address,
     pub duration_secs: u64,
@@ -76,6 +90,10 @@ pub struct SubscriptionConfig {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReferralCode {
+    pub owner: Address,
+    pub reward_bps: u32,
+    pub active: bool,
 pub struct Subscription {
     pub creator: Address,
     pub subscriber: Address,
@@ -95,6 +113,7 @@ pub struct Purchase {
     pub transfer_count: u32,
     pub last_transferred_at: u64,
     pub expires_at: u64,
+    pub settlement: Settlement,
 }
 
 #[contracttype]
@@ -202,7 +221,7 @@ pub trait PromptHashTrait {
         env: Env,
         buyer: Address,
         prompt_id: u128,
-        referrer: Option<Address>,
+        referral_code: Option<Bytes>,
         payment_amount_stroops: i128,
         voucher: Option<Bytes>,
     ) -> Result<(), Error>;
@@ -232,7 +251,7 @@ pub trait PromptHashTrait {
         buyer: Address,
         prompt_ids: Vec<u128>,
         payment_amounts: Vec<i128>,
-        referrer: Option<Address>,
+        referral_code: Option<Bytes>,
     ) -> Result<(), Error>;
 
     fn transfer_license(
@@ -248,6 +267,7 @@ pub trait PromptHashTrait {
     fn get_all_prompts(env: Env) -> Result<Vec<Prompt>, Error>;
     fn get_prompts_by_creator(env: Env, creator: Address) -> Result<Vec<Prompt>, Error>;
     fn get_prompts_by_buyer(env: Env, buyer: Address) -> Result<Vec<Prompt>, Error>;
+    fn get_purchase_details(env: Env, prompt_id: u128, buyer: Address) -> Result<Purchase, Error>;
     fn configure_subscription_pass(
         env: Env,
         creator: Address,
@@ -287,6 +307,16 @@ pub trait PromptHashTrait {
     fn get_fee_wallet(env: Env) -> Option<Address>;
     fn set_referral_percentage(env: Env, new_referral_percentage: u32) -> Result<(), Error>;
     fn get_referral_percentage(env: Env) -> u32;
+    fn register_referral_code(
+        env: Env,
+        referrer: Address,
+        code_hash: BytesN<32>,
+    ) -> Result<(), Error>;
+    fn revoke_referral_code(
+        env: Env,
+        referrer: Address,
+        code_hash: BytesN<32>,
+    ) -> Result<(), Error>;
     fn set_pause_status(env: Env, paused: bool) -> Result<(), Error>;
     fn is_paused(env: Env) -> bool;
     fn add_voucher(

@@ -1,6 +1,8 @@
 use super::events::Events;
 use super::storage::Storage;
 use super::types::{
+    DataKey, Error, ListingConfig, Prompt, PromptHashTrait, Purchase, ReferralCode, Settlement,
+    Split,
     DataKey, Error, ListingConfig, Prompt, PromptHashTrait, Split, Subscription, SubscriptionConfig,
 };
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Vec};
@@ -167,7 +169,7 @@ impl PromptHashTrait for PromptHashContract {
         env: Env,
         buyer: Address,
         prompt_id: u128,
-        referrer: Option<Address>,
+        referral_code: Option<Bytes>,
         payment_amount_stroops: i128,
         voucher: Option<Bytes>,
     ) -> Result<(), Error> {
@@ -177,7 +179,7 @@ impl PromptHashTrait for PromptHashContract {
             &env,
             &buyer,
             prompt_id,
-            &referrer,
+            &referral_code,
             payment_amount_stroops,
             voucher,
         )
@@ -243,9 +245,33 @@ impl PromptHashTrait for PromptHashContract {
             .checked_add(lease_duration_secs)
             .ok_or(Error::ArithmeticOverflow)?;
         Storage::update_prompt(&env, &prompt);
-        Storage::grant_purchase(&env, &prompt, &buyer, lease_price, expires_at);
+        Storage::grant_purchase(
+            &env,
+            &prompt,
+            &buyer,
+            lease_price,
+            expires_at,
+            Settlement {
+                buyer_amount: lease_price,
+                creator_amount: seller_amount,
+                platform_amount: fee_amount,
+                referrer: None,
+                referrer_amount: 0,
+                split_amount: 0,
+            },
+        );
         Storage::clear_reentrancy_guard(&env);
-        Events::emit_prompt_purchased(&env, prompt_id, buyer, prompt.creator, lease_price, None);
+        Events::emit_prompt_purchased(
+            &env,
+            prompt_id,
+            buyer,
+            prompt.creator,
+            lease_price,
+            None,
+            seller_amount,
+            fee_amount,
+            0,
+        );
         Ok(())
     }
 
@@ -278,7 +304,7 @@ impl PromptHashTrait for PromptHashContract {
         buyer: Address,
         prompt_ids: Vec<u128>,
         payment_amounts: Vec<i128>,
-        referrer: Option<Address>,
+        referral_code: Option<Bytes>,
     ) -> Result<(), Error> {
         buyer.require_auth();
         ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
@@ -290,7 +316,14 @@ impl PromptHashTrait for PromptHashContract {
         for i in 0..prompt_ids.len() {
             let prompt_id = prompt_ids.get(i).unwrap();
             let payment_amount = payment_amounts.get(i).unwrap();
-            execute_buy(&env, &buyer, prompt_id, &referrer, payment_amount, None)?;
+            execute_buy(
+                &env,
+                &buyer,
+                prompt_id,
+                &referral_code,
+                payment_amount,
+                None,
+            )?;
         }
         Ok(())
     }
@@ -397,6 +430,8 @@ impl PromptHashTrait for PromptHashContract {
         Ok(Storage::get_prompts_by_buyer(&env, &buyer))
     }
 
+    fn get_purchase_details(env: Env, prompt_id: u128, buyer: Address) -> Result<Purchase, Error> {
+        Storage::require_purchase(&env, prompt_id, &buyer)
     fn configure_subscription_pass(
         env: Env,
         creator: Address,
@@ -535,6 +570,44 @@ impl PromptHashTrait for PromptHashContract {
         Storage::get_referral_percentage(&env)
     }
 
+    fn register_referral_code(
+        env: Env,
+        referrer: Address,
+        code_hash: BytesN<32>,
+    ) -> Result<(), Error> {
+        referrer.require_auth();
+        ensure(
+            Storage::get_referral_code(&env, &code_hash).is_none(),
+            Error::ReferralCodeAlreadyExists,
+        )?;
+        let reward_bps = Storage::get_referral_percentage(&env);
+        ensure(reward_bps <= MAX_BPS, Error::InvalidReferralPercentage)?;
+        Storage::save_referral_code(
+            &env,
+            &code_hash,
+            &ReferralCode {
+                owner: referrer,
+                reward_bps,
+                active: true,
+            },
+        );
+        Ok(())
+    }
+
+    fn revoke_referral_code(
+        env: Env,
+        referrer: Address,
+        code_hash: BytesN<32>,
+    ) -> Result<(), Error> {
+        referrer.require_auth();
+        let mut code =
+            Storage::get_referral_code(&env, &code_hash).ok_or(Error::ReferralCodeNotFound)?;
+        ensure(code.owner == referrer, Error::Unauthorized)?;
+        code.active = false;
+        Storage::save_referral_code(&env, &code_hash, &code);
+        Ok(())
+    }
+
     fn add_voucher(
         env: Env,
         creator: Address,
@@ -669,7 +742,7 @@ fn execute_buy(
     env: &Env,
     buyer: &Address,
     prompt_id: u128,
-    referrer: &Option<Address>,
+    referral_code: &Option<Bytes>,
     payment_amount_stroops: i128,
     voucher: Option<Bytes>,
 ) -> Result<(), Error> {
@@ -720,12 +793,8 @@ fn execute_buy(
         Error::InvalidPaymentAmount,
     )?;
 
-    if let Some(ref r) = referrer {
-        ensure(
-            r != buyer && r != &prompt.creator,
-            Error::ReferrerCannotBeBuyerOrCreator,
-        )?;
-    }
+    let referral = resolve_referral(env, buyer, &prompt.creator, referral_code)?;
+    let referrer = referral.as_ref().map(|code| code.owner.clone());
 
     Storage::set_reentrancy_guard(env)?;
 
@@ -740,10 +809,9 @@ fn execute_buy(
         .ok_or(Error::ArithmeticOverflow)?
         / MAX_BPS as i128;
 
-    let referral_percentage = Storage::get_referral_percentage(env);
-    let referral_amount = if referrer.is_some() {
+    let referral_amount = if let Some(code) = &referral {
         payment_amount_stroops
-            .checked_mul(referral_percentage as i128)
+            .checked_mul(code.reward_bps as i128)
             .ok_or(Error::ArithmeticOverflow)?
             / MAX_BPS as i128
     } else {
@@ -816,6 +884,14 @@ fn execute_buy(
         buyer,
         payment_amount_stroops,
         MAX_ACCESS_EXPIRY,
+        Settlement {
+            buyer_amount: payment_amount_stroops,
+            creator_amount,
+            platform_amount: fee_amount,
+            referrer: referrer.clone(),
+            referrer_amount: referral_amount,
+            split_amount: split_total,
+        },
     );
     Storage::clear_reentrancy_guard(env);
 
@@ -825,7 +901,10 @@ fn execute_buy(
         buyer.clone(),
         prompt.creator,
         payment_amount_stroops,
-        referrer.clone(),
+        referrer,
+        creator_amount,
+        fee_amount,
+        referral_amount,
     );
 
     if payment_amount_stroops > required_price {
@@ -838,6 +917,43 @@ fn execute_buy(
     }
 
     Ok(())
+}
+
+fn resolve_referral(
+    env: &Env,
+    buyer: &Address,
+    creator: &Address,
+    raw_code: &Option<Bytes>,
+) -> Result<Option<ReferralCode>, Error> {
+    let Some(raw_code) = raw_code else {
+        return Ok(None);
+    };
+    ensure(raw_code.len() >= 16, Error::ReferralCodeTooShort)?;
+    let digest = env.crypto().sha256(raw_code);
+    let code_hash = BytesN::from_array(env, &digest.to_array());
+    let code = Storage::get_referral_code(env, &code_hash)
+        .filter(|code| code.active)
+        .ok_or(Error::ReferralCodeNotFound)?;
+    ensure(
+        code.owner != *buyer && code.owner != *creator,
+        Error::ReferrerCannotBeBuyerOrCreator,
+    )?;
+
+    if let Some(existing) = Storage::get_referral_parent(env, buyer) {
+        ensure(existing == code.owner, Error::ReferralReplay)?;
+    } else {
+        let mut cursor = code.owner.clone();
+        for _ in 0..64 {
+            ensure(cursor != *buyer, Error::CircularReferral)?;
+            match Storage::get_referral_parent(env, &cursor) {
+                Some(parent) => cursor = parent,
+                None => break,
+            }
+        }
+        ensure(cursor != *buyer, Error::CircularReferral)?;
+        Storage::set_referral_parent(env, buyer, &code.owner);
+    }
+    Ok(Some(code))
 }
 
 // ─── Validation helpers ───────────────────────────────────────────────────────

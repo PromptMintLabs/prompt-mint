@@ -197,14 +197,14 @@ fn test_buy_prompt_grants_access_to_multiple_buyers_and_tracks_exact_fees() {
     client.buy_prompt(
         &buyer_one,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &12_345i128,
         &None::<Bytes>,
     );
     client.buy_prompt(
         &buyer_two,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &12_345i128,
         &None::<Bytes>,
     );
@@ -251,7 +251,7 @@ fn test_fee_routing_pays_seller_and_platform_wallet_for_exact_purchase() {
     let seller_start = xlm_client.balance(&creator);
     let fee_start = xlm_client.balance(&context.fee_wallet);
 
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
 
     let expected_fee = price * 500 / 10_000;
     let expected_seller_payout = price - expected_fee;
@@ -293,7 +293,7 @@ fn test_small_price_fee_rounding_keeps_fractional_fee_with_seller() {
     let seller_start = xlm_client.balance(&creator);
     let fee_start = xlm_client.balance(&context.fee_wallet);
 
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
 
     assert_eq!(price * 500 / 10_000, 0);
     assert_eq!(xlm_client.balance(&creator), seller_start + price);
@@ -335,7 +335,7 @@ fn test_seller_payout_split_rounding_uses_integer_stroops() {
     let co_creator_start = xlm_client.balance(&co_creator);
     let fee_start = xlm_client.balance(&context.fee_wallet);
 
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
 
     let expected_fee = price * 500 / 10_000;
     let expected_split = price * 333 / 10_000;
@@ -385,7 +385,7 @@ fn test_failed_purchase_does_not_grant_access_or_route_partial_payouts() {
     let result = client.try_buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &(price - 1),
         &None::<Bytes>,
     );
@@ -429,7 +429,7 @@ fn test_has_access_is_true_for_creator_and_buyer_but_not_stranger() {
     client.buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &8_000i128,
         &None::<Bytes>,
     );
@@ -454,7 +454,7 @@ fn test_get_prompts_by_creator_and_buyer() {
     client.buy_prompt(
         &buyer,
         &prompt_a,
-        &None::<Address>,
+        &None::<Bytes>,
         &8_000i128,
         &None::<Bytes>,
     );
@@ -486,7 +486,7 @@ fn test_license_owner_can_transfer_and_creator_receives_royalty() {
     client.buy_prompt(
         &seller,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &10_000i128,
         &None::<Bytes>,
     );
@@ -535,7 +535,7 @@ fn test_non_owner_cannot_transfer_license() {
     client.buy_prompt(
         &owner,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &10_000i128,
         &None::<Bytes>,
     );
@@ -575,7 +575,7 @@ fn test_transfer_license_rejects_zero_price_and_self_transfer() {
     client.buy_prompt(
         &owner,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &10_000i128,
         &None::<Bytes>,
     );
@@ -614,7 +614,7 @@ fn test_duplicate_purchase_returns_typed_error() {
     client.buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &4_000i128,
         &None::<Bytes>,
     );
@@ -622,7 +622,7 @@ fn test_duplicate_purchase_returns_typed_error() {
     let duplicate_purchase = client.try_buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &4_000i128,
         &None::<Bytes>,
     );
@@ -651,7 +651,7 @@ fn test_creator_cannot_buy_own_prompt() {
     let result = client.try_buy_prompt(
         &creator,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &4_000i128,
         &None::<Bytes>,
     );
@@ -685,7 +685,7 @@ fn test_inactive_prompt_cannot_be_bought() {
     let result = client.try_buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &4_000i128,
         &None::<Bytes>,
     );
@@ -722,7 +722,7 @@ fn test_buy_prompt_with_zero_fee() {
     let seller_start = xlm_client.balance(&creator);
     let fee_start = xlm_client.balance(&context.fee_wallet);
 
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
 
     assert_eq!(xlm_client.balance(&creator), seller_start + price);
     assert_eq!(xlm_client.balance(&context.fee_wallet), fee_start);
@@ -755,7 +755,7 @@ fn test_buy_prompt_with_max_fee() {
     let seller_start = xlm_client.balance(&creator);
     let fee_start = xlm_client.balance(&context.fee_wallet);
 
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
 
     assert_eq!(xlm_client.balance(&creator), seller_start);
     assert_eq!(xlm_client.balance(&context.fee_wallet), fee_start + price);
@@ -800,13 +800,8 @@ fn test_buy_nonexistent_prompt_fails() {
     let client = PromptHashContractClient::new(&env, &context.contract);
     let buyer = Address::generate(&env);
 
-    let result = client.try_buy_prompt(
-        &buyer,
-        &999_999,
-        &None::<Address>,
-        &1_000i128,
-        &None::<Bytes>,
-    );
+    let result =
+        client.try_buy_prompt(&buyer, &999_999, &None::<Bytes>, &1_000i128, &None::<Bytes>);
     match result {
         Err(Ok(Error::PromptNotFound)) => {}
         other => panic!(
@@ -844,7 +839,7 @@ fn test_arithmetic_safety_for_massive_prices() {
     client.buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &massive_price,
         &None::<Bytes>,
     );
@@ -969,11 +964,14 @@ fn test_buy_prompt_with_referrer_splits_payment_correctly() {
     let creator_start = xlm_client.balance(&creator);
     let fee_start = xlm_client.balance(&context.fee_wallet);
     let referrer_start = xlm_client.balance(&referrer);
+    let referral_code = Bytes::from_slice(&env, b"referral-secret-001");
+    let referral_hash = BytesN::from_array(&env, &env.crypto().sha256(&referral_code).to_array());
+    client.register_referral_code(&referrer, &referral_hash);
 
     client.buy_prompt(
         &buyer,
         &prompt_id,
-        &Some(referrer.clone()),
+        &Some(referral_code),
         &price,
         &None::<Bytes>,
     );
@@ -1021,12 +1019,15 @@ fn test_referrer_cannot_be_buyer() {
     );
 
     fund_buyer(&xlm_client, &buyer, &context.contract, price);
+    let referral_code = Bytes::from_slice(&env, b"self-referral-secret");
+    let referral_hash = BytesN::from_array(&env, &env.crypto().sha256(&referral_code).to_array());
+    client.register_referral_code(&buyer, &referral_hash);
 
     // buyer tries to refer themselves
     let result = client.try_buy_prompt(
         &buyer,
         &prompt_id,
-        &Some(buyer.clone()),
+        &Some(referral_code),
         &price,
         &None::<Bytes>,
     );
@@ -1058,12 +1059,15 @@ fn test_referrer_cannot_be_creator() {
     );
 
     fund_buyer(&xlm_client, &buyer, &context.contract, price);
+    let referral_code = Bytes::from_slice(&env, b"creator-ref-secret");
+    let referral_hash = BytesN::from_array(&env, &env.crypto().sha256(&referral_code).to_array());
+    client.register_referral_code(&creator, &referral_hash);
 
     // creator tries to refer themselves
     let result = client.try_buy_prompt(
         &buyer,
         &prompt_id,
-        &Some(creator.clone()),
+        &Some(referral_code),
         &price,
         &None::<Bytes>,
     );
@@ -1099,7 +1103,7 @@ fn test_buy_without_referrer_no_referral_amount_paid() {
     let creator_start = xlm_client.balance(&creator);
     let fee_start = xlm_client.balance(&context.fee_wallet);
 
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
 
     // Without referrer: creator gets price - fee only
     let expected_fee = price * 500 / 10_000;
@@ -1193,8 +1197,7 @@ fn test_buy_prompt_blocked_when_paused() {
 
     client.set_pause_status(&true);
 
-    let result =
-        client.try_buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    let result = client.try_buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
     match result {
         Err(Ok(Error::ContractIsPaused)) => {}
         other => panic!("expected ContractIsPaused for buy_prompt, got {:?}", other),
@@ -1282,7 +1285,7 @@ fn test_unpause_restores_operations() {
     assert!(!client.is_paused());
 
     fund_buyer(&xlm_client, &buyer, &context.contract, price);
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
     assert!(client.has_access(&buyer, &prompt_id));
 }
 
@@ -1338,7 +1341,7 @@ fn test_bulk_purchase_blocked_when_paused() {
     let mut amounts = Vec::new(&env);
     amounts.push_back(1_000i128);
 
-    let result = client.try_buy_prompts_bulk(&buyer, &ids, &amounts, &None::<Address>);
+    let result = client.try_buy_prompts_bulk(&buyer, &ids, &amounts, &None::<Bytes>);
     match result {
         Err(Ok(Error::ContractIsPaused)) => {}
         other => panic!(
@@ -1379,7 +1382,7 @@ fn test_tip_above_price_succeeds_and_creator_receives_full_tip() {
     client.buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &total_payment,
         &None::<Bytes>,
     );
@@ -1422,7 +1425,7 @@ fn test_payment_below_price_fails() {
     let result = client.try_buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &(price - 1),
         &None::<Bytes>,
     );
@@ -1454,7 +1457,7 @@ fn test_exact_price_payment_succeeds() {
     fund_buyer(&xlm_client, &buyer, &context.contract, price);
 
     // Exact price should succeed without emitting a tip event
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
     assert!(client.has_access(&buyer, &prompt_id));
 }
 
@@ -1496,7 +1499,7 @@ fn test_voucher_applies_discount_on_purchase() {
     client.buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &discounted_price,
         &Some(voucher_code),
     );
@@ -1549,7 +1552,7 @@ fn test_voucher_is_single_use_second_use_fails() {
     client.buy_prompt(
         &buyer_one,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &discounted_price,
         &Some(voucher_code.clone()),
     );
@@ -1558,7 +1561,7 @@ fn test_voucher_is_single_use_second_use_fails() {
     let result = client.try_buy_prompt(
         &buyer_two,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &discounted_price,
         &Some(voucher_code),
     );
@@ -1593,7 +1596,7 @@ fn test_invalid_voucher_code_fails() {
     let result = client.try_buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &price,
         &Some(wrong_code),
     );
@@ -1664,7 +1667,7 @@ fn test_creator_can_remove_voucher() {
     let result = client.try_buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &price,
         &Some(voucher_code),
     );
@@ -1709,11 +1712,14 @@ fn test_voucher_with_referrer_combined() {
     let creator_start = xlm_client.balance(&creator);
     let fee_start = xlm_client.balance(&context.fee_wallet);
     let referrer_start = xlm_client.balance(&referrer);
+    let referral_code = Bytes::from_slice(&env, b"voucher-ref-secret");
+    let referral_hash = BytesN::from_array(&env, &env.crypto().sha256(&referral_code).to_array());
+    client.register_referral_code(&referrer, &referral_hash);
 
     client.buy_prompt(
         &buyer,
         &prompt_id,
-        &Some(referrer.clone()),
+        &Some(referral_code),
         &discounted_price,
         &Some(voucher_code),
     );
@@ -1764,7 +1770,7 @@ fn test_buy_prompt_with_non_xlm_asset() {
     let creator_start = usdc_client.balance(&creator);
     let fee_start = usdc_client.balance(&context.fee_wallet);
 
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
 
     let expected_fee = price * 500 / 10_000;
     let expected_creator = price - expected_fee;
@@ -1819,7 +1825,7 @@ fn test_create_and_buy_different_assets() {
     client.buy_prompt(
         &buyer,
         &prompt_xlm,
-        &None::<Address>,
+        &None::<Bytes>,
         &xlm_price,
         &None::<Bytes>,
     );
@@ -1836,7 +1842,7 @@ fn test_create_and_buy_different_assets() {
     client.buy_prompt(
         &buyer,
         &prompt_usdc,
-        &None::<Address>,
+        &None::<Bytes>,
         &usdc_price,
         &None::<Bytes>,
     );
@@ -2006,7 +2012,7 @@ fn test_buy_expired_listing_fails() {
     client.buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &5_000i128,
         &None::<Bytes>,
     );
@@ -2020,7 +2026,7 @@ fn test_buy_expired_listing_fails() {
     let result = client.try_buy_prompt(
         &buyer2,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &5_000i128,
         &None::<Bytes>,
     );
@@ -2072,7 +2078,7 @@ fn test_extend_listing_pushes_expiry_and_allows_purchase() {
     client.buy_prompt(
         &buyer,
         &prompt_id,
-        &None::<Address>,
+        &None::<Bytes>,
         &5_000i128,
         &None::<Bytes>,
     );
@@ -2185,7 +2191,7 @@ fn test_buy_prompt_with_splits_distributes_correctly() {
     let co_creator_start = xlm_client.balance(&co_creator);
     let fee_start = xlm_client.balance(&context.fee_wallet);
 
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
 
     let expected_fee = price * 500 / 10_000; // 500
     let expected_split = price * 2_000 / 10_000; // 2_000
@@ -2296,7 +2302,7 @@ fn test_multiple_splits_distribute_all_recipients() {
     let co1_start = xlm_client.balance(&co1);
     let co2_start = xlm_client.balance(&co2);
 
-    client.buy_prompt(&buyer, &prompt_id, &None::<Address>, &price, &None::<Bytes>);
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
 
     assert_eq!(
         xlm_client.balance(&creator),
@@ -2335,7 +2341,7 @@ fn test_buy_prompts_bulk_purchases_all_and_grants_access() {
     amounts.push_back(price_a);
     amounts.push_back(price_b);
 
-    client.buy_prompts_bulk(&buyer, &ids, &amounts, &None::<Address>);
+    client.buy_prompts_bulk(&buyer, &ids, &amounts, &None::<Bytes>);
 
     assert!(client.has_access(&buyer, &prompt_a));
     assert!(client.has_access(&buyer, &prompt_b));
@@ -2372,7 +2378,7 @@ fn test_buy_prompts_bulk_atomicity_one_failure_reverts_all() {
     amounts.push_back(price);
     amounts.push_back(price);
 
-    let result = client.try_buy_prompts_bulk(&buyer, &ids, &amounts, &None::<Address>);
+    let result = client.try_buy_prompts_bulk(&buyer, &ids, &amounts, &None::<Bytes>);
     match result {
         Err(Ok(Error::PromptNotFound)) => {}
         other => panic!(
@@ -2400,7 +2406,7 @@ fn test_buy_prompts_bulk_mismatched_lengths_fails() {
 
     let amounts: Vec<i128> = Vec::new(&env); // empty — mismatch
 
-    let result = client.try_buy_prompts_bulk(&buyer, &ids, &amounts, &None::<Address>);
+    let result = client.try_buy_prompts_bulk(&buyer, &ids, &amounts, &None::<Bytes>);
     match result {
         Err(Ok(Error::InvalidPrice)) => {}
         other => panic!(
@@ -2438,7 +2444,10 @@ fn test_buy_prompts_bulk_with_referrer() {
     amounts.push_back(price);
 
     let referrer_start = xlm_client.balance(&referrer);
-    client.buy_prompts_bulk(&buyer, &ids, &amounts, &Some(referrer.clone()));
+    let referral_code = Bytes::from_slice(&env, b"bulk-referral-secret");
+    let referral_hash = BytesN::from_array(&env, &env.crypto().sha256(&referral_code).to_array());
+    client.register_referral_code(&referrer, &referral_hash);
+    client.buy_prompts_bulk(&buyer, &ids, &amounts, &Some(referral_code));
 
     // referral = 10_000 * 500 / 10_000 = 500 per prompt × 2
     let expected_referral = price * 500 / 10_000 * 2;
@@ -2450,6 +2459,8 @@ fn test_buy_prompts_bulk_with_referrer() {
     assert!(client.has_access(&buyer, &prompt_b));
 }
 
+#[test]
+fn test_referral_rules_are_snapshotted_and_settlement_is_auditable() {
 // ─── Issue #125: Creator catalog subscription passes ─────────────────────────
 
 #[test]
@@ -2459,6 +2470,46 @@ fn test_subscription_scope_and_exclusive_expiry_boundary() {
     let client = PromptHashContractClient::new(&env, &context.contract);
     let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
     let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let referrer = Address::generate(&env);
+    let price = 10_000i128;
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Auditable referral",
+        price,
+        &context.xlm,
+    );
+
+    client.set_referral_percentage(&500);
+    let referral_code = Bytes::from_slice(&env, b"auditable-code-secret");
+    let referral_hash = BytesN::from_array(&env, &env.crypto().sha256(&referral_code).to_array());
+    client.register_referral_code(&referrer, &referral_hash);
+    // Registered codes retain their original rules even if the global rate changes.
+    client.set_referral_percentage(&900);
+
+    fund_buyer(&xlm_client, &buyer, &context.contract, price);
+    client.buy_prompt(
+        &buyer,
+        &prompt_id,
+        &Some(referral_code),
+        &price,
+        &None::<Bytes>,
+    );
+
+    let purchase = client.get_purchase_details(&prompt_id, &buyer);
+    assert_eq!(purchase.settlement.buyer_amount, price);
+    assert_eq!(purchase.settlement.platform_amount, 500);
+    assert_eq!(purchase.settlement.referrer, Some(referrer));
+    assert_eq!(purchase.settlement.referrer_amount, 500);
+    assert_eq!(purchase.settlement.creator_amount, 9_000);
+    assert_eq!(
+        purchase.settlement.buyer_amount,
+        purchase.settlement.creator_amount
+            + purchase.settlement.platform_amount
+            + purchase.settlement.referrer_amount
+            + purchase.settlement.split_amount
     let subscriber = Address::generate(&env);
     let eligible = create_prompt(
         &env,
@@ -2533,12 +2584,49 @@ fn test_subscription_renewal_failure_is_atomic_and_success_preserves_time() {
 }
 
 #[test]
+fn test_referral_code_guessing_replay_and_cycles_are_rejected() {
 fn test_catalog_changes_transfers_and_direct_purchases_are_independent() {
     let env: Env = Default::default();
     let context = setup(&env);
     let client = PromptHashContractClient::new(&env, &context.contract);
     let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
     let creator = Address::generate(&env);
+    let buyer_a = Address::generate(&env);
+    let buyer_b = Address::generate(&env);
+    let referrer = Address::generate(&env);
+    let price = 10_000i128;
+    let prompt_a = create_prompt(&env, &client, &creator, "Referral A", price, &context.xlm);
+    let prompt_b = create_prompt(&env, &client, &creator, "Referral B", price, &context.xlm);
+    fund_buyer(&xlm_client, &buyer_a, &context.contract, price * 2);
+    fund_buyer(&xlm_client, &buyer_b, &context.contract, price);
+
+    let short = Bytes::from_slice(&env, b"guess");
+    let unknown = client.try_buy_prompt(&buyer_a, &prompt_a, &Some(short), &price, &None::<Bytes>);
+    assert!(matches!(unknown, Err(Ok(Error::ReferralCodeTooShort))));
+
+    let code_b = Bytes::from_slice(&env, b"buyer-b-code-secret");
+    let hash_b = BytesN::from_array(&env, &env.crypto().sha256(&code_b).to_array());
+    client.register_referral_code(&buyer_b, &hash_b);
+    client.buy_prompt(&buyer_a, &prompt_a, &Some(code_b), &price, &None::<Bytes>);
+
+    let other_code = Bytes::from_slice(&env, b"other-referrer-secret");
+    let other_hash = BytesN::from_array(&env, &env.crypto().sha256(&other_code).to_array());
+    client.register_referral_code(&referrer, &other_hash);
+    let replay = client.try_buy_prompt(
+        &buyer_a,
+        &prompt_b,
+        &Some(other_code),
+        &price,
+        &None::<Bytes>,
+    );
+    assert!(matches!(replay, Err(Ok(Error::ReferralReplay))));
+
+    let code_a = Bytes::from_slice(&env, b"buyer-a-code-secret");
+    let hash_a = BytesN::from_array(&env, &env.crypto().sha256(&code_a).to_array());
+    client.register_referral_code(&buyer_a, &hash_a);
+    let circular =
+        client.try_buy_prompt(&buyer_b, &prompt_b, &Some(code_a), &price, &None::<Bytes>);
+    assert!(matches!(circular, Err(Ok(Error::CircularReferral))));
     let subscriber = Address::generate(&env);
     let transferee = Address::generate(&env);
     let prompt_id = create_prompt(
