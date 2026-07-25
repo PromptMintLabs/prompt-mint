@@ -60,5 +60,22 @@ This document defines the core observability metrics emitted by the application,
 - **Ownership:** Backend Team
 - **Type:** Counter
 
+### 7. `analytics_event_total`
+- **Description:** Volume of accepted, privacy-safe product analytics events.
+- **Unit:** Count
+- **Labels:**
+  - `event`: The taxonomy event name (e.g. `prompt_purchase_completed`).
+- **Ownership:** Backend / Product Team
+- **Type:** Counter
+- **Note:** See [`docs/analytics-events.md`](../analytics-events.md) for the full event taxonomy.
+
+### 8. `analytics_event_rejected_total`
+- **Description:** Analytics events rejected at the API boundary (unknown event, invalid payload, or a payload smuggling a raw wallet address).
+- **Unit:** Count
+- **Labels:**
+  - `reason`: One of `unknown_event`, `invalid_payload`, `raw_wallet_address`.
+- **Ownership:** Backend / Security Team
+- **Type:** Counter
+
 ## Usage
 These metrics are structured to be parsed and aggregated by Prometheus/Datadog. Ensure that any newly added metrics follow the same convention.

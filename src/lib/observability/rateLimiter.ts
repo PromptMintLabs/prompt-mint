@@ -16,6 +16,13 @@ const limits: Record<string, { authenticated: RateLimitConfig; unauthenticated: 
     unauthenticated: { max: 3, windowMs: 60_000 },
     authenticated: { max: 5, windowMs: 60_000 },
   },
+  // Analytics events are high-volume and low-risk compared to unlock/challenge,
+  // so the limits are looser — this guards against a runaway client loop, not
+  // normal browsing traffic.
+  analytics: {
+    unauthenticated: { max: 60, windowMs: 60_000 },
+    authenticated: { max: 120, windowMs: 60_000 },
+  },
 };
 
 // In-memory LRU fallback used when Redis is unavailable.
@@ -65,7 +72,7 @@ async function redisCheck(
 }
 
 export async function checkRateLimit(
-  type: "challenge" | "unlock",
+  type: "challenge" | "unlock" | "analytics",
   identifier: string,
   authenticated = false,
 ): Promise<{ success: boolean; limit: number; remaining: number; reset: number }> {

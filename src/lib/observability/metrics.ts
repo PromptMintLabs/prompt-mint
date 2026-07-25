@@ -22,5 +22,13 @@ export const metrics = {
 
   trackRateLimitHit(type: string, identifier: string) {
     this.emit("rate_limit_hit_total", 1, { type, identifier });
+  },
+
+  trackAnalyticsEvent(eventName: string) {
+    this.emit("analytics_event_total", 1, { event: eventName });
+  },
+
+  trackAnalyticsEventRejected(reason: string) {
+    this.emit("analytics_event_rejected_total", 1, { reason });
   }
 };

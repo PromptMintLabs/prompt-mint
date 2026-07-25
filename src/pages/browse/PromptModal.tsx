@@ -35,6 +35,7 @@ import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBa
 import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
 import { CurrencyPrice } from "../../components/CurrencyPrice";
 import { useNetworkState } from "@/hooks/useNetworkState";
+import { trackEventWithWallet } from "../../lib/analytics/track";
 import { useTrackPromptView } from "@/hooks/useRecentlyViewed";
 
 export type BuyerStatus =
@@ -290,6 +291,18 @@ export const PromptModal: React.FC<PromptModalProps> = ({
     }
   }, [isOpen, itemId, wallet?.address]);
 
+  // Only fire once per modal open per prompt — wallet.address changing mid-session
+  // (e.g. account switch) shouldn't re-fire a view event, so it's read via a ref
+  // rather than listed as an effect dependency.
+  const walletAddressRef = useRef<string | undefined>(wallet?.address);
+  walletAddressRef.current = wallet?.address;
+
+  useEffect(() => {
+    if (isOpen && itemId) {
+      trackEventWithWallet("prompt_viewed", walletAddressRef.current, { promptId: itemId });
+    }
+  }, [isOpen, itemId]);
+
   const {
     execute: runUnlock,
     isLoading: isUnlocking,
@@ -304,8 +317,15 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       onSuccess: (data) => {
         setSecretContent(data.decryptedContent);
         setStatus("SUCCESS");
+        trackEventWithWallet("prompt_unlocked", wallet?.address, { promptId: itemId });
       },
-      onError: () => setStatus("PURCHASED_LOCKED"),
+      onError: () => {
+        setStatus("PURCHASED_LOCKED");
+        trackEventWithWallet("prompt_unlock_failed", wallet?.address, {
+          promptId: itemId,
+          reasonCode: "unlock_error",
+        });
+      },
     },
   );
 
@@ -338,6 +358,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       }
       
       setStatus("AWAITING_APPROVAL");
+      trackEventWithWallet("prompt_purchase_initiated", wallet.address, { promptId: itemId });
       const mockHash = "tx_" + Math.random().toString(16).slice(2, 14);
       setTxHash(mockHash);
       setStatus("CONFIRMING");
@@ -347,9 +368,16 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       onSuccess: (data) => {
         setStatus("UNLOCKING");
         onRefresh?.();
+        trackEventWithWallet("prompt_purchase_completed", wallet?.address, { promptId: itemId });
         runUnlock(data.txHash || txHash).catch(() => {});
       },
-      onError: () => setStatus("ERROR"),
+      onError: () => {
+        setStatus("ERROR");
+        trackEventWithWallet("prompt_purchase_failed", wallet?.address, {
+          promptId: itemId,
+          reasonCode: "purchase_error",
+        });
+      },
     },
   );
 
