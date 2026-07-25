@@ -11,6 +11,7 @@ import storage from "../util/storage";
 import { stellarNetwork } from "../lib/env";
 import { ALBEDO_ID } from "@creit.tech/stellar-wallets-kit";
 import { useAsyncTransaction } from "../components/useAsyncTransaction";
+import { trackEvent, trackEventWithWallet } from "../lib/analytics/track";
 
 export type WalletStatus = 
   | "idle" 
@@ -62,6 +63,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
         storage.removeItem("walletAddress");
         storage.removeItem("walletNetwork");
         storage.removeItem("networkPassphrase");
+        trackEvent("wallet_disconnected", {});
         setState(initialState);
       }
     }
@@ -119,15 +121,17 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
           status: "connected",
           error: undefined,
         });
+        trackEventWithWallet("wallet_connected", data.address, { walletKind: data.walletId });
       },
       onError: (e) => {
         console.error("Connection error:", e);
         const message = e instanceof Error ? e.message : "Failed to connect wallet";
-        setState(prev => ({ 
-          ...prev, 
-          status: "error", 
-          error: message 
+        setState(prev => ({
+          ...prev,
+          status: "error",
+          error: message
         }));
+        trackEvent("wallet_connect_failed", { reasonCode: "connect_error" });
       }
     }
   );

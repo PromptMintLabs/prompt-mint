@@ -84,6 +84,7 @@ export default async function handler(req: any, res: any) {
       verified: true,
       helpfulVotes: 0,
       voters: [],
+      editHistory: [],
     };
 
     addReview(review);

@@ -7,6 +7,7 @@ export interface Review {
   createdAt: number;
   verified: boolean;
   helpfulVotes: number;
+  editedAt?: number;
   sellerResponse?: {
     text: string;
     createdAt: number;
@@ -29,7 +30,12 @@ export interface ReviewStats {
 export interface ReviewListResponse {
   reviews: Review[];
   stats: ReviewStats;
+  pagination: { page: number; limit: number; total: number; totalPages: number; hasMore: boolean };
+  filters: { sort: ReviewSort; rating: number | null };
 }
+
+export type ReviewSort = "newest" | "oldest" | "helpful" | "highest" | "lowest";
+export interface ReviewListOptions { page?: number; limit?: number; sort?: ReviewSort; rating?: number; }
 
 export interface ReviewEligibilityResponse {
   eligible: boolean;
@@ -112,8 +118,13 @@ export class ReviewClient {
     return response.json();
   }
 
-  static async getReviews(promptId: string): Promise<ReviewListResponse> {
-    const response = await fetch(`${API_BASE}/list?promptId=${promptId}`);
+  static async getReviews(promptId: string, options: ReviewListOptions = {}): Promise<ReviewListResponse> {
+    const params = new URLSearchParams({ promptId });
+    if (options.page) params.set("page", String(options.page));
+    if (options.limit) params.set("limit", String(options.limit));
+    if (options.sort) params.set("sort", options.sort);
+    if (options.rating) params.set("rating", String(options.rating));
+    const response = await fetch(`${API_BASE}/list?${params}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -126,6 +137,19 @@ export class ReviewClient {
   static async getReviewStats(promptId: string): Promise<ReviewStats> {
     const data = await this.getReviews(promptId);
     return data.stats;
+  }
+
+  static async editReview(promptId: string, reviewId: string, userAddress: string, rating: number, text: string) {
+    const response = await fetch(`${API_BASE}/edit`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ promptId, reviewId, userAddress, rating, text }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to edit review");
+    }
+    return response.json();
   }
 
   static async voteReview(

@@ -28,7 +28,7 @@ import {
 import { ReviewForm } from "../../components/prompts/ReviewForm";
 import { ReviewList } from "../../components/prompts/ReviewList";
 import { StarRating } from "../../components/prompts/StarRating";
-import { ReviewClient } from "../../lib/reviews/reviewClient";
+import { ReviewClient, type ReviewSort } from "../../lib/reviews/reviewClient";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { browserStellarConfig } from "../../lib/stellar/browserConfig";
 import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBanner";
@@ -36,6 +36,8 @@ import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
 import { CurrencyPrice } from "../../components/CurrencyPrice";
 import { useNetworkState } from "@/hooks/useNetworkState";
 import { GiftPrompt, type GiftPromptData } from "../../components/GiftPrompt";
+import { trackEventWithWallet } from "../../lib/analytics/track";
+import { useTrackPromptView } from "@/hooks/useRecentlyViewed";
 
 export type BuyerStatus =
   | "IDLE"
@@ -201,6 +203,9 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   const [secretContent, setSecretContent] = useState<string>("");
   const [isCheckingAccess, setIsCheckingAccess] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewSort, setReviewSort] = useState<ReviewSort>("newest");
+  const [reviewRating, setReviewRating] = useState<number | undefined>();
   const [copyFeedback, setCopyFeedback] = useState<{
     visible: boolean;
     success: boolean;
@@ -221,11 +226,13 @@ export const PromptModal: React.FC<PromptModalProps> = ({
     },
     enabled: isOpen && showGiftModal,
   });
+  // Track this prompt view in recently viewed (privacy-controlled)
+  useTrackPromptView(wallet?.address ?? null, itemId, isOpen);
 
   // Fetch reviews for this prompt
   const { data: reviewData, isLoading: reviewsLoading } = useQuery({
-    queryKey: ["reviews", itemId],
-    queryFn: () => ReviewClient.getReviews(itemId),
+    queryKey: ["reviews", itemId, reviewPage, reviewSort, reviewRating],
+    queryFn: () => ReviewClient.getReviews(itemId, { page: reviewPage, limit: 10, sort: reviewSort, rating: reviewRating }),
     enabled: isOpen,
   });
 
@@ -294,6 +301,18 @@ export const PromptModal: React.FC<PromptModalProps> = ({
     }
   }, [isOpen, itemId, wallet?.address]);
 
+  // Only fire once per modal open per prompt — wallet.address changing mid-session
+  // (e.g. account switch) shouldn't re-fire a view event, so it's read via a ref
+  // rather than listed as an effect dependency.
+  const walletAddressRef = useRef<string | undefined>(wallet?.address);
+  walletAddressRef.current = wallet?.address;
+
+  useEffect(() => {
+    if (isOpen && itemId) {
+      trackEventWithWallet("prompt_viewed", walletAddressRef.current, { promptId: itemId });
+    }
+  }, [isOpen, itemId]);
+
   const {
     execute: runUnlock,
     isLoading: isUnlocking,
@@ -308,8 +327,15 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       onSuccess: (data) => {
         setSecretContent(data.decryptedContent);
         setStatus("SUCCESS");
+        trackEventWithWallet("prompt_unlocked", wallet?.address, { promptId: itemId });
       },
-      onError: () => setStatus("PURCHASED_LOCKED"),
+      onError: () => {
+        setStatus("PURCHASED_LOCKED");
+        trackEventWithWallet("prompt_unlock_failed", wallet?.address, {
+          promptId: itemId,
+          reasonCode: "unlock_error",
+        });
+      },
     },
   );
 
@@ -342,6 +368,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       }
       
       setStatus("AWAITING_APPROVAL");
+      trackEventWithWallet("prompt_purchase_initiated", wallet.address, { promptId: itemId });
       const mockHash = "tx_" + Math.random().toString(16).slice(2, 14);
       setTxHash(mockHash);
       setStatus("CONFIRMING");
@@ -351,9 +378,16 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       onSuccess: (data) => {
         setStatus("UNLOCKING");
         onRefresh?.();
+        trackEventWithWallet("prompt_purchase_completed", wallet?.address, { promptId: itemId });
         runUnlock(data.txHash || txHash).catch(() => {});
       },
-      onError: () => setStatus("ERROR"),
+      onError: () => {
+        setStatus("ERROR");
+        trackEventWithWallet("prompt_purchase_failed", wallet?.address, {
+          promptId: itemId,
+          reasonCode: "purchase_error",
+        });
+      },
     },
   );
 
@@ -686,8 +720,26 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                   </div>
                 )}
               </div>
+              <div className="flex flex-wrap gap-3">
+                <label className="text-xs text-slate-400">Sort
+                  <select value={reviewSort} onChange={(event) => { setReviewSort(event.target.value as ReviewSort); setReviewPage(1); }} className="ml-2 rounded border border-white/10 bg-slate-900 p-2 text-slate-200" aria-label="Sort reviews">
+                    <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="helpful">Most helpful</option><option value="highest">Highest rated</option><option value="lowest">Lowest rated</option>
+                  </select>
+                </label>
+                <label className="text-xs text-slate-400">Rating
+                  <select value={reviewRating ?? ""} onChange={(event) => { setReviewRating(event.target.value ? Number(event.target.value) : undefined); setReviewPage(1); }} className="ml-2 rounded border border-white/10 bg-slate-900 p-2 text-slate-200" aria-label="Filter reviews by rating">
+                    <option value="">All ratings</option>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}
+                  </select>
+                </label>
+              </div>
             </div>
-            <ReviewList reviews={reviewData.reviews} isLoading={reviewsLoading} />
+            <ReviewList reviews={reviewData.reviews} isLoading={reviewsLoading} promptId={itemId} currentUserAddress={wallet?.address} onReviewUpdate={() => queryClient.invalidateQueries({ queryKey: ["reviews", itemId] })} />
+            {reviewData.pagination.totalPages > 1 && (
+              <div className="mt-5 flex items-center justify-between text-sm text-slate-400">
+                <span>Page {reviewData.pagination.page} of {reviewData.pagination.totalPages}</span>
+                <div className="flex gap-2"><button className="rounded border border-white/10 px-3 py-1 disabled:opacity-40" disabled={reviewPage === 1} onClick={() => setReviewPage((page) => page - 1)}>Previous</button><button className="rounded border border-white/10 px-3 py-1 disabled:opacity-40" disabled={!reviewData.pagination.hasMore} onClick={() => setReviewPage((page) => page + 1)}>Next</button></div>
+              </div>
+            )}
           </div>
         )}
       </div>
