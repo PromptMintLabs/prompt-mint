@@ -1,4 +1,4 @@
-use soroban_sdk::{contractevent, Address, Env};
+use soroban_sdk::{contractevent, Address, Env, String, Vec};
 
 #[contractevent]
 struct PromptCreated {
@@ -89,6 +89,33 @@ struct ListingExtended {
     #[topic]
     pub prompt_id: u128,
     pub new_expires_at: u64,
+}
+
+#[contractevent]
+struct SubscriptionConfigured {
+    #[topic]
+    pub creator: Address,
+    pub duration_secs: u64,
+    pub price: i128,
+    pub asset: Address,
+    pub active: bool,
+}
+
+#[contractevent]
+struct SubscriptionEligibilityUpdated {
+    #[topic]
+    pub prompt_id: u128,
+    pub eligible: bool,
+}
+
+#[contractevent]
+struct SubscriptionRenewed {
+    #[topic]
+    pub creator: Address,
+    pub subscriber: Address,
+    pub expires_at: u64,
+    pub paid_amount: i128,
+    pub renewal_count: u32,
 }
 
 pub struct Events;
@@ -210,4 +237,102 @@ impl Events {
         }
         .publish(env);
     }
+
+    pub fn emit_subscription_configured(
+        env: &Env,
+        creator: Address,
+        duration_secs: u64,
+        price: i128,
+        asset: Address,
+        active: bool,
+    ) {
+        SubscriptionConfigured {
+            creator,
+            duration_secs,
+            price,
+            asset,
+            active,
+        }
+        .publish(env);
+    }
+
+    pub fn emit_subscription_eligibility_updated(env: &Env, prompt_id: u128, eligible: bool) {
+        SubscriptionEligibilityUpdated {
+            prompt_id,
+            eligible,
+        }
+        .publish(env);
+    }
+
+    pub fn emit_subscription_renewed(
+        env: &Env,
+        creator: Address,
+        subscriber: Address,
+        expires_at: u64,
+        paid_amount: i128,
+        renewal_count: u32,
+    ) {
+        SubscriptionRenewed {
+            creator,
+            subscriber,
+            expires_at,
+            paid_amount,
+            renewal_count,
+        }
+        .publish(env);
+    }
+
+    // ─── #131: Content Classification Events ────────────────────────────────
+
+    pub fn emit_classification_set(
+        env: &Env,
+        prompt_id: u128,
+        classification: String,
+        safety_flags: Vec<String>,
+    ) {
+        ClassificationSet {
+            prompt_id,
+            classification,
+            safety_flags,
+        }
+        .publish(env);
+    }
+
+    pub fn emit_classification_overridden(
+        env: &Env,
+        prompt_id: u128,
+        moderator: Address,
+        classification: String,
+        safety_flags: Vec<String>,
+        reason: String,
+    ) {
+        ClassificationOverridden {
+            prompt_id,
+            moderator,
+            classification,
+            safety_flags,
+            reason,
+        }
+        .publish(env);
+    }
+}
+
+// ─── #131: Event Structs ───────────────────────────────────────────────────
+
+#[contractevent]
+struct ClassificationSet {
+    #[topic]
+    pub prompt_id: u128,
+    pub classification: String,
+    pub safety_flags: Vec<String>,
+}
+
+#[contractevent]
+struct ClassificationOverridden {
+    #[topic]
+    pub prompt_id: u128,
+    pub moderator: Address,
+    pub classification: String,
+    pub safety_flags: Vec<String>,
+    pub reason: String,
 }

@@ -1,6 +1,9 @@
 use super::events::Events;
 use super::storage::Storage;
-use super::types::{DataKey, Error, ListingConfig, Prompt, PromptHashTrait, Split};
+use super::types::{
+    ALL_CLASSIFICATIONS, DataKey, Error, ListingConfig, ClassificationOverride, Prompt,
+    PromptHashTrait, Split, Subscription, SubscriptionConfig, VALID_DISCLOSURE_FLAGS,
+};
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Vec};
 use stellar_access::ownable::{self as ownable, Ownable};
 use stellar_macros::{default_impl, only_owner};
@@ -17,6 +20,11 @@ const MAX_IMAGE_URL_LEN: u32 = 512;
 const MAX_IV_LEN: u32 = 64;
 const LEASE_PRICE_BPS: u32 = 4_000;
 const MAX_ACCESS_EXPIRY: u64 = u64::MAX;
+const MAX_SUBSCRIPTION_DURATION_SECS: u64 = 31_536_000;
+const MAX_CLASSIFICATION_LEN: u32 = 20;
+const MAX_SAFETY_FLAGS_COUNT: u32 = 10;
+const MAX_FLAG_LEN: u32 = 30;
+const MAX_REASON_LEN: u32 = 256;
 
 #[contract]
 pub struct PromptHashContract;
@@ -82,6 +90,10 @@ impl PromptHashTrait for PromptHashContract {
         // #50: validate revenue splits
         validate_splits(&env, &listing.splits)?;
 
+        // #131: default classification
+        let classification = String::from_str(&env, "general");
+        let safety_flags: Vec<String> = Vec::new(&env);
+
         let prompt_id = Storage::get_prompt_counter(&env);
         let prompt = Prompt {
             id: prompt_id,
@@ -101,6 +113,8 @@ impl PromptHashTrait for PromptHashContract {
             max_supply: 0,
             expires_at: listing.expires_at,
             splits: listing.splits,
+            classification,
+            safety_flags,
         };
 
         Storage::save_prompt(&env, &prompt)?;
@@ -367,7 +381,15 @@ impl PromptHashTrait for PromptHashContract {
     fn has_access(env: Env, user: Address, prompt_id: u128) -> Result<bool, Error> {
         let prompt = Storage::require_prompt(&env, prompt_id)?;
         let now = env.ledger().timestamp();
-        Ok(prompt.creator == user || Storage::has_active_purchase(&env, prompt_id, &user, now))
+        if prompt.creator == user || Storage::has_active_purchase(&env, prompt_id, &user, now) {
+            return Ok(true);
+        }
+        if !Storage::is_subscription_eligible(&env, prompt_id) {
+            return Ok(false);
+        }
+        Ok(Storage::get_subscription(&env, &user, &prompt.creator)
+            .map(|subscription| now < subscription.expires_at)
+            .unwrap_or(false))
     }
 
     fn get_prompt(env: Env, prompt_id: u128) -> Result<Prompt, Error> {
@@ -384,6 +406,92 @@ impl PromptHashTrait for PromptHashContract {
 
     fn get_prompts_by_buyer(env: Env, buyer: Address) -> Result<Vec<Prompt>, Error> {
         Ok(Storage::get_prompts_by_buyer(&env, &buyer))
+    }
+
+    fn configure_subscription_pass(
+        env: Env,
+        creator: Address,
+        duration_secs: u64,
+        price: i128,
+        asset: Address,
+        active: bool,
+    ) -> Result<(), Error> {
+        creator.require_auth();
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+        ensure(
+            duration_secs > 0 && duration_secs <= MAX_SUBSCRIPTION_DURATION_SECS,
+            Error::InvalidSubscriptionDuration,
+        )?;
+        ensure(price > 0, Error::InvalidSubscriptionPrice)?;
+        token::Client::new(&env, &asset).decimals();
+        Storage::save_subscription_config(
+            &env,
+            &SubscriptionConfig {
+                creator: creator.clone(),
+                duration_secs,
+                price,
+                asset: asset.clone(),
+                active,
+            },
+        );
+        Events::emit_subscription_configured(&env, creator, duration_secs, price, asset, active);
+        Ok(())
+    }
+
+    fn set_subscription_eligibility(
+        env: Env,
+        creator: Address,
+        prompt_id: u128,
+        eligible: bool,
+    ) -> Result<(), Error> {
+        creator.require_auth();
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        ensure(prompt.creator == creator, Error::Unauthorized)?;
+        Storage::set_subscription_eligibility(&env, prompt_id, eligible);
+        Events::emit_subscription_eligibility_updated(&env, prompt_id, eligible);
+        Ok(())
+    }
+
+    fn subscribe_catalog(
+        env: Env,
+        subscriber: Address,
+        creator: Address,
+        payment_amount: i128,
+    ) -> Result<u64, Error> {
+        subscriber.require_auth();
+        ensure(
+            Storage::get_subscription(&env, &subscriber, &creator).is_none(),
+            Error::AlreadyPurchased,
+        )?;
+        settle_subscription(&env, &subscriber, &creator, payment_amount, false)
+    }
+
+    fn renew_catalog_subscription(
+        env: Env,
+        subscriber: Address,
+        creator: Address,
+        payment_amount: i128,
+    ) -> Result<u64, Error> {
+        subscriber.require_auth();
+        settle_subscription(&env, &subscriber, &creator, payment_amount, true)
+    }
+
+    fn get_subscription(
+        env: Env,
+        subscriber: Address,
+        creator: Address,
+    ) -> Result<Subscription, Error> {
+        Storage::get_subscription(&env, &subscriber, &creator).ok_or(Error::SubscriptionNotFound)
+    }
+
+    fn get_subscription_config(env: Env, creator: Address) -> Result<SubscriptionConfig, Error> {
+        Storage::get_subscription_config(&env, &creator).ok_or(Error::SubscriptionConfigNotFound)
+    }
+
+    fn is_subscription_eligible(env: Env, prompt_id: u128) -> Result<bool, Error> {
+        Storage::require_prompt(&env, prompt_id)?;
+        Ok(Storage::is_subscription_eligible(&env, prompt_id))
     }
 
     #[only_owner]
@@ -484,6 +592,86 @@ impl PromptHashTrait for PromptHashContract {
         Storage::extend_key_ttl(&env, &key);
         Ok(())
     }
+
+    // ─── #131: Content Classification ──────────────────────────────────────
+
+    fn set_classification(
+        env: Env,
+        creator: Address,
+        prompt_id: u128,
+        classification: String,
+        safety_flags: Vec<String>,
+    ) -> Result<(), Error> {
+        creator.require_auth();
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+        let mut prompt = Storage::require_prompt(&env, prompt_id)?;
+        ensure(prompt.creator == creator, Error::Unauthorized)?;
+        validate_classification(&env, &classification)?;
+        validate_safety_flags(&env, &safety_flags)?;
+
+        prompt.classification = classification.clone();
+        prompt.safety_flags = safety_flags.clone();
+        Storage::update_prompt(&env, &prompt);
+        Events::emit_classification_set(&env, prompt_id, classification, safety_flags);
+        Ok(())
+    }
+
+    fn get_classification(env: Env, prompt_id: u128) -> Result<(String, Vec<String>), Error> {
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        Ok((prompt.classification, prompt.safety_flags))
+    }
+
+    fn set_moderator_override(
+        env: Env,
+        moderator: Address,
+        prompt_id: u128,
+        classification: String,
+        safety_flags: Vec<String>,
+        reason: String,
+    ) -> Result<(), Error> {
+        moderator.require_auth();
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+        let stored_moderator = Storage::get_moderator_address(&env)
+            .ok_or(Error::NotModerator)?;
+        ensure(moderator == stored_moderator, Error::NotModerator)?;
+        ensure(!reason.is_empty() && reason.len() <= MAX_REASON_LEN, Error::InvalidClassification)?;
+        validate_classification(&env, &classification)?;
+        validate_safety_flags(&env, &safety_flags)?;
+
+        let now = env.ledger().timestamp();
+        let override_entry = ClassificationOverride {
+            classifier: moderator.clone(),
+            classification: classification.clone(),
+            safety_flags: safety_flags.clone(),
+            reason: reason.clone(),
+            reviewed_at: now,
+        };
+        Storage::set_moderator_override(&env, prompt_id, &override_entry);
+        Events::emit_classification_overridden(
+            &env, prompt_id, moderator, classification, safety_flags, reason,
+        );
+        Ok(())
+    }
+
+    fn get_active_classification(env: Env, prompt_id: u128) -> Result<(String, Vec<String>), Error> {
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        // Moderator override takes precedence if it exists
+        if let Some(override_entry) = Storage::get_moderator_override(&env, prompt_id) {
+            return Ok((override_entry.classification, override_entry.safety_flags));
+        }
+        Ok((prompt.classification, prompt.safety_flags))
+    }
+
+    fn get_moderator_override(env: Env, prompt_id: u128) -> Result<ClassificationOverride, Error> {
+        Storage::get_moderator_override(&env, prompt_id).ok_or(Error::PromptNotFound)
+    }
+
+    #[only_owner]
+    fn set_moderator_address(env: Env, admin: Address, moderator: Address) -> Result<(), Error> {
+        admin.require_auth();
+        Storage::set_moderator_address(&env, &moderator);
+        Ok(())
+    }
 }
 
 #[default_impl]
@@ -491,6 +679,82 @@ impl PromptHashTrait for PromptHashContract {
 impl Ownable for PromptHashContract {}
 
 // ─── Core buy logic (shared by buy_prompt and buy_prompts_bulk) ──────────────
+
+fn settle_subscription(
+    env: &Env,
+    subscriber: &Address,
+    creator: &Address,
+    payment_amount: i128,
+    renewal: bool,
+) -> Result<u64, Error> {
+    ensure(!Storage::is_paused(env), Error::ContractIsPaused)?;
+    ensure(subscriber != creator, Error::CreatorCannotBuy)?;
+    let config =
+        Storage::get_subscription_config(env, creator).ok_or(Error::SubscriptionConfigNotFound)?;
+    ensure(config.active, Error::SubscriptionInactive)?;
+    ensure(
+        payment_amount == config.price,
+        Error::InvalidSubscriptionPrice,
+    )?;
+
+    let existing = Storage::get_subscription(env, subscriber, creator);
+    if renewal {
+        ensure(existing.is_some(), Error::SubscriptionNotFound)?;
+    }
+
+    Storage::set_reentrancy_guard(env)?;
+    let fee_wallet = Storage::get_fee_wallet(env).ok_or(Error::FeeWalletNotSet)?;
+    let fee_bps = Storage::get_fee_percentage(env);
+    ensure(fee_bps <= MAX_BPS, Error::InvalidFeePercentage)?;
+    let platform_amount = payment_amount
+        .checked_mul(fee_bps as i128)
+        .ok_or(Error::ArithmeticOverflow)?
+        / MAX_BPS as i128;
+    let creator_amount = payment_amount
+        .checked_sub(platform_amount)
+        .ok_or(Error::ArithmeticOverflow)?;
+    let this_contract = env.current_contract_address();
+    let asset_client = token::StellarAssetClient::new(env, &config.asset);
+    if creator_amount > 0 {
+        asset_client.transfer_from(&this_contract, subscriber, creator, &creator_amount);
+    }
+    if platform_amount > 0 {
+        asset_client.transfer_from(&this_contract, subscriber, &fee_wallet, &platform_amount);
+    }
+
+    let now = env.ledger().timestamp();
+    let base = existing
+        .as_ref()
+        .map(|subscription| subscription.expires_at.max(now))
+        .unwrap_or(now);
+    let expires_at = base
+        .checked_add(config.duration_secs)
+        .ok_or(Error::ArithmeticOverflow)?;
+    let renewal_count = existing
+        .map(|subscription| subscription.renewal_count)
+        .unwrap_or(0)
+        .checked_add(if renewal { 1 } else { 0 })
+        .ok_or(Error::ArithmeticOverflow)?;
+    Storage::save_subscription(
+        env,
+        &Subscription {
+            creator: creator.clone(),
+            subscriber: subscriber.clone(),
+            expires_at,
+            renewal_count,
+        },
+    );
+    Storage::clear_reentrancy_guard(env);
+    Events::emit_subscription_renewed(
+        env,
+        creator.clone(),
+        subscriber.clone(),
+        expires_at,
+        payment_amount,
+        renewal_count,
+    );
+    Ok(expires_at)
+}
 
 fn execute_buy(
     env: &Env,
@@ -730,4 +994,42 @@ fn ensure(condition: bool, error: Error) -> Result<(), Error> {
     } else {
         Err(error)
     }
+}
+
+// ─── #131: Classification validation helpers ────────────────────────────────
+
+fn validate_classification(env: &Env, classification: &String) -> Result<(), Error> {
+    ensure(
+        !classification.is_empty() && classification.len() <= MAX_CLASSIFICATION_LEN,
+        Error::InvalidClassification,
+    )?;
+    let mut valid = false;
+    for &cat in ALL_CLASSIFICATIONS {
+        if &String::from_str(env, cat) == classification {
+            valid = true;
+            break;
+        }
+    }
+    ensure(valid, Error::InvalidClassification)?;
+    Ok(())
+}
+
+fn validate_safety_flags(env: &Env, flags: &Vec<String>) -> Result<(), Error> {
+    ensure(
+        flags.len() <= MAX_SAFETY_FLAGS_COUNT,
+        Error::InvalidSafetyFlagsLength,
+    )?;
+    for i in 0..flags.len() {
+        let flag = flags.get(i).unwrap();
+        ensure(!flag.is_empty() && flag.len() <= MAX_FLAG_LEN, Error::InvalidDisclosureFlags)?;
+        // Allow "none" only as the sole flag
+        if flag == String::from_str(env, "none") {
+            ensure(flags.len() == 1, Error::InvalidDisclosureFlags)?;
+        }
+        let is_valid = VALID_DISCLOSURE_FLAGS
+            .iter()
+            .any(|f| String::from_str(env, f) == flag);
+        ensure(is_valid, Error::InvalidDisclosureFlags)?;
+    }
+    Ok(())
 }

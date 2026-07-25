@@ -5,6 +5,8 @@ import {
   LockKeyhole,
   ShieldCheck,
   TrendingUp,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,10 +69,28 @@ export const PromptCard = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-60" />
 
-        <div className="absolute top-4 left-4 flex gap-2">
+        <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
           <Badge className="bg-slate-950/80 backdrop-blur-md border-white/10 text-slate-200 hover:bg-slate-900">
             {prompt.category}
           </Badge>
+          {prompt.classification && prompt.classification !== "general" && (
+            <Badge
+              className={`backdrop-blur-md border text-xs ${
+                prompt.classification === "restricted"
+                  ? "bg-rose-950/80 border-rose-500/30 text-rose-300"
+                  : prompt.classification === "sensitive"
+                    ? "bg-amber-950/80 border-amber-500/30 text-amber-300"
+                    : "bg-slate-950/80 border-white/10 text-slate-200"
+              }`}
+            >
+              {prompt.classification === "sensitive" || prompt.classification === "restricted" ? (
+                <AlertTriangle className="h-3 w-3 mr-1" />
+              ) : (
+                <Info className="h-3 w-3 mr-1" />
+              )}
+              {prompt.classification.charAt(0).toUpperCase() + prompt.classification.slice(1)}
+            </Badge>
+          )}
           {isBestSeller && (
             <Badge className="bg-emerald-500 text-slate-950 border-none font-bold">
               <TrendingUp className="h-3 w-3 mr-1" /> Best Seller
@@ -146,6 +166,22 @@ export const PromptCard = ({
               <ShieldCheck className="h-3 w-3 text-amber-400" />
               Verified
             </span>
+          )}
+
+          {/* #131 – Safety Disclosure Flags */}
+          {prompt.safetyFlags && prompt.safetyFlags.length > 0 && !prompt.safetyFlags.includes("none") && (
+            <>
+              {prompt.safetyFlags.map((flag) => (
+                <span
+                  key={flag}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                  data-testid={`badge-safety-${flag}`}
+                >
+                  <ShieldCheck className="h-3 w-3 text-cyan-400" />
+                  {flag.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                </span>
+              ))}
+            </>
           )}
         </div>
 

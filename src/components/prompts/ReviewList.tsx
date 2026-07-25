@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StarRating } from "./StarRating";
-import { User, ThumbsUp, MessageSquare } from "lucide-react";
+import { User, ThumbsUp, MessageSquare, Pencil } from "lucide-react";
 import { ReviewClient, type Review } from "../../lib/reviews/reviewClient";
 import { Button } from "../ui/button";
 
@@ -59,6 +59,10 @@ export const ReviewList = ({
   const [respondToReviewId, setRespondToReviewId] = useState<string | null>(null);
   const [responseText, setResponseText] = useState("");
   const [responseLoading, setResponseLoading] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editRating, setEditRating] = useState(0);
+  const [editLoading, setEditLoading] = useState(false);
 
   const handleVote = async (reviewId: string) => {
     if (!currentUserAddress || !promptId) return;
@@ -91,6 +95,17 @@ export const ReviewList = ({
     } finally {
       setResponseLoading(false);
     }
+  };
+
+  const handleEdit = async (reviewId: string) => {
+    if (!currentUserAddress || !promptId) return;
+    setEditLoading(true); setVoteError(null);
+    try {
+      await ReviewClient.editReview(promptId, reviewId, currentUserAddress, editRating, editText.trim());
+      setEditingReviewId(null); setEditText(""); onReviewUpdate?.();
+    } catch (err) {
+      setVoteError(err instanceof Error ? err.message : "Failed to edit review");
+    } finally { setEditLoading(false); }
   };
 
   if (isLoading) {
@@ -159,6 +174,7 @@ export const ReviewList = ({
                 </div>
                 <span className="text-xs text-slate-500">
                   {formatDate(review.createdAt)}
+                  {review.editedAt ? " (edited)" : ""}
                 </span>
               </div>
             </div>
@@ -198,6 +214,20 @@ export const ReviewList = ({
               </span>
             )}
           </div>
+
+          {currentUserAddress?.toLowerCase() === review.userAddress.toLowerCase() && promptId && editingReviewId !== review.id && (
+            <button onClick={() => { setEditingReviewId(review.id); setEditText(review.text); setEditRating(review.rating); }} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-emerald-400">
+              <Pencil className="h-3.5 w-3.5" /> Edit review
+            </button>
+          )}
+
+          {editingReviewId === review.id && (
+            <div className="mt-4 space-y-3">
+              <StarRating rating={editRating} onRatingChange={setEditRating} size="sm" />
+              <textarea value={editText} onChange={(e) => setEditText(e.target.value)} maxLength={500} className="w-full min-h-[100px] p-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm resize-none" aria-label="Edit review" />
+              <div className="flex gap-2"><Button size="sm" onClick={() => handleEdit(review.id)} disabled={editLoading || editRating < 1 || editText.trim().length < 10} className="bg-emerald-500 text-slate-950">{editLoading ? "Saving..." : "Save changes"}</Button><Button size="sm" variant="ghost" onClick={() => setEditingReviewId(null)}>Cancel</Button></div>
+            </div>
+          )}
 
           {review.sellerResponse && (
             <div className="mt-4 ml-6 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">

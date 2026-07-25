@@ -22,11 +22,13 @@ import {
   DollarSign,
   ShoppingBag,
   Hash,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { ReviewForm } from "../../components/prompts/ReviewForm";
 import { ReviewList } from "../../components/prompts/ReviewList";
 import { StarRating } from "../../components/prompts/StarRating";
-import { ReviewClient } from "../../lib/reviews/reviewClient";
+import { ReviewClient, type ReviewSort } from "../../lib/reviews/reviewClient";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { browserStellarConfig } from "../../lib/stellar/browserConfig";
 import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBanner";
@@ -34,6 +36,7 @@ import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
 import { CurrencyPrice } from "../../components/CurrencyPrice";
 import { useNetworkState } from "@/hooks/useNetworkState";
 import { trackEventWithWallet } from "../../lib/analytics/track";
+import { useTrackPromptView } from "@/hooks/useRecentlyViewed";
 
 export type BuyerStatus =
   | "IDLE"
@@ -119,7 +122,53 @@ const PromptMetadataSection: React.FC<{ itemId: string; status: BuyerStatus }> =
             {prompt.contentHash.slice(0, 8)}...
           </p>
         </div>
+
+        {/* #131 – Classification */}
+        {prompt.classification && (
+          <div className="p-3 rounded-lg bg-white/5 border border-white/5">
+            <div className="flex items-center gap-2 mb-1">
+              {prompt.classification === "sensitive" || prompt.classification === "restricted" ? (
+                <AlertTriangle className="h-3 w-3 text-slate-400" />
+              ) : (
+                <Info className="h-3 w-3 text-slate-400" />
+              )}
+              <p className="text-xs text-slate-400">Classification</p>
+            </div>
+            <p className={`text-sm font-bold ${
+              prompt.classification === "restricted"
+                ? "text-rose-400"
+                : prompt.classification === "sensitive"
+                  ? "text-amber-400"
+                  : "text-white"
+            }`}>
+              {prompt.classification.charAt(0).toUpperCase() + prompt.classification.slice(1)}
+            </p>
+          </div>
+        )}
       </div>
+
+      {/* #131 – Safety Disclosures */}
+      {prompt.safetyFlags && prompt.safetyFlags.length > 0 && !prompt.safetyFlags.includes("none") && (
+        <div className="p-4 rounded-xl bg-cyan-500/5 border border-cyan-500/20">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck className="h-4 w-4 text-cyan-400" />
+            <p className="text-xs uppercase tracking-wider text-cyan-400 font-semibold">Safety Disclosures</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {prompt.safetyFlags.map((flag) => (
+              <span
+                key={flag}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20"
+              >
+                {flag.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+              </span>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            These disclosures are attested by the creator. Content may be subject to moderation review.
+          </p>
+        </div>
+      )}
 
       {/* Purchase State Indicator */}
       {isPurchased && (
@@ -153,6 +202,9 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   const [secretContent, setSecretContent] = useState<string>("");
   const [isCheckingAccess, setIsCheckingAccess] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewSort, setReviewSort] = useState<ReviewSort>("newest");
+  const [reviewRating, setReviewRating] = useState<number | undefined>();
   const [copyFeedback, setCopyFeedback] = useState<{
     visible: boolean;
     success: boolean;
@@ -164,10 +216,13 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const lastActiveElementRef = useRef<HTMLElement | null>(null);
 
+  // Track this prompt view in recently viewed (privacy-controlled)
+  useTrackPromptView(wallet?.address ?? null, itemId, isOpen);
+
   // Fetch reviews for this prompt
   const { data: reviewData, isLoading: reviewsLoading } = useQuery({
-    queryKey: ["reviews", itemId],
-    queryFn: () => ReviewClient.getReviews(itemId),
+    queryKey: ["reviews", itemId, reviewPage, reviewSort, reviewRating],
+    queryFn: () => ReviewClient.getReviews(itemId, { page: reviewPage, limit: 10, sort: reviewSort, rating: reviewRating }),
     enabled: isOpen,
   });
 
@@ -642,8 +697,26 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                   </div>
                 )}
               </div>
+              <div className="flex flex-wrap gap-3">
+                <label className="text-xs text-slate-400">Sort
+                  <select value={reviewSort} onChange={(event) => { setReviewSort(event.target.value as ReviewSort); setReviewPage(1); }} className="ml-2 rounded border border-white/10 bg-slate-900 p-2 text-slate-200" aria-label="Sort reviews">
+                    <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="helpful">Most helpful</option><option value="highest">Highest rated</option><option value="lowest">Lowest rated</option>
+                  </select>
+                </label>
+                <label className="text-xs text-slate-400">Rating
+                  <select value={reviewRating ?? ""} onChange={(event) => { setReviewRating(event.target.value ? Number(event.target.value) : undefined); setReviewPage(1); }} className="ml-2 rounded border border-white/10 bg-slate-900 p-2 text-slate-200" aria-label="Filter reviews by rating">
+                    <option value="">All ratings</option>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}
+                  </select>
+                </label>
+              </div>
             </div>
-            <ReviewList reviews={reviewData.reviews} isLoading={reviewsLoading} />
+            <ReviewList reviews={reviewData.reviews} isLoading={reviewsLoading} promptId={itemId} currentUserAddress={wallet?.address} onReviewUpdate={() => queryClient.invalidateQueries({ queryKey: ["reviews", itemId] })} />
+            {reviewData.pagination.totalPages > 1 && (
+              <div className="mt-5 flex items-center justify-between text-sm text-slate-400">
+                <span>Page {reviewData.pagination.page} of {reviewData.pagination.totalPages}</span>
+                <div className="flex gap-2"><button className="rounded border border-white/10 px-3 py-1 disabled:opacity-40" disabled={reviewPage === 1} onClick={() => setReviewPage((page) => page - 1)}>Previous</button><button className="rounded border border-white/10 px-3 py-1 disabled:opacity-40" disabled={!reviewData.pagination.hasMore} onClick={() => setReviewPage((page) => page + 1)}>Next</button></div>
+              </div>
+            )}
           </div>
         )}
       </div>

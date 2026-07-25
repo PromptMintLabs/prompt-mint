@@ -1,4 +1,4 @@
-use super::types::{DataKey, Error, Prompt, Purchase};
+use super::types::{DataKey, Error, ClassificationOverride, Prompt, Purchase, Subscription, SubscriptionConfig};
 use soroban_sdk::{token, Address, BytesN, Env, Vec};
 
 pub const DAY_IN_LEDGERS: u32 = 17280;
@@ -204,6 +204,58 @@ impl Storage {
         Self::get_purchase(env, prompt_id, owner).ok_or(Error::LicenseNotFound)
     }
 
+    pub fn save_subscription_config(env: &Env, config: &SubscriptionConfig) {
+        let key = DataKey::SubscriptionConfig(config.creator.clone());
+        env.storage().persistent().set(&key, config);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_subscription_config(env: &Env, creator: &Address) -> Option<SubscriptionConfig> {
+        let key = DataKey::SubscriptionConfig(creator.clone());
+        let config = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        config
+    }
+
+    pub fn save_subscription(env: &Env, subscription: &Subscription) {
+        let key = DataKey::Subscription(
+            subscription.subscriber.clone(),
+            subscription.creator.clone(),
+        );
+        env.storage().persistent().set(&key, subscription);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_subscription(
+        env: &Env,
+        subscriber: &Address,
+        creator: &Address,
+    ) -> Option<Subscription> {
+        let key = DataKey::Subscription(subscriber.clone(), creator.clone());
+        let subscription = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        subscription
+    }
+
+    pub fn set_subscription_eligibility(env: &Env, prompt_id: u128, eligible: bool) {
+        let key = DataKey::SubscriptionEligible(prompt_id);
+        env.storage().persistent().set(&key, &eligible);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn is_subscription_eligible(env: &Env, prompt_id: u128) -> bool {
+        let key = DataKey::SubscriptionEligible(prompt_id);
+        let eligible = env.storage().persistent().get(&key).unwrap_or(false);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        eligible
+    }
+
     pub fn grant_purchase(
         env: &Env,
         prompt: &Prompt,
@@ -346,5 +398,37 @@ impl Storage {
             Self::extend_key_ttl(env, &key);
         }
         discount
+    }
+
+    // ─── #131: Content Classification ───────────────────────────────────────
+
+    pub fn set_moderator_override(env: &Env, prompt_id: u128, override_entry: &ClassificationOverride) {
+        let key = DataKey::ClassificationOverride(prompt_id);
+        env.storage().persistent().set(&key, override_entry);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_moderator_override(env: &Env, prompt_id: u128) -> Option<ClassificationOverride> {
+        let key = DataKey::ClassificationOverride(prompt_id);
+        let override_entry = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        override_entry
+    }
+
+    pub fn set_moderator_address(env: &Env, moderator: &Address) {
+        let key = DataKey::ModeratorAddress;
+        env.storage().persistent().set(&key, moderator);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_moderator_address(env: &Env) -> Option<Address> {
+        let key = DataKey::ModeratorAddress;
+        let addr = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        addr
     }
 }
