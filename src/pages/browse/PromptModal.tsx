@@ -35,6 +35,7 @@ import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBa
 import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
 import { CurrencyPrice } from "../../components/CurrencyPrice";
 import { useNetworkState } from "@/hooks/useNetworkState";
+import { GiftPrompt, type GiftPromptData } from "../../components/GiftPrompt";
 import { trackEventWithWallet } from "../../lib/analytics/track";
 import { useTrackPromptView } from "@/hooks/useRecentlyViewed";
 
@@ -211,11 +212,20 @@ export const PromptModal: React.FC<PromptModalProps> = ({
     message: string;
   }>({ visible: false, success: false, message: "" });
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showGiftModal, setShowGiftModal] = useState(false);
 
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const lastActiveElementRef = useRef<HTMLElement | null>(null);
 
+  // Fetch prompt data for gift modal
+  const { data: promptData } = useQuery({
+    queryKey: ["prompt-detail", itemId],
+    queryFn: async () => {
+      return await PromptHashClient.getPrompt(browserStellarConfig, BigInt(itemId));
+    },
+    enabled: isOpen && showGiftModal,
+  });
   // Track this prompt view in recently viewed (privacy-controlled)
   useTrackPromptView(wallet?.address ?? null, itemId, isOpen);
 
@@ -478,20 +488,33 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                     />
                   )}
 
-                  <button
-                    onClick={() => runPurchase().catch(() => {})}
-                    disabled={
-                      isPurchasing ||
-                      !networkState.canTrustConfirmation ||
-                      detectNetworkMismatch(!!wallet?.address, wallet?.network, wallet?.status).type !== "correct"
-                    }
-                    className="group w-full h-14 bg-white text-slate-950 hover:bg-emerald-400 font-black rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {!networkState.canTrustConfirmation
-                      ? "Transactions Unavailable"
-                      : "Confirm & Purchase"}{" "}
-                    <Wallet className="w-4 h-4" />
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => runPurchase().catch(() => {})}
+                      disabled={
+                        isPurchasing ||
+                        !networkState.canTrustConfirmation ||
+                        detectNetworkMismatch(!!wallet?.address, wallet?.network, wallet?.status).type !== "correct"
+                      }
+                      className="flex-1 group h-14 bg-white text-slate-950 hover:bg-emerald-400 font-black rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {!networkState.canTrustConfirmation
+                        ? "Transactions Unavailable"
+                        : "Confirm & Purchase"}{" "}
+                      <Wallet className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setShowGiftModal(true)}
+                      disabled={
+                        !wallet?.address ||
+                        !networkState.canTrustConfirmation
+                      }
+                      className="h-14 px-6 border-2 border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 font-bold rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-purple-300"
+                    >
+                      <Gift className="w-4 h-4" />
+                      Gift
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -720,6 +743,30 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           </div>
         )}
       </div>
+
+      {/* Gift Modal */}
+      {showGiftModal && promptData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-md">
+          <div className="relative max-h-[94vh] w-full max-w-md overflow-y-auto rounded-[28px] border border-white/10 bg-slate-900 shadow-2xl">
+            <GiftPrompt
+              prompt={{
+                id: promptData.id.toString(),
+                title: promptData.title,
+                priceStroops: promptData.priceStroops,
+                imageUrl: promptData.imageUrl,
+                category: promptData.category,
+                creator: promptData.creator,
+                previewText: promptData.previewText,
+              }}
+              onClose={() => setShowGiftModal(false)}
+              onSuccess={() => {
+                setShowGiftModal(false);
+                onRefresh?.();
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
