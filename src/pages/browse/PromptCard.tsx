@@ -2,6 +2,7 @@ import {
   ArrowUpRight,
   Bookmark,
   BookmarkCheck,
+  Heart,
   LockKeyhole,
   ShieldCheck,
   TrendingUp,
@@ -29,15 +30,17 @@ export const PromptCard = ({
   isSaved,
   isSaving,
   onToggleSave,
+  isFavorited,
+  onToggleFavorite,
 }: {
   prompt: PromptRecord;
   hasAccess: boolean;
-  // eslint-disable-next-line no-unused-vars
   openModal: (_prompt: PromptRecord) => void;
   isSaved: boolean;
   isSaving: boolean;
-  // eslint-disable-next-line no-unused-vars
   onToggleSave: (_prompt: PromptRecord) => void;
+  isFavorited?: boolean;
+  onToggleFavorite?: (_prompt: PromptRecord) => void;
 }) => {
   const isBestSeller = prompt.salesCount >= 10;
 
@@ -146,6 +149,22 @@ export const PromptCard = ({
             <GitCompare className="mr-1.5 h-3.5 w-3.5" />
             {inComparison ? "Comparing" : "Compare"}
           </Button>
+          {onToggleFavorite && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 rounded-full border border-white/10 bg-slate-950/75 px-3 text-xs text-white shadow-lg backdrop-blur-md hover:bg-slate-900"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleFavorite(prompt);
+              }}
+              aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Heart
+                className={`mr-1.5 h-3.5 w-3.5 ${isFavorited ? "fill-rose-400 text-rose-400" : ""}`}
+              />
+            </Button>
+          )}
           <Button
             size="sm"
             variant="secondary"

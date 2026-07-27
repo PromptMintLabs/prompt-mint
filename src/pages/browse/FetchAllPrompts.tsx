@@ -12,6 +12,7 @@ import {
   PackageSearch,
   Loader2,
   BookmarkCheck,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/useWallet";
@@ -41,6 +42,7 @@ import { invalidateAllPromptQueries } from "@/hooks/useContractSync";
 import { parsePromptIdParam } from "@/lib/marketplace/shareUrls";
 import { PromptCardSkeleton } from "@/components/MarketplaceSkeletons";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useFavorites } from "@/hooks/useFavorites";
 
 const ITEMS_PER_PAGE = 9;
 const ENABLE_INFINITE_SCROLL = true;
@@ -84,6 +86,9 @@ const FetchAllPrompts = ({
   const [savingPromptId, setSavingPromptId] = useState<string | null>(null);
   const [cacheNotice, setCacheNotice] = useState<string | null>(null);
   const [cachedEntry, setCachedEntry] = useState(() => readMarketplaceReadCache());
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+  const favorites = useFavorites(address);
 
   const promptsQuery = useQuery({
     queryKey: ["marketplace-prompts"],
@@ -244,9 +249,27 @@ const FetchAllPrompts = ({
     }
   };
 
+  const handleToggleFavorite = (prompt: PromptRecord) => {
+    favorites.toggle(prompt.id.toString());
+  };
+
+  const isFavorited = (promptId: string) => favorites.isFavorite(promptId);
+
+  const favoritePromptIds = useMemo(() => new Set(favorites.favorites), [favorites.favorites]);
+
   const filteredPrompts = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
-    const prompts = (promptsQuery.data ?? []).filter((prompt) => {
+    const allPrompts = promptsQuery.data ?? [];
+
+    // When favorites-only is active, show ALL favorited prompts (including inactive)
+    if (showFavoritesOnly && address) {
+      const favIds = favorites.favorites;
+      return allPrompts
+        .filter((prompt) => favIds.includes(prompt.id.toString()))
+        .sort((a, b) => Number(b.id - a.id));
+    }
+
+    const prompts = allPrompts.filter((prompt) => {
       const promptPrice = parseXlmNumber(prompt.priceStroops);
       const matchesCategory =
         !selectedCategory || prompt.category === selectedCategory;
@@ -418,7 +441,22 @@ const FetchAllPrompts = ({
             </div>
           )}
         </div>
-        {savedPromptIds.size > 0 && (
+        {address && (
+          <button
+            onClick={() => setShowFavoritesOnly((prev) => !prev)}
+            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+              showFavoritesOnly
+                ? "bg-rose-500/20 border-rose-500/40 text-rose-300"
+                : "bg-slate-500/10 border-slate-500/20 text-slate-400 hover:text-white"
+            }`}
+            aria-label={showFavoritesOnly ? "Show all prompts" : "Show favorites only"}
+            aria-pressed={showFavoritesOnly}
+          >
+            <Heart className={`h-3.5 w-3.5 ${showFavoritesOnly ? "fill-rose-400 text-rose-400" : ""}`} />
+            {favorites.count > 0 ? `${favorites.count} favorited` : "Favorites"}
+          </button>
+        )}
+        {savedPromptIds.size > 0 && !showFavoritesOnly && (
           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
             <BookmarkCheck className="h-3.5 w-3.5" />
             {savedPromptIds.size} bookmarked
@@ -448,6 +486,16 @@ const FetchAllPrompts = ({
       )}
 
       {filteredPrompts.length === 0 ? (
+        showFavoritesOnly ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <Heart className="h-12 w-12 text-rose-400/50 mb-4" />
+            <h3 className="text-lg font-semibold text-white mb-2">No favorites yet</h3>
+            <p className="text-sm text-slate-400 max-w-md">
+              Browse the marketplace and click the heart icon on prompts you'd like to save.
+              Your favorites follow your wallet across devices.
+            </p>
+          </div>
+        ) : (
         <EmptyState
           variant={searchQuery || selectedCategory || selectedTag ? "search-empty" : "no-results"}
           title={searchQuery || selectedCategory || selectedTag ? "No matching prompts" : "No prompts found"}
@@ -470,6 +518,8 @@ const FetchAllPrompts = ({
                 isSaved={savedPromptIds.has(prompt.id.toString())}
                 isSaving={savingPromptId === prompt.id.toString()}
                 onToggleSave={handleToggleSave}
+                isFavorited={isFavorited(prompt.id.toString())}
+                onToggleFavorite={Boolean(address) ? handleToggleFavorite : undefined}
               />
             ))}
           </div>
