@@ -1,5 +1,3 @@
-import { describe, it, expect, vi } from "vitest";
-
 describe("Indexer Reconciliation", () => {
   describe("Price Reconciliation", () => {
     it("should detect price mismatch", () => {

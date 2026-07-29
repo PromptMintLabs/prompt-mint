@@ -62,6 +62,9 @@ marketplaceTransactionSchema.index(
   { buyerWallet: 1, promptOnChainId: 1, txHash: 1 },
   { unique: true, sparse: true },
 );
+marketplaceTransactionSchema.index({ buyerWallet: 1, occurredAt: -1 });
+marketplaceTransactionSchema.index({ creatorWallet: 1, occurredAt: -1 });
+marketplaceTransactionSchema.index({ promptOnChainId: 1, occurredAt: -1 });
 
 const MarketplaceTransaction =
   mongoose.models.MarketplaceTransaction ||

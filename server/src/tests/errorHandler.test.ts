@@ -1,4 +1,5 @@
 import { AppError } from "../lib/AppError";
+import { asyncRoute } from "../lib/asyncRoute";
 
 describe("AppError", () => {
   it("creates an error with message, status, and optional code", () => {
@@ -19,7 +20,6 @@ describe("AppError", () => {
 
 describe("asyncRoute", () => {
   it("catches thrown errors and passes them to next", async () => {
-    const { asyncRoute } = await import("../lib/asyncRoute");
     const next = jest.fn();
     const req = {} as any;
     const res = {} as any;
@@ -33,7 +33,6 @@ describe("asyncRoute", () => {
   });
 
   it("passes successful handlers through", async () => {
-    const { asyncRoute } = await import("../lib/asyncRoute");
     const next = jest.fn();
     const req = {} as any;
     const res = {} as any;

@@ -1,5 +1,3 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-
 describe("Pre-Publish Review Workflow", () => {
   describe("Submit for Review", () => {
     it("should transition draft to ready status", async () => {
@@ -11,7 +9,7 @@ describe("Pre-Publish Review Workflow", () => {
         price: 10,
         category: "Programming",
         reviewChecklist: {},
-        save: vi.fn(),
+        save: jest.fn(),
       };
 
       mockPrompt.reviewChecklist = {
@@ -37,7 +35,7 @@ describe("Pre-Publish Review Workflow", () => {
 
     it("should reject empty content", () => {
       const content = "";
-      const isValid = content && content.length >= 10;
+      const isValid = Boolean(content) && content.length >= 10;
       expect(isValid).toBe(false);
     });
 

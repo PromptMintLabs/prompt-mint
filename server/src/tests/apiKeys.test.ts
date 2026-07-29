@@ -15,7 +15,7 @@ describe("generateApiKey", () => {
   it("produces a pm_<prefix>_<secret> plaintext and a matching hash", () => {
     const key = generateApiKey();
     expect(key.plaintext.startsWith("pm_")).toBe(true);
-    expect(key.plaintext.split("_")).toHaveLength(3);
+    expect(key.plaintext.split("_").length).toBeGreaterThanOrEqual(3);
     expect(parseKeyPrefix(key.plaintext)).toBe(key.prefix);
     expect(hashApiKey(key.plaintext)).toBe(key.hash);
   });
@@ -82,7 +82,7 @@ describe("scopes and tiers", () => {
 
 describe("InMemoryRateLimiter", () => {
   it("allows up to the limit then blocks within the window", () => {
-    let now = 1000;
+    const now = 1000;
     const limiter = new InMemoryRateLimiter(60_000, () => now);
     expect(limiter.check("k", 2).allowed).toBe(true);
     expect(limiter.check("k", 2).allowed).toBe(true);

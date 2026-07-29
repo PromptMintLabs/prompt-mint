@@ -9,7 +9,7 @@ import {
   validateListingMetadata,
 } from "../services/listingValidation";
 import { cacheGet, cacheSet, cacheDel, cacheDelPattern, CACHE_KEYS } from "../services/cacheService";
-import { getCircuitBreaker } from "../services/circuitBreaker";
+import { getCircuitBreaker, CircuitBreakerOpenError } from "../services/circuitBreaker";
 import { isValidAdminToken } from "../services/adminAuth";
 import { AppError } from "../lib/AppError";
 import { asyncRoute } from "../lib/asyncRoute";
@@ -28,29 +28,39 @@ export const ImproveProxy = asyncRoute(async (req, res) => {
 
   console.log("Improve prompt request: ", promptText);
 
-  const response = await improveProxyBreaker.execute(() =>
-    fetch(`${API_BASE_URL}/api/improve-prompt`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain",
-        Accept: "application/json",
-      },
-      body: promptText,
-      signal: AbortSignal.timeout(10_000),
-    }),
-  );
+  try {
+    const response = await improveProxyBreaker.execute(() =>
+      fetch(`${API_BASE_URL}/api/improve-prompt`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain",
+          Accept: "application/json",
+        },
+        body: promptText,
+        signal: AbortSignal.timeout(10_000),
+      }),
+    );
 
-  const responseData = await response.json().catch(() => {});
-  const responseText = await response.text().catch(() => {});
+    const responseData = await response.json().catch(() => {});
+    const responseText = await response.text().catch(() => {});
 
-  console.log("Improve prompt response status:", response.status);
-  console.log("Improve prompt response data:", responseData || responseText);
+    console.log("Improve prompt response status:", response.status);
+    console.log("Improve prompt response data:", responseData || responseText);
 
-  if (!response.ok) {
-    throw new AppError("API Error", response.status);
+    if (!response.ok) {
+      throw new AppError("API Error", response.status);
+    }
+
+    res.json(responseData);
+  } catch (error) {
+    if (error instanceof CircuitBreakerOpenError) {
+      throw new AppError("Service Unavailable", 503, "CIRCUIT_OPEN");
+    }
+    if (error instanceof Error && (error.name === "AbortError" || error.message.includes("aborted"))) {
+      throw new AppError("Gateway Timeout", 504, "GATEWAY_TIMEOUT");
+    }
+    throw error;
   }
-
-  res.json(responseData);
 });
 
 /* PROMPTS CONTROLLERS */

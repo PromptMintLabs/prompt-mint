@@ -139,6 +139,18 @@ const promptSchema = new mongoose.Schema(
 );
 promptSchema.index({ title: 1 });
 
+// Marketplace query patterns — compound indexes for common filters + sort
+promptSchema.index({ listingStatus: 1, isActive: 1, createdAt: -1 });
+promptSchema.index({ listingStatus: 1, isActive: 1, category: 1, createdAt: -1 });
+promptSchema.index({ listingStatus: 1, isActive: 1, tags: 1, createdAt: -1 });
+promptSchema.index({ listingStatus: 1, isActive: 1, price: 1, createdAt: -1 });
+promptSchema.index({ listingStatus: 1, isActive: 1, rating: 1, createdAt: -1 });
+promptSchema.index({ owner: 1, createdAt: -1 });
+promptSchema.index({ owner: 1, listingStatus: 1, updatedAt: -1 });
+promptSchema.index({ savedPrompts: 1, createdAt: -1 });
+promptSchema.index({ owner: 1, previewCount: -1 });
+promptSchema.index({ onChainId: 1, isActive: 1 });
+
 // Check if the model exists before creating it
 const Prompt = mongoose.models.Prompt || mongoose.model("Prompt", promptSchema);
 
