@@ -2,9 +2,10 @@ use super::events::Events;
 use super::storage::Storage;
 use super::types::{
     Bundle, BundlePurchase, ClassificationOverride, DataKey, Error, ListingConfig,
-    PriceHistoryEntry, Prompt, PromptEncryptedPayload, PromptHashTrait, Purchase, ReferralCode,
-    Settlement, Split, Stake, Subscription, SubscriptionConfig, ALL_CLASSIFICATIONS,
-    MAX_BUNDLE_DESC_LEN, MAX_BUNDLE_ITEMS, MAX_BUNDLE_TITLE_LEN, VALID_DISCLOSURE_FLAGS,
+    PriceHistoryEntry, Prompt, PromptEncryptedPayload, PromptHashTrait, PromptInput, Purchase,
+    ReferralCode, Settlement, Split, Stake, Subscription, SubscriptionConfig,
+    Discount, ALL_CLASSIFICATIONS, MAX_BUNDLE_DESC_LEN, MAX_BUNDLE_ITEMS, MAX_BUNDLE_TITLE_LEN,
+    VALID_DISCLOSURE_FLAGS,
 };
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Vec};
 use stellar_access::ownable::{self as ownable, Ownable};
@@ -164,6 +165,93 @@ impl PromptHashTrait for PromptHashContract {
         );
         Events::emit_prompt_created(&env, prompt_id, creator, listing.price, listing.asset);
         Ok(prompt_id)
+    }
+
+    fn create_prompt_batch(
+        env: Env,
+        creator: Address,
+        prompts: Vec<PromptInput>,
+    ) -> Result<Vec<u128>, Error> {
+        creator.require_auth();
+        Storage::require_no_reentrancy(&env)?;
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+        ensure(!prompts.is_empty(), Error::InvalidPrice)?;
+
+        let mut ids = Vec::new(&env);
+        for input in prompts.iter() {
+            validate_prompt_fields(
+                &input.image_url,
+                &input.title,
+                &input.category,
+                &input.preview_text,
+                &input.encrypted_prompt,
+                &input.encryption_iv,
+                &input.wrapped_key,
+                input.listing.price,
+            )?;
+
+            validate_token_contract(&env, &input.listing.asset)?;
+
+            if input.listing.expires_at != 0 {
+                ensure(
+                    input.listing.expires_at > env.ledger().timestamp(),
+                    Error::InvalidPrice,
+                )?;
+            }
+
+            validate_splits(&env, &input.listing.splits)?;
+
+            let classification = String::from_str(&env, "general");
+            let safety_flags: Vec<String> = Vec::new(&env);
+
+            let prompt_id = Storage::get_prompt_counter(&env);
+            let prompt = Prompt {
+                id: prompt_id,
+                creator: creator.clone(),
+                image_url: input.image_url.clone(),
+                title: input.title.clone(),
+                category: input.category.clone(),
+                preview_text: input.preview_text.clone(),
+                encrypted_prompt: input.encrypted_prompt.clone(),
+                encryption_iv: input.encryption_iv.clone(),
+                wrapped_key: input.wrapped_key.clone(),
+                content_hash: input.content_hash.clone(),
+                price_stroops: input.listing.price,
+                asset: input.listing.asset.clone(),
+                active: true,
+                sales_count: 0,
+                max_supply: 0,
+                expires_at: input.listing.expires_at,
+                splits: input.listing.splits.clone(),
+                classification,
+                safety_flags,
+                encryption_version: 1,
+            };
+
+            Storage::save_prompt(&env, &prompt)?;
+            Storage::set_encryption_version_counter(&env, prompt_id, 1);
+            Storage::add_prompt_to_creator(&env, &creator, prompt_id);
+            Storage::add_price_history_entry(
+                &env,
+                prompt_id,
+                &PriceHistoryEntry {
+                    previous_price: 0,
+                    new_price: input.listing.price,
+                    changed_at: env.ledger().timestamp(),
+                    seq: 1,
+                },
+            );
+            Events::emit_prompt_created(
+                &env,
+                prompt_id,
+                creator.clone(),
+                input.listing.price,
+                input.listing.asset.clone(),
+            );
+            ids.push_back(prompt_id);
+        }
+
+        Ok(ids)
     }
 
     fn set_prompt_sale_status(

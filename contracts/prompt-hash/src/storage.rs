@@ -3,6 +3,7 @@ use super::types::{
     Prompt, PromptEncryptedPayload, Purchase, ReferralCode, Settlement, Stake, Subscription,
     SubscriptionConfig,
 };
+use soroban_sdk::String;
 use soroban_sdk::{token, Address, BytesN, Env, Vec};
 
 pub const DAY_IN_LEDGERS: u32 = 17280;
@@ -605,38 +606,6 @@ impl Storage {
             Self::extend_key_ttl(env, &key);
         }
         addr
-    }
-
-    // ─── #272: Prompt Bundles ──────────────────────────────────────────────
-
-    pub fn get_bundle_counter(env: &Env) -> u128 {
-        let key = DataKey::BundleCounter;
-        let count = env.storage().persistent().get(&key).unwrap_or(0);
-        if env.storage().persistent().has(&key) {
-            Self::extend_key_ttl(env, &key);
-        }
-        count
-    }
-
-    pub fn save_bundle(env: &Env, bundle: &Bundle) -> Result<(), Error> {
-        let key = DataKey::Bundle(bundle.id);
-        env.storage().persistent().set(&key, bundle);
-        Self::extend_key_ttl(env, &key);
-
-        let counter_key = DataKey::BundleCounter;
-        let next_id = bundle.id.checked_add(1).ok_or(Error::ArithmeticOverflow)?;
-        env.storage().persistent().set(&counter_key, &next_id);
-        Self::extend_key_ttl(env, &counter_key);
-        Ok(())
-    }
-
-    pub fn get_bundle(env: &Env, bundle_id: u128) -> Option<Bundle> {
-        let key = DataKey::Bundle(bundle_id);
-        let bundle = env.storage().persistent().get(&key);
-        if env.storage().persistent().has(&key) {
-            Self::extend_key_ttl(env, &key);
-        }
-        bundle
     }
 
     // ─── Promotional Pricing ──────────────────────────────────────────────

@@ -1,7 +1,7 @@
 use crate::contract::{PromptHashContract, PromptHashContractClient};
 use crate::mock_asset::FungibleTokenContract;
 use crate::storage::Storage;
-use crate::types::{Error, ListingConfig, Split};
+use crate::types::{Error, ListingConfig, PromptInput, Split};
 extern crate std;
 use soroban_sdk::{
     testutils::{Address as _, Events as _, Ledger},
@@ -6628,3 +6628,105 @@ fn test_repeated_operations_preserve_idempotency() {
     assert!(!client.get_prompt(&prompt_id).active);
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Batch Prompt Creation Tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+fn make_batch_input(
+    env: &Env,
+    title: &str,
+    price: i128,
+    asset: &Address,
+) -> PromptInput {
+    PromptInput {
+        image_url: String::from_str(env, "https://example.com/prompt.png"),
+        title: String::from_str(env, title),
+        category: String::from_str(env, "Software Development"),
+        preview_text: String::from_str(env, "Generate a production-ready implementation plan."),
+        encrypted_prompt: String::from_str(env, "ciphertext"),
+        encryption_iv: String::from_str(env, "iv"),
+        wrapped_key: String::from_str(env, "wrapped-key"),
+        content_hash: hash(env, 7),
+        listing: ListingConfig {
+            price,
+            asset: asset.clone(),
+            expires_at: 0,
+            splits: Vec::new(env),
+        },
+    }
+}
+
+#[test]
+fn test_create_prompt_batch_creates_multiple_prompts() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let mut inputs = Vec::<PromptInput>::new(&env);
+    inputs.push_back(make_batch_input(&env, "Batch Prompt A", 10_000, &context.xlm));
+    inputs.push_back(make_batch_input(&env, "Batch Prompt B", 20_000, &context.xlm));
+    inputs.push_back(make_batch_input(&env, "Batch Prompt C", 30_000, &context.xlm));
+
+    let ids = client.create_prompt_batch(&creator, &inputs);
+    assert_eq!(ids.len(), 3);
+    assert_eq!(ids.get(0).unwrap(), 0);
+    assert_eq!(ids.get(1).unwrap(), 1);
+    assert_eq!(ids.get(2).unwrap(), 2);
+
+    // Verify each prompt was stored correctly
+    let p0 = client.get_prompt(&0);
+    assert_eq!(p0.title, String::from_str(&env, "Batch Prompt A"));
+    assert_eq!(p0.price_stroops, 10_000);
+    assert!(p0.active);
+
+    let p1 = client.get_prompt(&1);
+    assert_eq!(p1.title, String::from_str(&env, "Batch Prompt B"));
+    assert_eq!(p1.price_stroops, 20_000);
+
+    let p2 = client.get_prompt(&2);
+    assert_eq!(p2.title, String::from_str(&env, "Batch Prompt C"));
+    assert_eq!(p2.price_stroops, 30_000);
+
+    // Verify creator catalog
+    let by_creator = client.get_prompts_by_creator(&creator);
+    assert_eq!(by_creator.len(), 3);
+}
+
+#[test]
+fn test_create_prompt_batch_single_item() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let mut inputs = Vec::<PromptInput>::new(&env);
+    inputs.push_back(make_batch_input(&env, "Solo Batch", 5_000, &context.xlm));
+
+    let ids = client.create_prompt_batch(&creator, &inputs);
+    assert_eq!(ids.len(), 1);
+    assert_eq!(ids.get(0).unwrap(), 0);
+
+    let p = client.get_prompt(&0);
+    assert_eq!(p.title, String::from_str(&env, "Solo Batch"));
+}
+
+#[test]
+fn test_create_prompt_batch_empty_fails() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let inputs = Vec::<PromptInput>::new(&env);
+
+    let result = client.try_create_prompt_batch(&creator, &inputs);
+    match result {
+        Err(Ok(Error::InvalidPrice)) => {}
+        other => panic!(
+            "expected InvalidPrice for empty batch, got {:?}",
+            other
+        ),
+    }
+}
