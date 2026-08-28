@@ -1,5 +1,8 @@
-import { WalletNetwork } from "@creit.tech/stellar-wallets-kit";
+import { Networks } from "@creit.tech/stellar-wallets-kit";
 import { z } from "zod";
+
+// Alias for backward-compat usage in this file
+const WalletNetwork = Networks;
 
 const envSchema = z.object({
   PUBLIC_STELLAR_NETWORK: z.enum([
