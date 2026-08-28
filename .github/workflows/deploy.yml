@@ -19,17 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '18.x'
-          cache: 'npm'
+          node-version: "22"
+          cache: "yarn"
 
       - name: Install dependencies
-        run: npm ci
+        run: yarn install --immutable
 
       - name: Build frontend
-        run: npm run build
+        run: yarn build
         env:
           CI: true
 
@@ -53,13 +56,22 @@ jobs:
           path: frontend-checksums.txt
           retention-days: 30
 
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+        if: |
+          env.VERCEL_TOKEN != '' &&
+          env.VERCEL_ORG_ID != '' &&
+          env.VERCEL_PROJECT_ID != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
       - name: Deploy to Vercel
-        uses: vercel/action@v5
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
+        run: |
+          vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+          vercel build --prod --token "$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
         if: |
           env.VERCEL_TOKEN != '' &&
           env.VERCEL_ORG_ID != '' &&
@@ -151,7 +163,7 @@ jobs:
       - name: Set up cosign
         uses: sigstore/cosign-installer@v3
         with:
-          cosign-release: 'v2.4.3'
+          cosign-release: "v2.4.3"
 
       - name: Download WASM artifacts
         uses: actions/download-artifact@v8
@@ -248,7 +260,7 @@ jobs:
       - name: Verify signatures
         uses: sigstore/cosign-installer@v3
         with:
-          cosign-release: 'v2.4.3'
+          cosign-release: "v2.4.3"
 
       - name: Verify checksums
         run: |
@@ -295,21 +307,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '18.x'
-          cache: 'npm'
-
       - name: Enable Corepack
         run: corepack enable
 
-      - name: Install CycloneDX tooling
-        run: npm install -g @cyclonedx/cyclonedx-npm
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --immutable
 
       - name: Generate frontend SBOM (CycloneDX)
         run: |
-          cyclonedx-npm --output-format JSON --output-file sbom/frontend-sbom.json
+          mkdir -p sbom
+          yarn dlx -q @cyclonedx/yarn-plugin-cyclonedx --output-format JSON --output-file sbom/frontend-sbom.json
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
