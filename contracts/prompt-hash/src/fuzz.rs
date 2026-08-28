@@ -27,11 +27,25 @@ struct FuzzContext {
 fn setup(env: &Env) -> FuzzContext {
     env.mock_all_auths();
     let admin = Address::generate(env);
+    let admin_two = Address::generate(env);
+    let admin_three = Address::generate(env);
+    let upgrade_admin = Address::generate(env);
+    let upgrade_admin_two = Address::generate(env);
+    let upgrade_admin_three = Address::generate(env);
     let fee_wallet = Address::generate(env);
     let xlm = env.register(FungibleTokenContract, (admin.clone(),));
     let contract = env.register(
         PromptHashContract,
-        (admin.clone(), fee_wallet.clone(), xlm.clone()),
+        (
+            admin.clone(),
+            admin_two,
+            admin_three,
+            upgrade_admin,
+            upgrade_admin_two,
+            upgrade_admin_three,
+            fee_wallet.clone(),
+            xlm.clone(),
+        ),
     );
     FuzzContext { contract, xlm }
 }

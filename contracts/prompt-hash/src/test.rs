@@ -13,6 +13,9 @@ struct PromptHashContext {
     admin: Address,
     admin_two: Address,
     admin_three: Address,
+    upgrade_admin: Address,
+    upgrade_admin_two: Address,
+    upgrade_admin_three: Address,
     fee_wallet: Address,
     xlm: Address,
     contract: Address,
@@ -24,6 +27,9 @@ fn setup(env: &Env) -> PromptHashContext {
     let admin = Address::generate(env);
     let admin_two = Address::generate(env);
     let admin_three = Address::generate(env);
+    let upgrade_admin = Address::generate(env);
+    let upgrade_admin_two = Address::generate(env);
+    let upgrade_admin_three = Address::generate(env);
     let fee_wallet = Address::generate(env);
     let xlm = env.register(FungibleTokenContract, (admin.clone(),));
     let contract = env.register(
@@ -32,6 +38,9 @@ fn setup(env: &Env) -> PromptHashContext {
             admin.clone(),
             admin_two.clone(),
             admin_three.clone(),
+            upgrade_admin.clone(),
+            upgrade_admin_two.clone(),
+            upgrade_admin_three.clone(),
             fee_wallet.clone(),
             xlm.clone(),
         ),
@@ -41,6 +50,9 @@ fn setup(env: &Env) -> PromptHashContext {
         admin,
         admin_two,
         admin_three,
+        upgrade_admin,
+        upgrade_admin_two,
+        upgrade_admin_three,
         fee_wallet,
         xlm,
         contract,
@@ -188,6 +200,11 @@ fn test_constructor_rejects_repeated_initialization() {
         <PromptHashContract as crate::types::PromptHashTrait>::__constructor(
             env.clone(),
             attacker_admin.clone(),
+            Address::generate(&env),
+            Address::generate(&env),
+            Address::generate(&env),
+            Address::generate(&env),
+            Address::generate(&env),
             attacker_fee_wallet.clone(),
             context.xlm.clone(),
         )
@@ -198,6 +215,35 @@ fn test_constructor_rejects_repeated_initialization() {
     // Original setup state must remain untouched by the rejected call.
     let client = PromptHashContractClient::new(&env, &context.contract);
     assert_eq!(client.get_fee_percentage(), 500);
+}
+
+#[test]
+fn test_constructor_rejects_overlapping_config_and_upgrade_admins() {
+    let env: Env = Default::default();
+    let contract = Address::generate(&env);
+    let shared_admin = Address::generate(&env);
+    let config_admin_two = Address::generate(&env);
+    let config_admin_three = Address::generate(&env);
+    let upgrade_admin_two = Address::generate(&env);
+    let upgrade_admin_three = Address::generate(&env);
+    let fee_wallet = Address::generate(&env);
+    let xlm = env.register(FungibleTokenContract, (shared_admin.clone(),));
+
+    let result: Result<(), Error> = env.as_contract(&contract, || {
+        <PromptHashContract as crate::types::PromptHashTrait>::__constructor(
+            env.clone(),
+            shared_admin.clone(),
+            config_admin_two,
+            config_admin_three,
+            shared_admin,
+            upgrade_admin_two,
+            upgrade_admin_three,
+            fee_wallet,
+            xlm,
+        )
+    });
+
+    assert_eq!(result, Err(Error::Unauthorized));
 }
 
 #[test]
@@ -1015,14 +1061,14 @@ fn test_set_fee_percentage_above_max_rejected() {
     let client = PromptHashContractClient::new(&env, &context.contract);
 
     // #41: 2,000 bps (20%) is a hard ceiling; anything above must be rejected.
-    let result = client.try_set_fee_percentage(&2_001);
+    let result = client.try_set_fee_percentage(&2_001, &context.admin, &context.admin_two);
     match result {
         Err(Ok(Error::FeeExceedsMaximum)) => {}
         other => panic!("expected FeeExceedsMaximum, got {:?}", other),
     }
 
     // The boundary itself must still be accepted.
-    client.set_fee_percentage(&2_000);
+    client.set_fee_percentage(&2_000, &context.admin, &context.admin_two);
     assert_eq!(client.get_fee_percentage(), 2_000);
 }
 
@@ -1068,6 +1114,52 @@ fn test_sensitive_admin_functions_reject_duplicate_or_unknown_approvers() {
         ),
     }
     assert_eq!(client.get_fee_percentage(), 500);
+}
+
+#[test]
+fn test_config_admins_cannot_authorize_contract_upgrade() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
+    let result = client.try_propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    match result {
+        Err(Ok(Error::Unauthorized)) => {}
+        other => panic!("expected Unauthorized for config-admin upgrade, got {:?}", other),
+    }
+    assert_eq!(client.get_pending_upgrade(), None);
+}
+
+#[test]
+fn test_upgrade_admins_cannot_change_fee_configuration() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let replacement_wallet = Address::generate(&env);
+
+    let fee_result = client.try_set_fee_percentage(
+        &1_000,
+        &context.upgrade_admin,
+        &context.upgrade_admin_two,
+    );
+    match fee_result {
+        Err(Ok(Error::Unauthorized)) => {}
+        other => panic!("expected Unauthorized for upgrade-admin fee change, got {:?}", other),
+    }
+
+    let wallet_result = client.try_set_fee_wallet(
+        &replacement_wallet,
+        &context.upgrade_admin,
+        &context.upgrade_admin_two,
+    );
+    match wallet_result {
+        Err(Ok(Error::Unauthorized)) => {}
+        other => panic!("expected Unauthorized for upgrade-admin wallet change, got {:?}", other),
+    }
+
+    assert_eq!(client.get_fee_percentage(), 500);
+    assert_eq!(client.get_fee_wallet(), Some(context.fee_wallet));
 }
 
 #[test]
@@ -6062,14 +6154,15 @@ fn test_upgrade_propose_requires_two_distinct_admins() {
 
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
     // Same admin used for both approver slots must be rejected.
-    let result = client.try_propose_upgrade(&wasm_hash, &context.admin, &context.admin);
+    let result =
+        client.try_propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin);
     match result {
         Err(Ok(Error::Unauthorized)) => {}
         other => panic!("expected Unauthorized for same-admin propose_upgrade, got {:?}", other),
     }
     // One admin + one stranger must be rejected too.
     let stranger = Address::generate(&env);
-    let result = client.try_propose_upgrade(&wasm_hash, &context.admin, &stranger);
+    let result = client.try_propose_upgrade(&wasm_hash, &context.upgrade_admin, &stranger);
     match result {
         Err(Ok(Error::Unauthorized)) => {}
         other => panic!("expected Unauthorized for mixed-admin propose_upgrade, got {:?}", other),
@@ -6084,7 +6177,11 @@ fn test_upgrade_rejects_invalid_implementation() {
 
     // A zero WASM hash is never a valid implementation.
     let zero_hash = BytesN::from_array(&env, &[0u8; 32]);
-    let result = client.try_propose_upgrade(&zero_hash, &context.admin, &context.admin_two);
+    let result = client.try_propose_upgrade(
+        &zero_hash,
+        &context.upgrade_admin,
+        &context.upgrade_admin_two,
+    );
     match result {
         Err(Ok(Error::InvalidImplementation)) => {}
         other => panic!("expected InvalidImplementation for zero wasm hash, got {:?}", other),
@@ -6098,12 +6195,16 @@ fn test_upgrade_propose_twice_rejected() {
     let client = PromptHashContractClient::new(&env, &context.contract);
 
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    client.propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin_two);
     assert_eq!(client.get_pending_upgrade(), Some(wasm_hash));
 
     // A second proposal while one is pending must be rejected.
     let other_hash = BytesN::from_array(&env, &[2u8; 32]);
-    let result = client.try_propose_upgrade(&other_hash, &context.admin, &context.admin_two);
+    let result = client.try_propose_upgrade(
+        &other_hash,
+        &context.upgrade_admin,
+        &context.upgrade_admin_two,
+    );
     match result {
         Err(Ok(Error::UpgradeAlreadyProposed)) => {}
         other => panic!("expected UpgradeAlreadyProposed for duplicate proposal, got {:?}", other),
@@ -6116,7 +6217,7 @@ fn test_upgrade_confirm_without_proposal_rejected() {
     let context = setup(&env);
     let client = PromptHashContractClient::new(&env, &context.contract);
 
-    let result = client.try_confirm_upgrade(&context.admin, &context.admin_two);
+    let result = client.try_confirm_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
     match result {
         Err(Ok(Error::UpgradeNotProposed)) => {}
         other => panic!("expected UpgradeNotProposed when nothing is proposed, got {:?}", other),
@@ -6131,11 +6232,11 @@ fn test_upgrade_confirm_before_cooldown_rejected() {
 
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000);
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    client.propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin_two);
 
     // Confirm too early, within the timelock window.
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000 + UPGRADE_COOLDOWN - 1);
-    let result = client.try_confirm_upgrade(&context.admin, &context.admin_two);
+    let result = client.try_confirm_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
     match result {
         Err(Ok(Error::UpgradeCooldownNotElapsed)) => {}
         other => panic!("expected UpgradeCooldownNotElapsed, got {:?}", other),
@@ -6149,14 +6250,14 @@ fn test_upgrade_cancel_clears_proposal() {
     let client = PromptHashContractClient::new(&env, &context.contract);
 
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    client.propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin_two);
     assert_eq!(client.get_pending_upgrade(), Some(wasm_hash));
 
-    client.cancel_upgrade(&context.admin, &context.admin_two);
+    client.cancel_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
     assert_eq!(client.get_pending_upgrade(), None);
 
     // After cancellation, confirming must fail.
-    let result = client.try_confirm_upgrade(&context.admin, &context.admin_two);
+    let result = client.try_confirm_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
     match result {
         Err(Ok(Error::UpgradeNotProposed)) => {}
         other => panic!("expected UpgradeNotProposed after cancel, got {:?}", other),
@@ -6171,12 +6272,12 @@ fn test_upgrade_propose_confirm_success() {
 
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000);
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    client.propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin_two);
     assert_eq!(client.get_pending_upgrade(), Some(wasm_hash));
 
     // Wait out the timelock, then confirm.
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000 + UPGRADE_COOLDOWN + 1);
-    client.confirm_upgrade(&context.admin, &context.admin_two);
+    client.confirm_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
     assert_eq!(client.get_pending_upgrade(), None);
 }
 
@@ -6199,9 +6300,9 @@ fn test_upgrade_preserves_license_holders() {
 
     // Propose and confirm an upgrade after the timelock.
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    client.propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin_two);
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000 + UPGRADE_COOLDOWN + 1);
-    client.confirm_upgrade(&context.admin, &context.admin_two);
+    client.confirm_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
 
     // The license holder keeps access and the listing data is intact.
     assert!(client.has_access(&buyer, &prompt_id));

@@ -86,14 +86,18 @@ Before initiating any deployment to staging or production:
    ```bash
    stellar contract invoke \
      --id "$CONTRACT_ID" \
-     --source ADMIN_SECRET \
+     --source CONFIG_ADMIN_SECRET \
      --network testnet \
      -- \
-     initialize \
-     --admin "$ADMIN_ADDRESS" \
-     --fee_percentage 250 \
+     __constructor \
+     --config_admin "$CONFIG_ADMIN_ADDRESS" \
+     --config_admin_two "$CONFIG_ADMIN_TWO_ADDRESS" \
+     --config_admin_three "$CONFIG_ADMIN_THREE_ADDRESS" \
+     --upgrade_admin "$UPGRADE_ADMIN_ADDRESS" \
+     --upgrade_admin_two "$UPGRADE_ADMIN_TWO_ADDRESS" \
+     --upgrade_admin_three "$UPGRADE_ADMIN_THREE_ADDRESS" \
      --fee_wallet "$FEE_TREASURY_ADDRESS" \
-     --xlm_address "$XLM_SAC_CONTRACT_ADDRESS"
+     --xlm_sac "$XLM_SAC_CONTRACT_ADDRESS"
    ```
 
 ### 2.3 Frontend & API Deployment on Vercel
