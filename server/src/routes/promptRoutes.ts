@@ -24,10 +24,32 @@ import {
   ListPromptVersions,
   GetPromptVersionDetail,
 } from "../controllers/versioningControllers";
+import { Prompt } from "../models/Prompt"; // NEW IMPORT FOR DUPLICATE CHECK
 
 export const promptRouter = express.Router();
 
-promptRouter.route("/").post(CreatePrompt);
+// Middleware to prevent duplicate prompt creation with identical content hash
+async function checkDuplicateContentHash(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const { contentHash } = req.body;
+  if (!contentHash) {
+    return next();
+  }
+  try {
+    const existingPrompt = await Prompt.findOne({ contentHash });
+    if (existingPrompt) {
+      return res.status(409).json({ error: "Prompt with the same content hash already exists." });
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+promptRouter.route("/").post(checkDuplicateContentHash, CreatePrompt);
 
 promptRouter.route("/").get(GetPrompts);
 
@@ -48,6 +70,6 @@ promptRouter.post("/:id/versions", PublishPromptVersion);
 promptRouter.get("/:id/versions", ListPromptVersions);
 promptRouter.get("/:id/versions/:versionIndex", GetPromptVersionDetail);
 
-// Generic single-prompt lookup — registered last so it never shadows the
+// Generic single-prompt lookup -- registered last so it never shadows the
 // more specific /buyer, /creator, and /:id/* routes above.
 promptRouter.get("/:id", GetPromptDetail);
