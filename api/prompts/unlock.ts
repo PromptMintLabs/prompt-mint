@@ -9,6 +9,7 @@ import {
   normalizeContentHash,
   unwrapPromptKey,
 } from "../../src/lib/crypto/promptCrypto";
+import { fetchFromBlobStorage, isBlobReference } from "../../src/lib/stellar/blobStorage";
 import {
   getPrompt,
   getPromptEncryptionVersion,
@@ -404,9 +405,7 @@ async function handler(req: any, res: any) {
     // otherwise we resolve the version that was locked in at purchase time.
     const currentVersion = prompt.encryptionVersion ?? 1;
     let targetVersion = currentVersion;
-    const promptCreator = prompt.creator;
-    const addressStr = String(address);
-    if ((promptCreator ?? "").toLowerCase() !== addressStr.toLowerCase()) {
+    if (prompt.creator?.toLowerCase() !== String(address).toLowerCase()) {
       const purchase = await getPurchaseDetails(config, id, String(address));
       // If no purchase record exists (legacy buyer), fall back to current version.
       targetVersion = purchase?.encryptionVersion ?? currentVersion;
@@ -442,6 +441,21 @@ async function handler(req: any, res: any) {
       };
     }
 
+    if (isBlobReference(encryptedPayload.encryptedPrompt)) {
+      try {
+        encryptedPayload.encryptedPrompt = await fetchFromBlobStorage(encryptedPayload.encryptedPrompt);
+      } catch (error) {
+        req.logger.error(
+          { address: unlockRequest.address, promptId: unlockRequest.promptId, error: error instanceof Error ? error.message : String(error) },
+          "Failed to fetch encrypted prompt from blob storage"
+        );
+        res.status(502).json(
+          apiError(ErrorCode.TEMPORARY_FAILURE, "Failed to fetch prompt data from blob storage.", undefined, version),
+        );
+        return;
+      }
+    }
+
     const keyBytes = await unwrapPromptKey(
       encryptedPayload.wrappedKey,
       unlockPublicKey,
@@ -454,24 +468,33 @@ async function handler(req: any, res: any) {
     );
     const contentHash = await hashPromptPlaintext(plaintext);
     const storedHash = normalizeContentHash(encryptedPayload.contentHash);
-
-    // Determine integrity state exposed to the buyer
-    const integrity = {
-      status: ((): "verified" | "failed" | "unavailable" => {
-        if (!encryptedPayload.contentHash) return "unavailable";
-        if (contentHash !== storedHash) return "failed";
-        return "verified";
-      })(),
-      computedHash: contentHash,
-      storedHash: encryptedPayload.contentHash ?? null,
-    };
-
-    if (integrity.status === "failed") {
+    if (contentHash !== storedHash) {
       req.logger.error(
         { address: unlockRequest.address, promptId: unlockRequest.promptId },
         "Prompt integrity check failed",
       );
-      metrics.trackUnlockFailure(unlockRequest.address, unlockRequest.promptId, "integrity_failure");
+      metrics.trackUnlockFailure(
+        unlockRequest.address,
+        unlockRequest.promptId,
+        "integrity_failure",
+      );
+    const storedHash = normalizeContentHash(prompt.contentHash ?? "");
+
+    // Determine integrity state exposed to the buyer
+    const integrity = {
+      status: ((): "verified" | "failed" | "unavailable" => {
+        if (!prompt.contentHash) return "unavailable";
+        if (contentHash !== storedHash) return "failed";
+        return "verified";
+      })(),
+      computedHash: contentHash,
+      storedHash: prompt.contentHash ?? null,
+    };
+
+    if (integrity.status === "failed") {
+      // Integrity mismatch: redact decrypted content, emit diagnostics, and return structured metadata.
+      req.logger.error({ address, promptId }, "Prompt integrity check failed");
+      metrics.trackUnlockFailure(String(address), String(promptId), "integrity_failure");
       void recordAuditEvent({
         action: "unlock_integrity_failure",
         result: "failure",
@@ -481,17 +504,27 @@ async function handler(req: any, res: any) {
         clientIp,
         reason: "integrity_failure",
       });
+      res.status(500).json(
+        apiError(ErrorCode.INTEGRITY_FAILURE, "Prompt integrity check failed.", undefined, version),
+      );
+
+      // Emit a diagnostic webhook for creators/ops without disclosing plaintext.
       void Promise.resolve(
         dispatchEvent(prompt.creator ?? "", "PromptIntegrityViolation", {
           promptId: prompt.id.toString(),
-          buyer: String(unlockRequest.address),
+          buyer: String(address),
           computedHash: integrity.computedHash,
           storedHash: integrity.storedHash,
         }),
       ).catch(() => {});
-      res.status(500).json(
-        apiError(ErrorCode.INTEGRITY_FAILURE, "Prompt integrity check failed.", undefined, version),
-      );
+
+      // Return structured response with redacted plaintext and integrity metadata.
+      res.status(200).json({
+        promptId: prompt.id.toString(),
+        title: prompt.title,
+        integrity,
+      });
+
       return;
     }
 
@@ -511,6 +544,7 @@ async function handler(req: any, res: any) {
       reason: null,
     });
 
+    // Fire-and-forget webhook dispatch so the creator is notified of the sale.
     void Promise.resolve(
       dispatchEvent(prompt.creator ?? "", "PromptPurchased", {
         promptId: prompt.id.toString(),
@@ -526,7 +560,6 @@ async function handler(req: any, res: any) {
           title: prompt.title,
           contentHash,
           plaintext,
-          integrity,
         },
         version,
       ),
@@ -556,7 +589,7 @@ async function handler(req: any, res: any) {
     });
 
     if (isExpired) {
-      res.status(401).json(
+      res.status(400).json(
         apiError(ErrorCode.CHALLENGE_EXPIRED, "The challenge token has expired. Please request a new one.", undefined, version),
       );
     } else {

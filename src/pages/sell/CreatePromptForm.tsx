@@ -25,6 +25,7 @@ import {
   estimateEncryptedPayloadSize,
   wrapPromptKey,
 } from "@/lib/crypto/promptCrypto";
+import { uploadToBlobStorage } from "@/lib/stellar/blobStorage";
 import { browserStellarConfig } from "@/lib/stellar/browserConfig";
 import { xlmToStroops } from "@/lib/stellar/format";
 import { createPrompt } from "@/lib/stellar/promptHashClient";
@@ -444,10 +445,17 @@ export function CreatePromptForm({ onCreated, onDirtyChange }: CreatePromptFormP
       const encrypted = await encryptPromptPlaintext(formData.fullPrompt);
       const wrappedKey = await wrapPromptKey(encrypted.keyBytes, unlockPublicKey);
 
-      if (encrypted.encryptedPrompt.length > limits.encryptedPrompt) {
-        throw new Error(
-          "Encrypted payload is too large for the current on-chain limit. Shorten the full prompt and try again.",
-        );
+      let encryptedPrompt = encrypted.encryptedPrompt;
+      if (encryptedPrompt.length > limits.encryptedPrompt) {
+        try {
+          encryptedPrompt = await uploadToBlobStorage(encryptedPrompt);
+        } catch (error) {
+          setSubmitError(
+            `Failed to store encrypted prompt off-chain: ${error instanceof Error ? error.message : "Unknown error"}`
+          );
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       if (wrappedKey.length > limits.wrappedKey) {
@@ -463,7 +471,7 @@ export function CreatePromptForm({ onCreated, onDirtyChange }: CreatePromptFormP
           title: formData.title.trim(),
           category: formData.category,
           previewText: formData.previewText.trim(),
-          encryptedPrompt: encrypted.encryptedPrompt,
+          encryptedPrompt,
           encryptionIv: encrypted.encryptionIv,
           wrappedKey,
           contentHash: encrypted.contentHash,
