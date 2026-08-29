@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { createHash } from "crypto";
 import connectDb from "../db/connectDb";
 import User from "../models/User";
 import Prompt from "../models/Prompt";
@@ -107,6 +108,19 @@ export const CreatePrompt = asyncRoute(async (req, res) => {
     throw new AppError("User not found. Please connect your wallet first.", 404);
   }
 
+  const contentHash = createHash("sha256")
+    .update(normalized.content)
+    .digest("hex");
+
+  const duplicatePrompt = await Prompt.findOne({ contentHash });
+  if (duplicatePrompt) {
+    throw new AppError(
+      "A prompt with identical content already exists.",
+      409,
+      "DUPLICATE_CONTENT",
+    );
+  }
+
   const newPrompt = new Prompt({
     image: normalized.image,
     title: normalized.title,
@@ -114,6 +128,7 @@ export const CreatePrompt = asyncRoute(async (req, res) => {
     owner: user._id,
     price: normalized.price,
     category: normalized.category,
+    contentHash,
     rating: 3,
   });
 
