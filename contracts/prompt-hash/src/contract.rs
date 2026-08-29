@@ -120,6 +120,15 @@ impl PromptHashTrait for PromptHashContract {
         // #50: validate revenue splits
         validate_splits(&env, &listing.splits)?;
 
+        // Deduplicate identical content hashes to discourage spam listings.
+        let prompt_count = Storage::get_prompt_counter(&env);
+        for prompt_id in 0..prompt_count {
+            let prompt = Storage::require_prompt(&env, prompt_id)?;
+            if prompt.content_hash == content_hash {
+                return Ok(prompt.id);
+            }
+        }
+
         // #131: default classification
         let classification = String::from_str(&env, "general");
         let safety_flags: Vec<String> = Vec::new(&env);
