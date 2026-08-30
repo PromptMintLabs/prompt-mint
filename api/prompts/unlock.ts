@@ -26,7 +26,7 @@ import {
   recordSuccessfulAuth,
   verifyCaptchaToken,
 } from "../../src/lib/auth/abuseProtection";
-import { checkReplayProtection } from "../../src/lib/observability/replayProtection";
+import { checkUnlockReplayProtection } from "../../src/lib/observability/replayProtection";
 import { metrics } from "../../src/lib/observability/metrics";
 import { dispatchEvent } from "../../server/src/services/webhookDispatcher";
 import { recordAuditEvent } from "../../server/src/services/auditTrail";
@@ -340,10 +340,13 @@ async function handler(req: any, res: any) {
       return;
     }
 
-    const replayCheck = await checkReplayProtection(
-      unlockRequest.token,
-      unlockRequest.signedMessage,
-    );
+    const replayCheck = await checkUnlockReplayProtection({
+      nonce: payload.nonce,
+      expiresAt: payload.expiresAt,
+      address: unlockRequest.address,
+      token: unlockRequest.token,
+      signedMessage: unlockRequest.signedMessage,
+    });
     if (!replayCheck.valid) {
       req.logger.warn(
         { address: unlockRequest.address, promptId: unlockRequest.promptId },
@@ -352,7 +355,7 @@ async function handler(req: any, res: any) {
       metrics.trackUnlockFailure(
         unlockRequest.address,
         unlockRequest.promptId,
-        "replay_detected",
+        replayCheck.reason ?? "replay_detected",
       );
       void recordAuditEvent({
         action: "unlock_replay_detected",
@@ -361,10 +364,15 @@ async function handler(req: any, res: any) {
         walletAddress: unlockRequest.address,
         requestId: req.requestId ?? null,
         clientIp,
-        reason: "replay_attack",
+        reason: replayCheck.reason ?? "replay_attack",
       });
       res.status(400).json(
-        apiError(ErrorCode.TEMPORARY_FAILURE, "This unlock request has already been processed.", undefined, version),
+        apiError(
+          ErrorCode.CHALLENGE_REPLAY,
+          "This unlock request has already been processed.",
+          undefined,
+          version,
+        ),
       );
       return;
     }

@@ -9,6 +9,7 @@ import {
 } from "../../src/lib/auth/challenge";
 import { ErrorCode } from "../../src/lib/api/errorCodes";
 import { resetAbuseProtectionState } from "../../src/lib/auth/abuseProtection";
+import { resetReplayProtectionState } from "../../src/lib/observability/replayProtection";
 
 const hasAccessMock = vi.fn();
 const getPromptMock = vi.fn();
@@ -161,6 +162,7 @@ describe("unlock API integrity checks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetAbuseProtectionState();
+    resetReplayProtectionState();
   });
 
   it("returns plaintext when decrypted content matches the stored hash", async () => {
@@ -384,6 +386,30 @@ describe("unlock API integrity checks", () => {
     );
   });
 
+  it("rejects replay of a captured wallet signature", async () => {
+    const { buyer, promptId, challenge, signedMessage } =
+      await setupUnlockFixture();
+
+    const first = await invokeUnlock({
+      token: challenge.token,
+      promptId,
+      address: buyer.publicKey(),
+      signedMessage,
+    });
+    expect(first.statusCode).toBe(200);
+
+    const replay = await invokeUnlock({
+      token: challenge.token,
+      promptId,
+      address: buyer.publicKey(),
+      signedMessage,
+    });
+
+    expect(replay.statusCode).toBe(400);
+    expect(replay.responseData.code).toBe(ErrorCode.CHALLENGE_REPLAY);
+    expect(replay.responseData.plaintext).toBeUndefined();
+  });
+
   it("rejects unlock when wallet signature is invalid", async () => {
     const { buyer, promptId, challenge } = await setupUnlockFixture();
     const wrongSigner = Keypair.random();
@@ -513,6 +539,7 @@ describe("unlock challenge message contract", () => {
 describe("unlock API with encryption rotation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetReplayProtectionState();
   });
 
   it("returns v1 plaintext for a buyer who purchased before rotation", async () => {
