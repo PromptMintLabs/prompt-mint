@@ -31,6 +31,7 @@ import { xlmToStroops } from "@/lib/stellar/format";
 import { createPrompt } from "@/lib/stellar/promptHashClient";
 import {
   LISTING_LIMITS,
+  utf8Length,
   validateListingForm,
   validateListingField,
   validateImageMetadata,
@@ -588,7 +589,7 @@ export function CreatePromptForm({ onCreated, onDirtyChange }: CreatePromptFormP
             aria-describedby={errors.title ? "title-error" : undefined}
           />
           <p className="text-xs text-slate-400">
-            {formData.title.length}/{limits.title}
+            {utf8Length(formData.title)}/{limits.title}
           </p>
           {errors.title ? (
             <p id="title-error" className="flex items-center gap-1 text-sm text-red-400">
@@ -621,7 +622,7 @@ export function CreatePromptForm({ onCreated, onDirtyChange }: CreatePromptFormP
             aria-describedby={errors.previewText ? "previewText-error" : undefined}
           />
           <p className="text-xs text-slate-400">
-            {formData.previewText.length}/{limits.preview}
+            {utf8Length(formData.previewText)}/{limits.preview}
           </p>
           {errors.previewText ? (
             <p id="previewText-error" className="flex items-center gap-1 text-sm text-red-400">

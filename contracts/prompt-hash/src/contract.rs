@@ -2192,6 +2192,13 @@ fn validate_prompt_fields(
     Ok(())
 }
 
+/// Validates a field is non-empty and fits within `max_len`.
+///
+/// `soroban_sdk::String::len()` counts **UTF-8 bytes**, not Unicode
+/// characters. Multi-byte input (e.g. emoji) therefore consumes more than one
+/// unit of the limit. The frontend mirrors this exact byte-counting in
+/// `src/lib/validation/listing.ts` (`utf8Length`) so the client never submits
+/// a field the contract will reject (#506).
 fn validate_len(value: &String, max_len: u32, error: Error) -> Result<(), Error> {
     ensure(!value.is_empty() && value.len() <= max_len, error)
 }
