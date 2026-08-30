@@ -404,7 +404,9 @@ async function handler(req: any, res: any) {
     // otherwise we resolve the version that was locked in at purchase time.
     const currentVersion = prompt.encryptionVersion ?? 1;
     let targetVersion = currentVersion;
-    if (prompt.creator?.toLowerCase() !== String(address).toLowerCase()) {
+    const promptCreator = prompt.creator;
+    const addressStr = String(address);
+    if ((promptCreator ?? "").toLowerCase() !== addressStr.toLowerCase()) {
       const purchase = await getPurchaseDetails(config, id, String(address));
       // If no purchase record exists (legacy buyer), fall back to current version.
       targetVersion = purchase?.encryptionVersion ?? currentVersion;
@@ -554,7 +556,7 @@ async function handler(req: any, res: any) {
     });
 
     if (isExpired) {
-      res.status(400).json(
+      res.status(401).json(
         apiError(ErrorCode.CHALLENGE_EXPIRED, "The challenge token has expired. Please request a new one.", undefined, version),
       );
     } else {

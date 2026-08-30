@@ -90,11 +90,13 @@ export function verifyChallengeToken(
   }
 
   const payload = JSON.parse(base64UrlDecode(encodedPayload)) as ChallengePayload;
+  console.log("verifyChallengeToken payload:", payload, "now:", now);
   if (payload.address !== address || payload.promptId !== promptId) {
     throw new Error("Challenge token does not match the requested prompt unlock.");
   }
 
   if (payload.expiresAt < now) {
+    console.log("CHALLENGE EXPIRED! payload.expiresAt:", payload.expiresAt, "now:", now);
     throw new Error("Challenge token has expired.");
   }
 
