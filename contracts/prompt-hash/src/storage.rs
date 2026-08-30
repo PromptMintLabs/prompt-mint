@@ -776,6 +776,28 @@ impl Storage {
         env.storage().persistent().remove(&key);
     }
 
+    // ─── #195: Emergency Pause Timelock ──────────────────────────────────
+
+    pub fn set_pending_unpause_at(env: &Env, timestamp: u64) {
+        let key = DataKey::PendingUnpauseAt;
+        env.storage().persistent().set(&key, &timestamp);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_pending_unpause_at(env: &Env) -> Option<u64> {
+        let key = DataKey::PendingUnpauseAt;
+        let ts: Option<u64> = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        ts
+    }
+
+    pub fn clear_pending_unpause_at(env: &Env) {
+        let key = DataKey::PendingUnpauseAt;
+        env.storage().persistent().remove(&key);
+    }
+
     pub fn set_upgrade_proposer(env: &Env, proposer: &Address) {
         let key = DataKey::UpgradeProposer;
         env.storage().persistent().set(&key, proposer);

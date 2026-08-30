@@ -40,6 +40,9 @@ const UPGRADE_COOLDOWN_SECS: u64 = 86_400; // 24 hours
 /// before funds can leave custody, matching the platform's weekly cadence.
 /// (No sibling-contract `*_LOCK_PERIOD` precedent exists to reuse.)
 const STAKE_COOLDOWN_SECS: u64 = 7 * 24 * 60 * 60;
+/// #195 – cooldown before an emergency-paused contract can be unpaused,
+/// in seconds. 24 hours gives the team time to investigate and coordinate.
+const EMERGENCY_UNPAUSE_COOLDOWN_SECS: u64 = 86_400;
 
 #[contract]
 pub struct PromptHashContract;
@@ -723,6 +726,55 @@ impl PromptHashTrait for PromptHashContract {
 
     fn is_paused(env: Env) -> bool {
         Storage::is_paused(&env)
+    }
+
+    // ─── #195: Emergency pause with owner override ────────────────────────
+
+    #[only_owner]
+    fn emergency_pause(env: Env) -> Result<(), Error> {
+        ensure(!Storage::is_paused(&env), Error::EmergencyAlreadyActive)?;
+        Storage::set_pause_status(&env, true);
+        // Clear any pending unpause since we just re-entered emergency pause.
+        Storage::clear_pending_unpause_at(&env);
+        Events::emit_emergency_paused(&env, ownable::get_owner(&env).unwrap());
+        Ok(())
+    }
+
+    #[only_owner]
+    fn propose_unpause(env: Env) -> Result<(), Error> {
+        ensure(Storage::is_paused(&env), Error::ContractIsPaused)?;
+        let now = env.ledger().timestamp();
+        Storage::set_pending_unpause_at(&env, now);
+        Events::emit_unpause_proposed(&env, now);
+        Ok(())
+    }
+
+    #[only_owner]
+    fn confirm_unpause(env: Env) -> Result<(), Error> {
+        ensure(Storage::is_paused(&env), Error::ContractIsPaused)?;
+        let proposed_at = Storage::get_pending_unpause_at(&env)
+            .ok_or(Error::UnpauseNotProposed)?;
+        let now = env.ledger().timestamp();
+        ensure(
+            now >= proposed_at.saturating_add(EMERGENCY_UNPAUSE_COOLDOWN_SECS),
+            Error::UnpauseCooldownNotElapsed,
+        )?;
+        Storage::set_pause_status(&env, false);
+        Storage::clear_pending_unpause_at(&env);
+        Events::emit_unpause_confirmed(&env, now);
+        Ok(())
+    }
+
+    #[only_owner]
+    fn cancel_unpause(env: Env) -> Result<(), Error> {
+        ensure(Storage::get_pending_unpause_at(&env).is_some(), Error::UnpauseNotProposed)?;
+        Storage::clear_pending_unpause_at(&env);
+        Events::emit_unpause_cancelled(&env);
+        Ok(())
+    }
+
+    fn get_pending_unpause(env: Env) -> Option<u64> {
+        Storage::get_pending_unpause_at(&env)
     }
 
     #[only_owner]

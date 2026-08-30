@@ -103,6 +103,13 @@ pub enum Error {
     /// The upgrade would break existing license holders; aborted before the
     /// new implementation is installed.
     UpgradeLicenseIntegrity = 54,
+    // #195 – emergency pause with owner override
+    /// Contract is already paused when attempting emergency pause.
+    EmergencyAlreadyActive = 55,
+    /// No unpause has been proposed.
+    UnpauseNotProposed = 56,
+    /// The timelock for the pending unpause has not elapsed.
+    UnpauseCooldownNotElapsed = 57,
     /// The buyer's token balance is insufficient to cover the payment.
     InsufficientBalance = 55,
 }
@@ -149,6 +156,8 @@ pub enum DataKey {
     Discount(u128),
     // #192 – per-prompt price history log.
     PriceHistory(u128),
+    // #195 – emergency pause timelock
+    PendingUnpauseAt,
 }
 
 /// #192 – A single recorded price change for a prompt.
@@ -763,6 +772,26 @@ pub trait PromptHashTrait {
 
     /// Read the current stake record for a prompt.
     fn get_stake(env: Env, prompt_id: u128) -> Result<Stake, Error>;
+
+    // ─── #195: Emergency pause with owner override ────────────────────────
+    /// Owner-only. Immediately pauses all purchases and transfers in case of
+    /// vulnerability discovery. Does not require multisig approval so the
+    /// owner can react quickly in emergencies.
+    fn emergency_pause(env: Env) -> Result<(), Error>;
+
+    /// Owner-only. Proposes an unpause with a timelock cooldown. The contract
+    /// remains paused until `confirm_unpause` is called after the cooldown.
+    fn propose_unpause(env: Env) -> Result<(), Error>;
+
+    /// Owner-only. Confirms and executes a previously proposed unpause once
+    /// the timelock cooldown has elapsed.
+    fn confirm_unpause(env: Env) -> Result<(), Error>;
+
+    /// Owner-only. Cancels a pending unpause proposal.
+    fn cancel_unpause(env: Env) -> Result<(), Error>;
+
+    /// Returns the timestamp when unpause was proposed, if any.
+    fn get_pending_unpause(env: Env) -> Option<u64>;
 }
 
 // ─── Bundle on-chain types ───────────────────────────────────────────────────
