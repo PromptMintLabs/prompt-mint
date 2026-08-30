@@ -105,6 +105,8 @@ pub enum Error {
     UpgradeLicenseIntegrity = 54,
     /// The buyer's token balance is insufficient to cover the payment.
     InsufficientBalance = 55,
+    /// set_fee_wallet was already called once; the fee wallet is immutable.
+    FeeWalletAlreadySet = 56,
 }
 
 #[contracttype]

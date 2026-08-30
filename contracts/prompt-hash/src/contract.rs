@@ -705,6 +705,10 @@ impl PromptHashTrait for PromptHashContract {
     ) -> Result<(), Error> {
         require_admin_multisig(&env, &approver_a, &approver_b)?;
         Storage::require_no_reentrancy(&env)?;
+        ensure!(
+            Storage::get_fee_wallet(&env).is_none(),
+            Error::FeeWalletAlreadySet
+        );
         Storage::set_fee_wallet(&env, &new_fee_wallet);
         Events::emit_fee_wallet_updated(&env, new_fee_wallet);
         Ok(())
