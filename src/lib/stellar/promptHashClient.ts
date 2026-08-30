@@ -323,6 +323,36 @@ export class PromptHashClient {
   }
 
   /**
+   * Transfers a previously-purchased prompt license to a new recipient for a specified price.
+   * The current owner loses access when the transfer is confirmed.
+   */
+  static async transferLicense(
+    _promptId: string,
+    _ownerAddress: string,
+    _recipientAddress: string,
+    _priceStroops: bigint,
+    options?: { forceFailure?: string; delay?: number },
+  ): Promise<{ txHash: string; success: boolean; recipientAddress: string }> {
+    warnMockUse();
+    return new Promise((resolve, reject) => {
+      const delay = options?.delay ?? 2000;
+      setTimeout(() => {
+        if (options?.forceFailure) {
+          return reject(new Error(options.forceFailure));
+        }
+
+        const mockHash =
+          "tx_transfer_" + Math.random().toString(16).slice(2, 14).padStart(12, "0");
+        resolve({
+          txHash: mockHash,
+          success: true,
+          recipientAddress: _recipientAddress,
+        });
+      }, delay);
+    });
+  }
+
+  /**
    * Invokes the Soroban contract to purchase multiple prompts atomically.
    * The entire transaction reverts if any individual purchase fails.
    *
@@ -877,3 +907,17 @@ export const getPromptEncryptionVersion = async (
   promptId: bigint,
   version: number,
 ) => PromptHashClient.getPromptEncryptionVersion(config, promptId, version);
+export const transferLicense = async (
+  promptId: string,
+  ownerAddress: string,
+  recipientAddress: string,
+  priceStroops: bigint,
+  options?: { forceFailure?: string; delay?: number },
+) =>
+  PromptHashClient.transferLicense(
+    promptId,
+    ownerAddress,
+    recipientAddress,
+    priceStroops,
+    options,
+  );
