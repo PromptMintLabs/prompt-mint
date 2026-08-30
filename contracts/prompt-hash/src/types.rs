@@ -489,6 +489,8 @@ pub trait PromptHashTrait {
         resale_price: i128,
     ) -> Result<(), Error>;
 
+    fn revoke_access(env: Env, caller: Address, prompt_id: u128, buyer: Address) -> Result<(), Error>;
+    fn set_access_duration(env: Env, creator: Address, prompt_id: u128, duration_secs: u64) -> Result<(), Error>;
     fn has_access(env: Env, user: Address, prompt_id: u128) -> Result<bool, Error>;
     fn get_prompt(env: Env, prompt_id: u128) -> Result<Prompt, Error>;
     fn get_all_prompts(env: Env) -> Result<Vec<Prompt>, Error>;

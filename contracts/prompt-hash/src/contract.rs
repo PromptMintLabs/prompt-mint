@@ -541,6 +541,40 @@ impl PromptHashTrait for PromptHashContract {
             royalty_amount,
         );
         Ok(())
+    fn revoke_access(env: Env, caller: Address, prompt_id: u128, buyer: Address) -> Result<(), Error> {
+        caller.require_auth();
+        Storage::require_no_reentrancy(&env)?;
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        // Allow creator or moderator to revoke
+        let is_moderator = Storage::get_moderator_address(&env) == Some(caller.clone());
+        ensure(
+            prompt.creator == caller || is_moderator,
+            Error::Unauthorized,
+        )?;
+
+        Storage::revoke_purchase(&env, prompt_id, &buyer);
+        Events::emit_access_revoked(&env, prompt_id, buyer);
+        Ok(())
+    }
+
+    fn set_access_duration(
+        env: Env,
+        creator: Address,
+        prompt_id: u128,
+        duration_secs: u64,
+    ) -> Result<(), Error> {
+        creator.require_auth();
+        Storage::require_no_reentrancy(&env)?;
+        ensure(!Storage::is_paused(&env), Error::ContractIsPaused)?;
+        
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        ensure(prompt.creator == creator, Error::Unauthorized)?;
+        
+        Storage::set_access_duration(&env, prompt_id, duration_secs);
+        Events::emit_access_duration_set(&env, prompt_id, duration_secs);
+        Ok(())
     }
 
     fn has_access(env: Env, user: Address, prompt_id: u128) -> Result<bool, Error> {
@@ -2024,12 +2058,19 @@ fn execute_buy(
         }
     }
 
+    let access_duration = Storage::get_access_duration(env, prompt_id);
+    let expires_at = if let Some(duration) = access_duration {
+        now.saturating_add(duration)
+    } else {
+        MAX_ACCESS_EXPIRY
+    };
+
     Storage::grant_purchase(
         env,
         &prompt,
         buyer,
         payment_amount_stroops,
-        MAX_ACCESS_EXPIRY,
+        expires_at,
         Settlement {
             buyer_amount: payment_amount_stroops,
             creator_amount,

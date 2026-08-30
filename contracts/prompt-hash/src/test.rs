@@ -6767,3 +6767,58 @@ fn test_lease_returns_insufficient_balance_when_wallet_unfunded() {
     }
 }
 
+
+#[test]
+fn test_access_revocation() {
+    let env = Env::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    
+    let token = token::StellarAssetClient::new(&env, &context.xlm);
+    token.mint(&buyer, &100_000);
+    
+    let prompt_id = create_prompt(&env, &client, &creator, "Revokable Prompt", 10_000, &context.xlm);
+    
+    // Purchase the prompt
+    client.buy_prompt(&buyer, &prompt_id, &None, &10_000, &None);
+    assert!(client.has_access(&buyer, &prompt_id));
+    
+    // Revoke access
+    client.revoke_access(&creator, &prompt_id, &buyer);
+    assert!(!client.has_access(&buyer, &prompt_id));
+}
+
+#[test]
+fn test_access_expiry_window() {
+    let env = Env::default();
+    env.ledger().set_timestamp(100_000);
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    
+    let token = token::StellarAssetClient::new(&env, &context.xlm);
+    token.mint(&buyer, &100_000);
+    
+    let prompt_id = create_prompt(&env, &client, &creator, "Expiring Prompt", 10_000, &context.xlm);
+    
+    // Set 30 days access duration (30 * 24 * 60 * 60 = 2592000)
+    let duration_secs = 2_592_000;
+    client.set_access_duration(&creator, &prompt_id, &duration_secs);
+    
+    // Purchase the prompt
+    client.buy_prompt(&buyer, &prompt_id, &None, &10_000, &None);
+    assert!(client.has_access(&buyer, &prompt_id));
+    
+    // Fast forward halfway through the duration
+    env.ledger().set_timestamp(100_000 + 1_000_000);
+    assert!(client.has_access(&buyer, &prompt_id));
+    
+    // Fast forward past the duration
+    env.ledger().set_timestamp(100_000 + duration_secs + 1);
+    assert!(!client.has_access(&buyer, &prompt_id));
+}
