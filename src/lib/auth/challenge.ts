@@ -90,13 +90,11 @@ export function verifyChallengeToken(
   }
 
   const payload = JSON.parse(base64UrlDecode(encodedPayload)) as ChallengePayload;
-  console.log("verifyChallengeToken payload:", payload, "now:", now);
   if (payload.address !== address || payload.promptId !== promptId) {
     throw new Error("Challenge token does not match the requested prompt unlock.");
   }
 
   if (payload.expiresAt < now) {
-    console.log("CHALLENGE EXPIRED! payload.expiresAt:", payload.expiresAt, "now:", now);
     throw new Error("Challenge token has expired.");
   }
 
@@ -113,7 +111,8 @@ export function buildModeratorAuthMessage(address: string, purpose: string, time
   return `prompt-hash moderator:${address}:${purpose}:${timestamp}`;
 }
 
-export function verifyChallengeSignature(
+ * exact target (type + id) and a timestamp means a captured signature cannot
+ * replayed to file a different report or after it expires.
   address: string,
   message: string,
   signatureBase64: string,
@@ -124,4 +123,69 @@ export function verifyChallengeSignature(
   } catch {
     return false;
   }
+}
+
+/**
+ * Message a reporter wallet signs when filing an abuse report. Scoping it to the
+ * exact target (type + id) and a timestamp means a captured signature can't be
+ * replayed to file a different report or after it expires.
+ */
+export function buildReportAuthMessage(
+  address: string,
+  targetType: string,
+  targetId: string,
+  timestamp: number,
+): string {
+  return `prompt-hash report:${address}:${targetType}:${targetId}:${timestamp}`;
+}
+
+/** Verifies that `signature` proves control of `address` for a specific report. */
+export function verifyReportSignature(
+  address: string,
+  targetType: string,
+  targetId: string,
+  timestamp: number,
+  signature: string,
+): boolean {
+  const message = buildReportAuthMessage(address, targetType, targetId, timestamp);
+  return verifyChallengeSignature(address, message, signature);
+}
+
+const REPORT_SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Validates a reporter-supplied signature and timestamp. Returns a normalized
+ * error so endpoints can respond consistently.
+ */
+export function verifyReportAuth({
+  address,
+  targetType,
+  targetId,
+  timestamp,
+  signature,
+  now = Date.now(),
+}: {
+  address?: string;
+  targetType?: string;
+  targetId?: string;
+  timestamp?: number;
+  signature?: string;
+  now?: number;
+}): { ok: boolean; status: number; error?: string } {
+  if (!address) {
+    return { ok: false, status: 401, error: "Reporter wallet address is required" };
+  }
+  if (!targetType || !targetId) {
+    return { ok: false, status: 400, error: "Report target is required" };
+  }
+  if (!timestamp || !signature) {
+    return { ok: false, status: 401, error: "Reporter signature is required" };
+  }
+  if (Math.abs(now - timestamp) > REPORT_SIGNATURE_MAX_AGE_MS) {
+    return { ok: false, status: 401, error: "Reporter signature has expired" };
+  }
+  if (!verifyReportSignature(address, targetType, targetId, timestamp, signature)) {
+    return { ok: false, status: 401, error: "Invalid reporter signature" };
+  }
+  return { ok: true, status: 200 };
 }
