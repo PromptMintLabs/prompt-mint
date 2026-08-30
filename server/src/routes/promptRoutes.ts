@@ -14,6 +14,7 @@ import {
   UpdateReviewChecklist,
   AddTags,
   RemoveTags,
+  GetMarketplaceIndexStatus,
 } from "../controllers/controllers";
 import {
   GetBuyerTransactionHistory,
@@ -52,6 +53,10 @@ async function checkDuplicateContentHash(
 promptRouter.route("/").post(checkDuplicateContentHash, CreatePrompt);
 
 promptRouter.route("/").get(GetPrompts);
+
+// External indexer health/visibility — registered before `/:id` so it is not
+// shadowed by the generic single-prompt lookup below.
+promptRouter.get("/index/status", GetMarketplaceIndexStatus);
 
 promptRouter.get("/buyer/:walletAddress/owned", GetOwnedPrompts);
 promptRouter.get("/buyer/:walletAddress/transactions", GetBuyerTransactionHistory);
