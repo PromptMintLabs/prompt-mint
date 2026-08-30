@@ -2,6 +2,8 @@ import "dotenv/config";
 import "./instrumentation";
 import express from "express";
 import cors from "cors";
+import { buildCorsOptions } from "./config/cors";
+import { securityHeaders } from "./middleware/securityHeaders";
 import { TestPromptProxy } from "./controllers/controllers";
 import { proxyrouter } from "./routes/proxyRoutes";
 import { promptRouter } from "./routes/promptRoutes";
@@ -41,7 +43,20 @@ app.use((req, res, next) => {
 
 const port = 5000;
 
-app.use(cors());
+// Hardened CORS — only allowlisted origins receive CORS headers
+app.use(cors(buildCorsOptions()));
+
+// CORS error handler: return clean 403 JSON instead of Express default
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err && typeof err.message === "string" && err.message.startsWith("CORS:")) {
+    res.status(403).json({ error: "Forbidden", code: "CORS_FORBIDDEN" });
+    return;
+  }
+  next(err);
+});
+
+// Hardened security headers: CSP, HSTS, X-Frame-Options, etc.
+app.use(securityHeaders);
 
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 

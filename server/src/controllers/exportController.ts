@@ -49,15 +49,37 @@ function createChallengeToken(secret: string, address: string, promptId: string)
   };
 }
 
-function verifyChallengeToken(secret: string, token: string, address: string, promptId: string) {
+function getActiveSecrets(): string[] {
+  const secrets: string[] = [];
+  const primary = process.env.CHALLENGE_TOKEN_SECRET;
+  if (primary) secrets.push(primary);
+  const previous = process.env.CHALLENGE_TOKEN_SECRET_PREVIOUS;
+  const rotationTimestamp = parseInt(process.env.CHALLENGE_TOKEN_ROTATION_TIMESTAMP || "0", 10);
+  const gracePeriodMs = parseInt(process.env.CHALLENGE_TOKEN_GRACE_PERIOD_MS || "604800000", 10);
+  if (previous && rotationTimestamp && Date.now() - rotationTimestamp < gracePeriodMs) {
+    secrets.push(previous);
+  }
+  return secrets;
+}
+
+function verifyChallengeToken(secret: string | string[], token: string, address: string, promptId: string) {
   const [encodedPayload, signature] = token.split(".");
   if (!encodedPayload || !signature) throw new AppError("Malformed challenge token.", 400, "CHALLENGE_MALFORMED");
   
-  const expectedSignature = signPayload(secret, encodedPayload);
+  const secrets = Array.isArray(secret) ? secret : [secret];
   const received = Buffer.from(signature, "utf8");
-  const expected = Buffer.from(expectedSignature, "utf8");
   
-  if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
+  let validSignature = false;
+  for (const s of secrets) {
+    const expectedSignature = signPayload(s, encodedPayload);
+    const expected = Buffer.from(expectedSignature, "utf8");
+    if (received.length === expected.length && timingSafeEqual(received, expected)) {
+      validSignature = true;
+      break;
+    }
+  }
+
+  if (!validSignature) {
     throw new AppError("Invalid challenge token signature.", 401, "CHALLENGE_INVALID_SIGNATURE");
   }
 
@@ -100,12 +122,12 @@ export const RequestExport = asyncRoute(async (req: Request, res: Response) => {
   if (!address || !signature || !token) {
     throw new AppError("address, signature, and token are required.", 400, "MISSING_FIELDS");
   }
-  const secret = process.env.CHALLENGE_TOKEN_SECRET;
-  if (!secret) {
+  const activeSecrets = getActiveSecrets();
+  if (activeSecrets.length === 0) {
     throw new AppError("Configuration error.", 500);
   }
 
-  const payload = verifyChallengeToken(secret, token, String(address), "export");
+  const payload = verifyChallengeToken(activeSecrets, token, String(address), "export");
   const message = buildChallengeMessage(payload);
   const isValid = verifyChallengeSignature(String(address), message, String(signature));
   
@@ -180,12 +202,12 @@ export const RequestAccountDeletion = asyncRoute(async (req: Request, res: Respo
   if (!address || !signature || !token) {
     throw new AppError("address, signature, and token are required.", 400, "MISSING_FIELDS");
   }
-  const secret = process.env.CHALLENGE_TOKEN_SECRET;
-  if (!secret) {
+  const activeSecrets = getActiveSecrets();
+  if (activeSecrets.length === 0) {
     throw new AppError("Configuration error.", 500);
   }
 
-  const payload = verifyChallengeToken(secret, token, String(address), "delete-account");
+  const payload = verifyChallengeToken(activeSecrets, token, String(address), "delete-account");
   const message = buildChallengeMessage(payload);
   const isValid = verifyChallengeSignature(String(address), message, String(signature));
 

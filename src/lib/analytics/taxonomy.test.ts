@@ -31,7 +31,7 @@ describe("validateEventProperties — success paths", () => {
     const result = validateEventProperties("prompt_unlocked", {
       walletHash: VALID_WALLET_HASH,
       promptId: "42",
-    });
+    }) as any;
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.walletHash).toBe(VALID_WALLET_HASH);

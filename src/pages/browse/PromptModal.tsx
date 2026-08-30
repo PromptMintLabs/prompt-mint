@@ -6,10 +6,10 @@ import { FeeEstimateBanner } from "@/components/FeeEstimateBanner";
 import { PromptHashClient } from "../../lib/stellar/promptHashClient";
 import { unlockPrompt } from "../../lib/prompts/unlock";
 import { Skeleton } from "../../components/Skeleton";
+import { PromptModalSkeleton } from "@/components/MarketplaceSkeletons";
 import { StatusBanner } from "../../components/StatusBanner";
 import { UnlockExplainer } from "../../components/UnlockExplainer";
 import { copyToClipboard } from "../../lib/clipboard/secureClipboard";
-import { MarkdownPreview } from "../../components/MarkdownPreview";
 import { WatermarkedPreview } from "../../components/WatermarkedPreview";
 import { CopyButton } from "../../components/CopyButton";
 import {
@@ -43,6 +43,7 @@ import { browserStellarConfig } from "../../lib/stellar/browserConfig";
 import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBanner";
 import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
 import { CurrencyPrice } from "../../components/CurrencyPrice";
+import { AddressTooltip, ContractStateTooltip } from "@/components/ui/Tooltip";
 import { useNetworkState } from "@/hooks/useNetworkState";
 import { useAddToCart } from "@/hooks/useAddToCart";
 import { GiftPrompt } from "../../components/GiftPrompt";
@@ -85,12 +86,7 @@ const PromptMetadataSection: React.FC<{ itemId: string; status: BuyerStatus }> =
   });
 
   if (isLoading) {
-    return (
-      <div className="mb-6 space-y-3">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-      </div>
-    );
+    return <PromptModalSkeleton />;
   }
 
   if (!prompt) return null;
@@ -124,13 +120,12 @@ const PromptMetadataSection: React.FC<{ itemId: string; status: BuyerStatus }> =
               <Link
                 to={creatorHref}
                 className="text-xs font-mono text-cyan-200 truncate hover:text-cyan-100 underline-offset-2 hover:underline"
-                title={prompt.creator}
               >
-                {prompt.creator.slice(0, 8)}...{prompt.creator.slice(-4)}
+                <AddressTooltip address={prompt.creator} />
               </Link>
             ) : (
-              <p className="text-xs font-mono text-white truncate" title={prompt.creator}>
-                {prompt.creator.slice(0, 8)}...{prompt.creator.slice(-4)}
+              <p className="text-xs font-mono text-white truncate">
+                <AddressTooltip address={prompt.creator} />
               </p>
             )}
             <CopyButton
@@ -232,7 +227,13 @@ const PromptMetadataSection: React.FC<{ itemId: string; status: BuyerStatus }> =
       {!prompt.active && (
         <div className="p-3 rounded-lg bg-slate-500/10 border border-slate-500/20 flex items-center gap-2">
           <X className="h-4 w-4 text-slate-400" />
-          <p className="text-xs text-slate-400 font-semibold">This prompt is currently unavailable</p>
+          <p className="text-xs text-slate-400 font-semibold">
+            This prompt is{" "}
+            <ContractStateTooltip
+              state="expired"
+              detail="The creator has taken this listing offline."
+            />
+          </p>
         </div>
       )}
     </div>

@@ -10,7 +10,6 @@ import {
   Shield,
   User,
   ShoppingCart,
-  Wallet,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";

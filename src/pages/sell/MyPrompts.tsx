@@ -538,7 +538,7 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
                 onDragOver={handlePromptDragOver}
                 onDrop={handlePromptDrop(prompt.id.toString())}
                 onDragEnd={() => setDraggedId(null)}
-                className={`border-white/10 bg-slate-950/70 text-white transition-opacity ${
+                className={`relative border-white/10 bg-slate-950/70 text-white transition-opacity ${
                   draggedId === prompt.id.toString() ? "opacity-50" : ""
                 }`}
               >

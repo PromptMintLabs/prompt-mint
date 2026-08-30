@@ -42,6 +42,9 @@ jobs:
           node-version: "22"
           cache: "yarn"
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 

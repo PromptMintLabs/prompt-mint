@@ -9,7 +9,6 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  PackageSearch,
   Loader2,
   BookmarkCheck,
   Heart,
@@ -243,8 +242,6 @@ const FetchAllPrompts = ({
   };
 
   const isFavorited = (promptId: string) => favorites.isFavorite(promptId);
-
-  const favoritePromptIds = useMemo(() => new Set(favorites.favorites), [favorites.favorites]);
 
   const filteredPrompts = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();

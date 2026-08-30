@@ -8,6 +8,7 @@ import {
   createChallengeToken,
 } from "../../src/lib/auth/challenge";
 import { ErrorCode } from "../../src/lib/api/errorCodes";
+import { resetAbuseProtectionState } from "../../src/lib/auth/abuseProtection";
 
 const hasAccessMock = vi.fn();
 const getPromptMock = vi.fn();
@@ -159,6 +160,7 @@ async function invokeUnlock(body: Record<string, unknown>) {
 describe("unlock API integrity checks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetAbuseProtectionState();
   });
 
   it("returns plaintext when decrypted content matches the stored hash", async () => {
@@ -340,6 +342,8 @@ describe("unlock API integrity checks", () => {
     expect(statusCode).toBe(400);
     expect(responseData.code).toBe(ErrorCode.MISSING_FIELDS);
     expect(responseData.plaintext).toBeUndefined();
+  });
+
   it("returns plaintext and marks integrity unavailable when no stored hash is present", async () => {
     const { buyer, promptId, challenge, signedMessage, plaintext } =
       await setupUnlockFixture();
@@ -397,6 +401,95 @@ describe("unlock API integrity checks", () => {
     expect(statusCode).toBe(401);
     expect(responseData.code).toBe(ErrorCode.INVALID_SIGNATURE);
     expect(responseData.plaintext).toBeUndefined();
+  });
+
+  it("locks account after 5 failed authentication attempts (HTTP 423)", async () => {
+    const { buyer, promptId, challenge } = await setupUnlockFixture();
+    const wrongSigner = Keypair.random();
+    const wrongSignature = Buffer.from(
+      wrongSigner.sign(Buffer.from(challenge.challenge, "utf8")),
+    ).toString("base64");
+
+    // First 4 failed attempts return 401
+    for (let i = 0; i < 4; i++) {
+      const { statusCode, responseData } = await invokeUnlock({
+        token: challenge.token,
+        promptId,
+        address: buyer.publicKey(),
+        signedMessage: wrongSignature,
+      });
+      expect(statusCode).toBe(401);
+      expect(responseData.code).toBe(ErrorCode.INVALID_SIGNATURE);
+    }
+
+    // 5th failed attempt locks the account and returns 423
+    const { statusCode, responseData } = await invokeUnlock({
+      token: challenge.token,
+      promptId,
+      address: buyer.publicKey(),
+      signedMessage: wrongSignature,
+    });
+
+    expect(statusCode).toBe(423);
+    expect(responseData.code).toBe(ErrorCode.ACCOUNT_LOCKED);
+    expect(responseData.error).toContain("Account is locked");
+
+    // Subsequent valid unlock attempts are blocked while locked
+    const validSignature = Buffer.from(
+      buyer.sign(Buffer.from(challenge.challenge, "utf8")),
+    ).toString("base64");
+
+    const blockedAttempt = await invokeUnlock({
+      token: challenge.token,
+      promptId,
+      address: buyer.publicKey(),
+      signedMessage: validSignature,
+    });
+    expect(blockedAttempt.statusCode).toBe(423);
+    expect(blockedAttempt.responseData.code).toBe(ErrorCode.ACCOUNT_LOCKED);
+  });
+
+  it("requires and validates CAPTCHA when repeated failures occur", async () => {
+    const { buyer, promptId, challenge } = await setupUnlockFixture();
+    const wrongSigner = Keypair.random();
+    const wrongSignature = Buffer.from(
+      wrongSigner.sign(Buffer.from(challenge.challenge, "utf8")),
+    ).toString("base64");
+
+    // 3 failed attempts triggers CAPTCHA
+    for (let i = 0; i < 3; i++) {
+      await invokeUnlock({
+        token: challenge.token,
+        promptId,
+        address: buyer.publicKey(),
+        signedMessage: wrongSignature,
+      });
+    }
+
+    const validSignature = Buffer.from(
+      buyer.sign(Buffer.from(challenge.challenge, "utf8")),
+    ).toString("base64");
+
+    // Missing CAPTCHA returns 403 CAPTCHA_REQUIRED
+    const missingCaptcha = await invokeUnlock({
+      token: challenge.token,
+      promptId,
+      address: buyer.publicKey(),
+      signedMessage: validSignature,
+    });
+    expect(missingCaptcha.statusCode).toBe(403);
+    expect(missingCaptcha.responseData.code).toBe(ErrorCode.CAPTCHA_REQUIRED);
+
+    // With valid CAPTCHA, unlock succeeds
+    const withCaptcha = await invokeUnlock({
+      token: challenge.token,
+      promptId,
+      address: buyer.publicKey(),
+      signedMessage: validSignature,
+      captchaToken: "test-captcha-token-valid",
+    });
+    expect(withCaptcha.statusCode).toBe(200);
+    expect(withCaptcha.responseData.plaintext).toBeDefined();
   });
 });
 

@@ -18,6 +18,7 @@ const warnMockUse = () => {
 
 export interface PromptHashConfig {
   rpcUrl: string;
+  horizonUrl?: string;
   networkPassphrase: string;
   allowHttp?: boolean;
   promptHashContractId: string;
@@ -108,6 +109,8 @@ export const CONTRACT_ERROR_CODES = {
   INVALID_PRICE: "INVALID_PRICE",
   ALREADY_PURCHASED: "ALREADY_PURCHASED",
   LISTING_EXPIRED: "LISTING_EXPIRED",
+  INSUFFICIENT_BALANCE: "INSUFFICIENT_BALANCE",
+  PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
   UNKNOWN: "UNKNOWN",
 } as const;
 
@@ -188,6 +191,32 @@ export function classifyContractError(error: unknown): ContractErrorDetails {
     };
   }
 
+  if (
+    normalized.includes("insufficientbalance") ||
+    normalized.includes("insufficient balance") ||
+    normalized.includes("op_underfunded")
+  ) {
+    return {
+      code: CONTRACT_ERROR_CODES.INSUFFICIENT_BALANCE,
+      message: "Your wallet doesn't have enough balance to complete this purchase. Please fund your wallet and try again.",
+      isUserActionable: true,
+      raw,
+    };
+  }
+
+  if (
+    normalized.includes("payloadtoolarge") ||
+    normalized.includes("payload too large") ||
+    normalized.includes("invalidfieldlength")
+  ) {
+    return {
+      code: CONTRACT_ERROR_CODES.PAYLOAD_TOO_LARGE,
+      message: "Your prompt content is too large to store on-chain. Please shorten it to under 4,000 characters and try again.",
+      isUserActionable: true,
+      raw,
+    };
+  }
+
   return {
     code: CONTRACT_ERROR_CODES.UNKNOWN,
     message: "The marketplace could not complete that action. Please try again later.",
@@ -262,6 +291,35 @@ export class PromptHashClient {
     _recipient: string,
   ): Promise<{ txHash: string }> {
     return { txHash: "mock_gift_tx_hash" };
+  }
+
+  /**
+   * Invokes the Soroban contract to gift an already-purchased prompt to a
+   * recipient (transfers ownership/access to the recipient's address).
+   */
+  static async giftPrompt(
+    _promptId: string,
+    _senderAddress: string,
+    _recipientAddress: string,
+    options?: { forceFailure?: string; delay?: number },
+  ): Promise<{ txHash: string; success: boolean; recipientAddress: string }> {
+    warnMockUse();
+    return new Promise((resolve, reject) => {
+      const delay = options?.delay ?? 2000;
+      setTimeout(() => {
+        if (options?.forceFailure) {
+          return reject(new Error(options.forceFailure));
+        }
+
+        const mockHash =
+          "tx_gift_" + Math.random().toString(16).slice(2, 14).padStart(12, "0");
+        resolve({
+          txHash: mockHash,
+          success: true,
+          recipientAddress: _recipientAddress,
+        });
+      }, delay);
+    });
   }
 
   /**

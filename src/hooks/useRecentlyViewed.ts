@@ -8,7 +8,6 @@ import {
   addRecentlyViewed,
   removeRecentlyViewed,
   clearRecentlyViewed,
-  isRecentlyViewedEnabled,
   isStorageAvailable,
 } from '@/lib/browsing/history';
 

@@ -19,6 +19,13 @@ import {
 import { withObservability } from "../../src/lib/observability/wrapper";
 import { withBodySizeLimit } from "../../src/lib/api/bodySizeLimit";
 import { checkRateLimit } from "../../src/lib/observability/rateLimiter";
+import {
+  isAccountLocked,
+  isCaptchaRequired,
+  recordFailedAuthAttempt,
+  recordSuccessfulAuth,
+  verifyCaptchaToken,
+} from "../../src/lib/auth/abuseProtection";
 import { checkReplayProtection } from "../../src/lib/observability/replayProtection";
 import { metrics } from "../../src/lib/observability/metrics";
 import { dispatchEvent } from "../../server/src/services/webhookDispatcher";
@@ -140,6 +147,32 @@ async function handler(req: any, res: any) {
     return;
   }
 
+  // Check if wallet account is locked after repeated auth failures
+  if (address && typeof address === "string") {
+    const lockStatus = await isAccountLocked(address);
+    if (lockStatus.locked) {
+      req.logger.warn({ address }, "Unlock requested for locked account");
+      void recordAuditEvent({
+        action: "unlock_account_locked",
+        result: "blocked",
+        promptId: promptId ? String(promptId) : null,
+        walletAddress: String(address),
+        requestId: req.requestId ?? null,
+        clientIp,
+        reason: "account_locked",
+      });
+      res.status(423).json(
+        apiError(
+          ErrorCode.ACCOUNT_LOCKED,
+          "Account is locked due to too many failed authentication attempts.",
+          { lockedUntil: lockStatus.lockedUntil },
+          version,
+        ),
+      );
+      return;
+    }
+  }
+
   // Rate limit by wallet address (authenticated bucket — per-wallet brute-force guard).
   if (address) {
     const walletRateLimit = await checkRateLimit("unlock", String(address), isAuthenticated);
@@ -162,6 +195,63 @@ async function handler(req: any, res: any) {
         apiError(ErrorCode.RATE_LIMIT_WALLET, "Too many unlock attempts for this wallet.", {
           reset: walletRateLimit.reset,
         }, version),
+      );
+      return;
+    }
+  }
+
+  // Check if CAPTCHA is required due to repeated failures
+  const addressStr = typeof address === "string" ? address : undefined;
+  const captchaNeeded = await isCaptchaRequired(addressStr, clientIp);
+  if (captchaNeeded) {
+    const captchaToken =
+      (body as { captchaToken?: unknown }).captchaToken ||
+      req.headers["x-captcha-token"];
+
+    if (!captchaToken || typeof captchaToken !== "string") {
+      req.logger.warn({ address: addressStr, clientIp }, "CAPTCHA required for unlock request");
+      void recordAuditEvent({
+        action: "unlock_captcha_required",
+        result: "blocked",
+        promptId: promptId ? String(promptId) : null,
+        walletAddress: addressStr ?? null,
+        requestId: req.requestId ?? null,
+        clientIp,
+        reason: "captcha_required",
+      });
+      res.status(403).json(
+        apiError(
+          ErrorCode.CAPTCHA_REQUIRED,
+          "CAPTCHA verification is required to proceed.",
+          { captchaRequired: true },
+          version,
+        ),
+      );
+      return;
+    }
+
+    const captchaResult = await verifyCaptchaToken(captchaToken, clientIp);
+    if (!captchaResult.valid) {
+      req.logger.warn(
+        { address: addressStr, clientIp, reason: captchaResult.reason },
+        "Invalid CAPTCHA token for unlock",
+      );
+      void recordAuditEvent({
+        action: "unlock_captcha_failed",
+        result: "blocked",
+        promptId: promptId ? String(promptId) : null,
+        walletAddress: addressStr ?? null,
+        requestId: req.requestId ?? null,
+        clientIp,
+        reason: captchaResult.reason ?? "invalid_captcha",
+      });
+      res.status(403).json(
+        apiError(
+          ErrorCode.CAPTCHA_INVALID,
+          "Invalid or expired CAPTCHA verification.",
+          { captchaRequired: true },
+          version,
+        ),
       );
       return;
     }
@@ -212,6 +302,31 @@ async function handler(req: any, res: any) {
     if (!validSignature) {
       req.logger.warn({ address: unlockRequest.address, promptId: unlockRequest.promptId }, "Invalid wallet signature");
       metrics.trackUnlockFailure(unlockRequest.address, unlockRequest.promptId, "invalid_signature");
+      
+      const failureStatus = await recordFailedAuthAttempt(unlockRequest.address, clientIp);
+
+      if (failureStatus.locked) {
+        req.logger.warn({ address: unlockRequest.address }, "Account locked after 5 failed auth attempts");
+        void recordAuditEvent({
+          action: "account_locked",
+          result: "blocked",
+          promptId: unlockRequest.promptId,
+          walletAddress: unlockRequest.address,
+          requestId: req.requestId ?? null,
+          clientIp,
+          reason: "max_failed_auth_attempts_exceeded",
+        });
+        res.status(423).json(
+          apiError(
+            ErrorCode.ACCOUNT_LOCKED,
+            "Account is locked due to too many failed authentication attempts.",
+            { lockedUntil: failureStatus.lockedUntil },
+            version,
+          ),
+        );
+        return;
+      }
+
       void recordAuditEvent({
         action: "unlock_invalid_signature",
         result: "failure",
@@ -337,33 +452,24 @@ async function handler(req: any, res: any) {
     );
     const contentHash = await hashPromptPlaintext(plaintext);
     const storedHash = normalizeContentHash(encryptedPayload.contentHash);
-    if (contentHash !== storedHash) {
-      req.logger.error(
-        { address: unlockRequest.address, promptId: unlockRequest.promptId },
-        "Prompt integrity check failed",
-      );
-      metrics.trackUnlockFailure(
-        unlockRequest.address,
-        unlockRequest.promptId,
-        "integrity_failure",
-      );
-    const storedHash = normalizeContentHash(prompt.contentHash ?? "");
 
     // Determine integrity state exposed to the buyer
     const integrity = {
       status: ((): "verified" | "failed" | "unavailable" => {
-        if (!prompt.contentHash) return "unavailable";
+        if (!encryptedPayload.contentHash) return "unavailable";
         if (contentHash !== storedHash) return "failed";
         return "verified";
       })(),
       computedHash: contentHash,
-      storedHash: prompt.contentHash ?? null,
+      storedHash: encryptedPayload.contentHash ?? null,
     };
 
     if (integrity.status === "failed") {
-      // Integrity mismatch: redact decrypted content, emit diagnostics, and return structured metadata.
-      req.logger.error({ address, promptId }, "Prompt integrity check failed");
-      metrics.trackUnlockFailure(String(address), String(promptId), "integrity_failure");
+      req.logger.error(
+        { address: unlockRequest.address, promptId: unlockRequest.promptId },
+        "Prompt integrity check failed",
+      );
+      metrics.trackUnlockFailure(unlockRequest.address, unlockRequest.promptId, "integrity_failure");
       void recordAuditEvent({
         action: "unlock_integrity_failure",
         result: "failure",
@@ -373,38 +479,26 @@ async function handler(req: any, res: any) {
         clientIp,
         reason: "integrity_failure",
       });
-      res.status(500).json(
-        apiError(ErrorCode.INTEGRITY_FAILURE, "Prompt integrity check failed.", undefined, version),
-      );
-
-      // Emit a diagnostic webhook for creators/ops without disclosing plaintext.
       void Promise.resolve(
         dispatchEvent(prompt.creator ?? "", "PromptIntegrityViolation", {
           promptId: prompt.id.toString(),
-          buyer: String(address),
+          buyer: String(unlockRequest.address),
           computedHash: integrity.computedHash,
           storedHash: integrity.storedHash,
         }),
       ).catch(() => {});
-
-      // Return structured response with redacted plaintext and integrity metadata.
-      res.status(200).json({
-        promptId: prompt.id.toString(),
-        title: prompt.title,
-        integrity,
-      });
-
+      res.status(500).json(
+        apiError(ErrorCode.INTEGRITY_FAILURE, "Prompt integrity check failed.", undefined, version),
+      );
       return;
     }
 
+    await recordSuccessfulAuth(unlockRequest.address, clientIp);
     metrics.trackUnlockSuccess(unlockRequest.address, unlockRequest.promptId);
     req.logger.info(
       { address: unlockRequest.address, promptId: unlockRequest.promptId },
       "Prompt unlocked successfully",
     );
-    // Success or unavailable (no stored hash) — allow the buyer to receive plaintext but include integrity metadata.
-    metrics.trackUnlockSuccess(String(address), String(promptId));
-    req.logger.info({ address, promptId }, "Prompt unlocked successfully");
     void recordAuditEvent({
       action: "unlock_success",
       result: "success",
@@ -415,7 +509,6 @@ async function handler(req: any, res: any) {
       reason: null,
     });
 
-    // Fire-and-forget webhook dispatch so the creator is notified of the sale.
     void Promise.resolve(
       dispatchEvent(prompt.creator ?? "", "PromptPurchased", {
         promptId: prompt.id.toString(),
@@ -431,18 +524,11 @@ async function handler(req: any, res: any) {
           title: prompt.title,
           contentHash,
           plaintext,
+          integrity,
         },
         version,
       ),
     );
-    res.status(200).json({
-      promptId: prompt.id.toString(),
-      title: prompt.title,
-      contentHash,
-      plaintext,
-      // Always include integrity metadata so the client can display provenance state.
-      integrity,
-    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to unlock prompt.";
     req.logger.error(

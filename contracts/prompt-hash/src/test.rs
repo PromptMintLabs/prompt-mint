@@ -6643,6 +6643,8 @@ fn test_emergency_pause_owner_can_pause() {
 
 #[test]
 fn test_emergency_pause_rejects_already_paused() {
+#[test]
+fn test_buy_returns_insufficient_balance_when_wallet_unfunded() {
     let env: Env = Default::default();
     let context = setup(&env);
     let client = PromptHashContractClient::new(&env, &context.contract);
@@ -6654,6 +6656,15 @@ fn test_emergency_pause_rejects_already_paused() {
     match result {
         Err(Ok(Error::EmergencyAlreadyActive)) => {}
         other => panic!("expected EmergencyAlreadyActive, got {:?}", other),
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Expensive", 10_000, &context.xlm);
+
+    // Buyer has zero balance — should get InsufficientBalance, not a raw token error.
+    let result = client.try_buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &10_000i128, &None::<Bytes>());
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance, got {:?}", other),
     }
 }
 
@@ -6734,11 +6745,38 @@ fn test_propose_unpause_requires_paused_state() {
     match result {
         Err(Ok(Error::ContractIsPaused)) => {}
         other => panic!("expected ContractIsPaused (not paused), got {:?}", other),
+fn test_buy_supply_enforcement_is_atomic() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Supply Two", 1_000, &context.xlm);
+    client.set_prompt_max_supply(&creator, &prompt_id, &2u64);
+
+    fund_buyer(&xlm_client, &buyer, &context.contract, 100_000);
+
+    // Buy 1 of 2
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &1_000i128, &None::<Bytes>());
+    assert_eq!(client.get_prompt(&prompt_id).sales_count, 1);
+
+    // Buy 2 of 2
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &1_000i128, &None::<Bytes>());
+    assert_eq!(client.get_prompt(&prompt_id).sales_count, 2);
+
+    // Buy 3 — should fail with MaxSupplyReached
+    let result = client.try_buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &1_000i128, &None::<Bytes>());
+    match result {
+        Err(Ok(Error::MaxSupplyReached)) => {}
+        other => panic!("expected MaxSupplyReached, got {:?}", other),
     }
 }
 
 #[test]
 fn test_propose_and_confirm_unpause_with_cooldown() {
+fn test_buy_bundle_returns_insufficient_balance_when_wallet_unfunded() {
     let env: Env = Default::default();
     let context = setup(&env);
     let client = PromptHashContractClient::new(&env, &context.contract);
@@ -6803,11 +6841,76 @@ fn test_cancel_unpause() {
     match result {
         Err(Ok(Error::UnpauseNotProposed)) => {}
         other => panic!("expected UnpauseNotProposed, got {:?}", other),
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+
+    let pid = create_prompt(&env, &client, &creator, "Bundle P", 3_000, &context.xlm);
+    let mut ids = Vec::new(&env);
+    ids.push_back(pid);
+
+    let bundle_id = client.create_bundle(
+        &creator,
+        &String::from_str(&env, "Test Bundle"),
+        &String::from_str(&env, "desc"),
+        &String::from_str(&env, "https://img.example.com/test.png"),
+        &ids,
+        &10_000,
+        &context.xlm,
+    );
+
+    // Buyer has zero balance — should get InsufficientBalance
+    let result = client.try_buy_bundle(&buyer, &bundle_id, &10_000i128, &None::<Address>());
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance for bundle, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_buy_bundle_supply_enforcement_blocks_when_full() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let buyer_a = Address::generate(&env);
+    let buyer_b = Address::generate(&env);
+
+    let pid = create_prompt(&env, &client, &creator, "Supply Bundle", 3_000, &context.xlm);
+    client.set_prompt_max_supply(&creator, &pid, &1u64);
+
+    let mut ids = Vec::new(&env);
+    ids.push_back(pid);
+
+    let bundle_id = client.create_bundle(
+        &creator,
+        &String::from_str(&env, "Supply Bundle"),
+        &String::from_str(&env, "desc"),
+        &String::from_str(&env, "https://img.example.com/test.png"),
+        &ids,
+        &10_000,
+        &context.xlm,
+    );
+
+    fund_buyer(&xlm_client, &buyer_a, &context.contract, 100_000);
+    fund_buyer(&xlm_client, &buyer_b, &context.contract, 100_000);
+
+    // First buyer succeeds
+    client.buy_bundle(&buyer_a, &bundle_id, &10_000i128, &None::<Address>());
+    assert!(client.has_access(&buyer_a, &pid));
+
+    // Second buyer should hit MaxSupplyReached
+    let result = client.try_buy_bundle(&buyer_b, &bundle_id, &10_000i128, &None::<Address>());
+    match result {
+        Err(Ok(Error::MaxSupplyReached)) => {}
+        other => panic!("expected MaxSupplyReached for bundle second purchase, got {:?}", other),
     }
 }
 
 #[test]
 fn test_cancel_unpause_requires_proposal() {
+fn test_lease_returns_insufficient_balance_when_wallet_unfunded() {
     let env: Env = Default::default();
     let context = setup(&env);
     let client = PromptHashContractClient::new(&env, &context.contract);
@@ -6846,5 +6949,17 @@ fn test_emergency_pause_get_pending_unpause_none_when_no_proposal() {
 
     client.emergency_pause(&context.admin);
     assert!(client.get_pending_unpause().is_none());
+}
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Lease Prompt", 10_000, &context.xlm);
+
+    // Buyer has zero balance — should get InsufficientBalance
+    let result = client.try_lease_prompt(&buyer, &prompt_id, &3600u64);
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance for lease, got {:?}", other),
+    }
 }
 

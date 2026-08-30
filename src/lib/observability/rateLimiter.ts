@@ -13,7 +13,7 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 // Unauthenticated (no wallet address provided) requests get stricter limits.
 const limits: Record<string, { authenticated: RateLimitConfig; unauthenticated: RateLimitConfig }> = {
   challenge: {
-    unauthenticated: { max: 5, windowMs: 60_000 },
+    unauthenticated: { max: 10, windowMs: 60_000 },
     authenticated: { max: 10, windowMs: 60_000 },
   },
   unlock: {

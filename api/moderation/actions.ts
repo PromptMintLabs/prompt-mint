@@ -39,10 +39,10 @@ async function handler(req: any, res: any) {
       const review = findReviewById(item.targetId);
       if (!review) { errors.push({ index, error: "Review not found" }); continue; }
       updateReview(review.promptId, review.id, {
-        moderation: { status: item.action === "review_removed" ? "removed" : "approved", moderatorAddress, reason: item.reason.trim(), updatedAt: Date.now() },
+        moderation: { status: item.action === "review_removed" ? "removed" : "approved", moderatorAddress: moderatorAddress ?? "", reason: item.reason.trim(), updatedAt: Date.now() },
       });
     }
-    applied.push(addModerationLog({ ...item, reason: item.reason.trim(), details: item.details?.trim(), moderatorAddress }));
+    applied.push(addModerationLog({ ...item, reason: item.reason.trim(), details: item.details?.trim(), moderatorAddress: moderatorAddress ?? "" }));
   }
   return res.status(errors.length ? 207 : 200).json({ success: errors.length === 0, applied, errors });
 }

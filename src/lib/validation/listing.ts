@@ -65,9 +65,10 @@ export type ListingFormInput = {
   previewText: string;
   fullPrompt: string;
   priceXlm: string;
-  // #131 – content classification
-  classification: string;
-  safetyFlags: string[];
+  // #131 – content classification (optional at the form-input boundary; the
+  // validation below still reports an error when classification is omitted)
+  classification?: string;
+  safetyFlags?: string[];
 };
 
 export type ListingValidationErrors = Partial<

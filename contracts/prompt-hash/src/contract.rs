@@ -299,6 +299,13 @@ impl PromptHashTrait for PromptHashContract {
 
         Storage::set_reentrancy_guard(&env)?;
 
+        // Atomic increment: write sales_count before any token transfers.
+        prompt.sales_count = prompt
+            .sales_count
+            .checked_add(1)
+            .ok_or(Error::ArithmeticOverflow)?;
+        Storage::update_prompt(&env, &prompt);
+
         let fee_wallet = Storage::get_fee_wallet(&env).ok_or(Error::FeeWalletNotSet)?;
         let this_contract = env.current_contract_address();
         let fee_percentage = Storage::get_fee_percentage(&env);
@@ -320,19 +327,23 @@ impl PromptHashTrait for PromptHashContract {
             .ok_or(Error::ArithmeticOverflow)?;
 
         let asset_client = token::StellarAssetClient::new(&env, &prompt.asset);
+
+        // Pre-check buyer balance to surface a clear error instead of a raw
+        // Soroban token-transfer failure when the wallet is unfunded.
+        let buyer_balance: i128 = asset_client.balance(&buyer);
+        ensure(
+            buyer_balance >= lease_price,
+            Error::InsufficientBalance,
+        )?;
+
         asset_client.transfer_from(&this_contract, &buyer, &prompt.creator, &seller_amount);
         if fee_amount > 0 {
             asset_client.transfer_from(&this_contract, &buyer, &fee_wallet, &fee_amount);
         }
 
-        prompt.sales_count = prompt
-            .sales_count
-            .checked_add(1)
-            .ok_or(Error::ArithmeticOverflow)?;
         let expires_at = now
             .checked_add(lease_duration_secs)
             .ok_or(Error::ArithmeticOverflow)?;
-        Storage::update_prompt(&env, &prompt);
         Storage::grant_purchase(
             &env,
             &prompt,
@@ -1140,12 +1151,6 @@ impl PromptHashTrait for PromptHashContract {
             if prompt.expires_at != 0 {
                 ensure(prompt.expires_at >= now, Error::ListingExpired)?;
             }
-            if prompt.max_supply > 0 {
-                ensure(
-                    prompt.sales_count < prompt.max_supply,
-                    Error::MaxSupplyReached,
-                )?;
-            }
             prompts.push_back(prompt);
         }
 
@@ -1159,6 +1164,25 @@ impl PromptHashTrait for PromptHashContract {
 
         Storage::set_reentrancy_guard(&env)?;
 
+        // Atomic supply enforcement: check + increment + write each prompt's
+        // supply right after the guard, before any token transfers, so
+        // concurrent bundle purchases cannot overshoot max_supply.
+        for i in 0..prompts.len() {
+            let mut prompt = prompts.get(i).unwrap();
+            if prompt.max_supply > 0 {
+                ensure(
+                    prompt.sales_count < prompt.max_supply,
+                    Error::MaxSupplyReached,
+                )?;
+            }
+            prompt.sales_count = prompt
+                .sales_count
+                .checked_add(1)
+                .ok_or(Error::ArithmeticOverflow)?;
+            Storage::update_prompt(&env, &prompt);
+            prompts.set(i, prompt);
+        }
+
         let fee_wallet = Storage::get_fee_wallet(&env).ok_or(Error::FeeWalletNotSet)?;
         let fee_percentage = Storage::get_fee_percentage(&env);
         let referral_percentage = Storage::get_referral_percentage(&env);
@@ -1170,6 +1194,14 @@ impl PromptHashTrait for PromptHashContract {
         let this_contract = env.current_contract_address();
         let asset_client = token::StellarAssetClient::new(&env, &bundle.asset);
         let price = bundle.price_stroops;
+
+        // Pre-check buyer balance to surface a clear error instead of a raw
+        // Soroban token-transfer failure when the wallet is unfunded.
+        let buyer_balance: i128 = asset_client.balance(&buyer);
+        ensure(
+            buyer_balance >= price,
+            Error::InsufficientBalance,
+        )?;
 
         let fee_amount = price
             .checked_mul(fee_percentage as i128)
@@ -1242,11 +1274,6 @@ impl PromptHashTrait for PromptHashContract {
             } else {
                 per_item_referral_amount
             };
-            prompt.sales_count = prompt
-                .sales_count
-                .checked_add(1)
-                .ok_or(Error::ArithmeticOverflow)?;
-            Storage::update_prompt(&env, &prompt);
             Storage::grant_purchase(
                 &env,
                 &prompt,
@@ -1898,14 +1925,6 @@ fn execute_buy(
         ensure(prompt.expires_at >= now, Error::ListingExpired)?;
     }
 
-    // Enforce max supply (0 = unlimited)
-    if prompt.max_supply > 0 {
-        ensure(
-            prompt.sales_count < prompt.max_supply,
-            Error::MaxSupplyReached,
-        )?;
-    }
-
     // Check for active promotion and use promotional price if applicable
     let (effective_price, _effective_asset, is_promotional) =
         get_effective_price_for_prompt(env, prompt_id)?;
@@ -1952,6 +1971,20 @@ fn execute_buy(
     let referrer = referral.as_ref().map(|code| code.owner.clone());
 
     Storage::set_reentrancy_guard(env)?;
+
+    // Atomic supply enforcement: check + increment + write before any token
+    // transfers so concurrent transactions cannot overshoot max_supply.
+    if prompt.max_supply > 0 {
+        ensure(
+            prompt.sales_count < prompt.max_supply,
+            Error::MaxSupplyReached,
+        )?;
+    }
+    prompt.sales_count = prompt
+        .sales_count
+        .checked_add(1)
+        .ok_or(Error::ArithmeticOverflow)?;
+    Storage::update_prompt(env, &prompt);
 
     let fee_wallet = Storage::get_fee_wallet(env).ok_or(Error::FeeWalletNotSet)?;
     let this_contract = env.current_contract_address();
@@ -2002,6 +2035,14 @@ fn execute_buy(
 
     let asset_client = token::StellarAssetClient::new(env, &prompt.asset);
 
+    // Pre-check buyer balance to surface a clear error instead of a raw
+    // Soroban token-transfer failure when the wallet is unfunded.
+    let buyer_balance: i128 = asset_client.balance(buyer);
+    ensure(
+        buyer_balance >= payment_amount_stroops,
+        Error::InsufficientBalance,
+    )?;
+
     if creator_amount > 0 {
         asset_client.transfer_from(&this_contract, buyer, &prompt.creator, &creator_amount);
     }
@@ -2035,11 +2076,6 @@ fn execute_buy(
         }
     }
 
-    prompt.sales_count = prompt
-        .sales_count
-        .checked_add(1)
-        .ok_or(Error::ArithmeticOverflow)?;
-    Storage::update_prompt(env, &prompt);
     Storage::grant_purchase(
         env,
         &prompt,

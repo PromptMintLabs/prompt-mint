@@ -110,6 +110,8 @@ pub enum Error {
     UnpauseNotProposed = 56,
     /// The timelock for the pending unpause has not elapsed.
     UnpauseCooldownNotElapsed = 57,
+    /// The buyer's token balance is insufficient to cover the payment.
+    InsufficientBalance = 55,
 }
 
 #[contracttype]
@@ -175,7 +177,6 @@ pub struct PriceHistoryEntry {
     /// Monotonic per-prompt sequence number, starting at 1 for the initial
     /// listing price. Used to keep history entries ordered and de-duplicated.
     pub seq: u64,
-    PromptExpiryWarning(u128),
 }
 
 #[contracttype]
