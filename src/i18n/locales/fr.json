@@ -48,7 +48,18 @@
       "invalid_address": "Adresse de portefeuille invalide.",
       "review_text_short": "L'avis doit contenir au moins 10 caractères.",
       "review_text_long": "L'avis ne doit pas dépasser 500 caractères.",
-      "response_text_long": "La réponse ne doit pas dépasser 1000 caractères."
+      "response_text_long": "La réponse ne doit pas dépasser 1000 caractères.",
+      "title_required": "Le titre est requis.",
+      "title_min_length": "Le titre doit comporter au moins 3 caractères.",
+      "price_must_be_positive": "Le prix doit être supérieur à 0.",
+      "price_required": "Le prix est requis.",
+      "image_url_invalid": "L'URL de l'image doit commencer par http:// ou https://.",
+      "image_url_required": "L'URL de l'image est requise.",
+      "category_required": "La catégorie est requise.",
+      "preview_required": "Le texte d'aperçu est requis.",
+      "preview_min_length": "Le texte d'aperçu doit contenir au moins 10 caractères.",
+      "prompt_required": "Le contenu du prompt est requis.",
+      "prompt_min_length": "Le prompt doit contenir au moins 10 caractères."
     },
     "transaction": {
       "user_rejected": "Transaction rejetée par l'utilisateur.",
