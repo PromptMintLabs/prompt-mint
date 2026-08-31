@@ -137,34 +137,13 @@ export function classifyContractError(error: unknown): ContractErrorDetails {
   const raw = normalizeContractErrorText(error).trim();
   const normalized = raw.toLowerCase();
 
-  if (normalized.includes("paused") || normalized.includes("contractispaused")) {
-    return {
-      code: CONTRACT_ERROR_CODES.CONTRACT_PAUSED,
-      message: "The marketplace is temporarily paused. Please try again shortly.",
-      isUserActionable: true,
-      raw,
-    };
-  }
-
-  if (normalized.includes("promptnotfound") || normalized.includes("not found") || normalized.includes("prompt #")) {
-    return {
-      code: CONTRACT_ERROR_CODES.PROMPT_NOT_FOUND,
-      message: "The requested prompt could not be found.",
-      isUserActionable: true,
-      raw,
-    };
-  }
-
-  if (normalized.includes("unauthorized") || normalized.includes("not authorized")) {
-    return {
-      code: CONTRACT_ERROR_CODES.UNAUTHORIZED,
-      message: "You are not authorized to perform this action.",
-      isUserActionable: true,
-      raw,
-    };
-  }
-
-  if (normalized.includes("alreadypurchased") || normalized.includes("already purchased")) {
+  // Soroban Error(Contract, #1) or contract code 1: Already Purchased
+  if (
+    normalized.includes("alreadypurchased") ||
+    normalized.includes("already purchased") ||
+    /error\(contract,\s*#?1\)/i.test(raw) ||
+    /contracterror\(1\)/i.test(raw)
+  ) {
     return {
       code: CONTRACT_ERROR_CODES.ALREADY_PURCHASED,
       message: "You already have access to this prompt.",
@@ -173,16 +152,59 @@ export function classifyContractError(error: unknown): ContractErrorDetails {
     };
   }
 
-  if (normalized.includes("listingexpired") || normalized.includes("expired")) {
+  // Soroban Error(Contract, #2) or contract code 2: Prompt Not Found
+  if (
+    normalized.includes("promptnotfound") ||
+    normalized.includes("not found") ||
+    normalized.includes("prompt #") ||
+    /error\(contract,\s*#?2\)/i.test(raw) ||
+    /contracterror\(2\)/i.test(raw)
+  ) {
     return {
-      code: CONTRACT_ERROR_CODES.LISTING_EXPIRED,
-      message: "This listing is no longer available for purchase.",
+      code: CONTRACT_ERROR_CODES.PROMPT_NOT_FOUND,
+      message: "The requested prompt could not be found.",
       isUserActionable: true,
       raw,
     };
   }
 
-  if (normalized.includes("invalidprice") || normalized.includes("invalid price")) {
+  // Soroban Error(Contract, #3) or contract code 3: Unauthorized
+  if (
+    normalized.includes("unauthorized") ||
+    normalized.includes("not authorized") ||
+    /error\(contract,\s*#?3\)/i.test(raw) ||
+    /contracterror\(3\)/i.test(raw)
+  ) {
+    return {
+      code: CONTRACT_ERROR_CODES.UNAUTHORIZED,
+      message: "You are not authorized to perform this action.",
+      isUserActionable: true,
+      raw,
+    };
+  }
+
+  // Soroban Error(Contract, #4) or contract code 4: Contract Paused
+  if (
+    normalized.includes("paused") ||
+    normalized.includes("contractispaused") ||
+    /error\(contract,\s*#?4\)/i.test(raw) ||
+    /contracterror\(4\)/i.test(raw)
+  ) {
+    return {
+      code: CONTRACT_ERROR_CODES.CONTRACT_PAUSED,
+      message: "The marketplace is temporarily paused. Please try again shortly.",
+      isUserActionable: true,
+      raw,
+    };
+  }
+
+  // Soroban Error(Contract, #5) or contract code 5: Invalid Price
+  if (
+    normalized.includes("invalidprice") ||
+    normalized.includes("invalid price") ||
+    /error\(contract,\s*#?5\)/i.test(raw) ||
+    /contracterror\(5\)/i.test(raw)
+  ) {
     return {
       code: CONTRACT_ERROR_CODES.INVALID_PRICE,
       message: "The requested price is invalid.",
@@ -191,10 +213,27 @@ export function classifyContractError(error: unknown): ContractErrorDetails {
     };
   }
 
+  // Soroban Error(Contract, #6) or contract code 6: Listing Expired
+  if (
+    normalized.includes("listingexpired") ||
+    normalized.includes("expired") ||
+    /error\(contract,\s*#?6\)/i.test(raw) ||
+    /contracterror\(6\)/i.test(raw)
+  ) {
+    return {
+      code: CONTRACT_ERROR_CODES.LISTING_EXPIRED,
+      message: "This listing is no longer available for purchase.",
+      isUserActionable: true,
+      raw,
+    };
+  }
+
   if (
     normalized.includes("insufficientbalance") ||
     normalized.includes("insufficient balance") ||
-    normalized.includes("op_underfunded")
+    normalized.includes("op_underfunded") ||
+    /error\(contract,\s*#?7\)/i.test(raw) ||
+    /contracterror\(7\)/i.test(raw)
   ) {
     return {
       code: CONTRACT_ERROR_CODES.INSUFFICIENT_BALANCE,
@@ -217,9 +256,13 @@ export function classifyContractError(error: unknown): ContractErrorDetails {
     };
   }
 
+  // If raw error string contains a custom Error message, extract it if possible
+  const customErrorMatch = raw.match(/Error\(([^)]+)\)/i) || raw.match(/HostError:\s*(.+)/i);
+  const customMsg = customErrorMatch ? customErrorMatch[1].trim() : null;
+
   return {
     code: CONTRACT_ERROR_CODES.UNKNOWN,
-    message: "The marketplace could not complete that action. Please try again later.",
+    message: customMsg ? `Contract reverted: ${customMsg}` : (raw.length > 0 && raw.length < 150 ? raw : "The marketplace could not complete that action. Please try again later."),
     isUserActionable: true,
     raw,
   };
