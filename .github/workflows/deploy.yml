@@ -59,7 +59,7 @@ jobs:
           retention-days: 30
 
       - name: Deploy to Vercel
-        uses: vercel/action@v5
+        uses: amondnet/vercel-action@v42
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -88,16 +88,16 @@ jobs:
       - name: Cache cargo registry
         uses: actions/cache@v6
         with:
-          path: \~/.cargo/registry
-          key: \( {{ runner.os }}-cargo-registry- \){{ hashFiles('**/Cargo.lock') }}
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-registry-
 
       - name: Cache cargo index
         uses: actions/cache@v6
         with:
-          path: \~/.cargo/git
-          key: \( {{ runner.os }}-cargo-git- \){{ hashFiles('**/Cargo.lock') }}
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-git-
 
@@ -105,7 +105,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: target
-          key: \( {{ runner.os }}-cargo-build-target- \){{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-build-target-
 
@@ -240,13 +240,10 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Install CycloneDX tooling
-        run: npm install -g @cyclonedx/cyclonedx-npm
-
       - name: Generate frontend SBOM (CycloneDX)
         run: |
           mkdir -p sbom
-          cyclonedx-npm --output-format JSON --output-file sbom/frontend-sbom.json
+          yarn dlx -q @cyclonedx/yarn-plugin-cyclonedx --output-format JSON --output-file sbom/frontend-sbom.json
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
