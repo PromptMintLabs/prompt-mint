@@ -1,6 +1,23 @@
 import { xlmToStroops } from "@/lib/stellar/format";
 import { estimateEncryptedPayloadSize } from "@/lib/crypto/promptCrypto";
 
+const textEncoder = new TextEncoder();
+
+/**
+ * Length of a string in UTF-8 bytes.
+ *
+ * The on-chain PromptHash contract enforces its `MAX_*_LEN` limits with
+ * `soroban_sdk::String::len()`, which counts **UTF-8 bytes**, while plain
+ * `String.prototype.length` counts UTF-16 code units. An emoji is 2 UTF-16
+ * units but 4 UTF-8 bytes, so a title/preview that fits the frontend cap can
+ * still be rejected on-chain. Using this everywhere the form checks a field
+ * that is stored on-chain keeps the client validation identical to the
+ * contract's (#506).
+ */
+export function utf8Length(value: string): number {
+  return textEncoder.encode(value).length;
+}
+
 function validatePricePrecision(priceStr: string): string | null {
   const trimmed = priceStr.trim();
 
@@ -103,6 +120,9 @@ export function validateListingForm(
     errors.imageUrl = "Image URL is required.";
   } else if (imageUrl.length > LISTING_LIMITS.imageUrl) {
     errors.imageUrl = `Shorten the image URL to ${LISTING_LIMITS.imageUrl} characters or fewer.`;
+    errors.imageUrl = "Add an image URL so your listing has a cover on browse cards.";
+  } else if (utf8Length(imageUrl) > LISTING_LIMITS.imageUrl) {
+    errors.imageUrl = `Shorten the image URL to ${LISTING_LIMITS.imageUrl} bytes or fewer.`;
   } else if (!/^https?:\/\/.+/i.test(imageUrl)) {
     errors.imageUrl = "Image URL must start with http:// or https://.";
   }
@@ -127,6 +147,27 @@ export function validateListingForm(
     errors.previewText = "Preview text must be at least 10 characters.";
   } else if (previewText.length > LISTING_LIMITS.preview) {
     errors.previewText = `Shorten the preview to ${LISTING_LIMITS.preview} characters or fewer.`;
+    errors.title = "Add a title that tells buyers what your prompt does.";
+  } else if (utf8Length(title) < 3) {
+    errors.title = "Use at least 3 characters so the title is descriptive enough.";
+  } else if (utf8Length(title) > LISTING_LIMITS.title) {
+    errors.title = `Shorten the title to ${LISTING_LIMITS.title} bytes or fewer (emoji count more than a letter).`;
+  }
+
+  if (!category) {
+    errors.category = "Select a category so buyers can filter to your listing.";
+  } else if (utf8Length(category) > LISTING_LIMITS.category) {
+    errors.category = `Choose a shorter category (max ${LISTING_LIMITS.category} bytes).`;
+  }
+
+  if (!previewText) {
+    errors.previewText =
+      "Add preview text — this public snippet appears on browse cards before purchase.";
+  } else if (utf8Length(previewText) < 10) {
+    errors.previewText =
+      "Write at least 10 characters of preview text so buyers know what they are getting.";
+  } else if (utf8Length(previewText) > LISTING_LIMITS.preview) {
+    errors.previewText = `Shorten the preview to ${LISTING_LIMITS.preview} bytes or fewer (emoji count more than a letter).`;
   }
 
   if (!fullPrompt) {

@@ -17,6 +17,7 @@ import { robotsRouter } from "./routes/robotsRoutes";
 import { licenseTermsRouter } from "./routes/licenseTermsRoutes";
 import { runBackup, getBackupHealth } from "./services/backupService";
 import { runRestoreDrill } from "./services/restoreService";
+import { blobRouter } from "./routes/blobRoutes";
 import { IndexerState } from "./models/IndexerState"; 
 import creatorReputationHandler from "./controllers/creatorReputationController";
 import cron from "node-cron";
@@ -87,6 +88,7 @@ app.use("/api/chat", chatRouter);
 app.use("/api/webhooks", webhookRouter);
 app.use("/api/versions", versioningRouter);
 app.use("/api/governance", governanceRouter); // Issue #113
+app.use("/api/blobs", blobRouter);
 app.get("/api/creators/reputation", creatorReputationHandler);
 
 app.post("/api/test-prompt", TestPromptProxy);
