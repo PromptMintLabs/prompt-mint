@@ -7,12 +7,12 @@ describe("Observability Utilities", () => {
     it("should allow requests within limit", async () => {
       const result = await checkRateLimit("challenge", "test-ip-1", false);
       expect(result.success).toBe(true);
-      expect(result.remaining).toBe(4); // max (5) - 1
+      expect(result.remaining).toBe(9); // max (10) - 1
     });
 
     it("should block requests exceeding limit", async () => {
-      // Send 5 requests to consume the limit
-      for (let i = 0; i < 5; i++) {
+      // Send 10 requests to consume the limit
+      for (let i = 0; i < 10; i++) {
         await checkRateLimit("challenge", "test-ip-2", false);
       }
       const result = await checkRateLimit("challenge", "test-ip-2", false);

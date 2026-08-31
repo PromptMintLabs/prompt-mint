@@ -451,7 +451,7 @@ async function handler(req: any, res: any) {
       keyBytes,
     );
     const contentHash = await hashPromptPlaintext(plaintext);
-    const storedHash = normalizeContentHash(encryptedPayload.contentHash);
+    const storedHash = encryptedPayload.contentHash ? normalizeContentHash(encryptedPayload.contentHash) : null;
 
     // Determine integrity state exposed to the buyer
     const integrity = {
@@ -487,8 +487,13 @@ async function handler(req: any, res: any) {
           storedHash: integrity.storedHash,
         }),
       ).catch(() => {});
-      res.status(500).json(
-        apiError(ErrorCode.INTEGRITY_FAILURE, "Prompt integrity check failed.", undefined, version),
+      res.status(200).json(
+        withVersion(
+          {
+            integrity,
+          },
+          version,
+        ),
       );
       return;
     }
