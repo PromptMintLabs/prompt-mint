@@ -73,8 +73,14 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Run Tests
-        run: yarn test:frontend
+      - name: Run Tests with Coverage
+        run: yarn test:frontend:coverage
+
+      - name: Check coverage thresholds
+        if: always()
+        run: |
+          echo "Coverage thresholds are enforced via vitest.config.mjs"
+          echo "Test failures above may mask coverage report; thresholds will still gate."
 
   build:
     name: Build Frontend

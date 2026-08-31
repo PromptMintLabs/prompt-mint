@@ -42,6 +42,31 @@ export default defineConfig({
       "src/test/health.test.ts",
       "src/test/simulation.test.ts",
     ],
+    coverage: {
+      provider: "istanbul",
+      all: false,
+      reportOnFailure: true,
+      reporter: ["text", "lcov", "html"],
+      reportsDirectory: "./coverage",
+      exclude: [
+        "src/test/**",
+        "src/stories/**",
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx",
+        "src/**/*.spec.ts",
+        "src/**/*.spec.tsx",
+        "src/main.tsx",
+        "src/**/__tests__/**",
+        "src/components/BuyerLibrary.tsx",
+        "src/contracts/**",
+      ],
+      thresholds: {
+        lines: 55,
+        functions: 45,
+        branches: 42,
+        statements: 55,
+      },
+    },
     server: {
       deps: {
         inline: [/@creit\.tech\/stellar-wallets-kit/, /libsodium-wrappers/],

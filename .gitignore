@@ -1,3 +1,7 @@
+# Coverage reports
+coverage/
+coverage-lcov.info
+
 # Rust / Soroban
 target
 .soroban

@@ -55,3 +55,39 @@ jobs:
 
       - name: Build release Wasm artifacts
         run: cargo build --workspace --release --target wasm32v1-none --locked
+
+  coverage:
+    name: Contract Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.89.0
+          targets: wasm32v1-none
+          components: rustfmt, clippy, llvm-tools
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
+
+      - name: Run tests with coverage
+        run: cargo llvm-cov --workspace --locked --fail-under-lines 50
+
+      - name: Generate coverage report
+        run: cargo llvm-cov --workspace --locked --lcov --output-path coverage-lcov.info
+        if: always()
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contract-coverage
+          path: coverage-lcov.info
+          if-no-files-found: ignore
