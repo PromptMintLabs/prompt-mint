@@ -304,4 +304,42 @@ describe("queryAuditEvents", () => {
     expect(results[0].requestId).toBe("req-x");
     expect(results[1].requestId).toBe("req-x");
   });
+
+  it("records tamper-evident audit log for successful unlocks without exposing plaintext (#457)", async () => {
+    mockCreate.mockResolvedValueOnce({});
+
+    const walletAddress = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
+    const promptId = "1048";
+    const requestId = "req-unlock-success-457";
+
+    await recordAuditEvent({
+      action: "unlock_success",
+      result: "success",
+      promptId,
+      walletAddress,
+      requestId,
+      clientIp: "192.168.1.100",
+      reason: null,
+      metadata: { unlockType: "full_access" },
+    });
+
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    const savedEntry = mockCreate.mock.calls[0][0];
+
+    // Check required fields (wallet, prompt, timestamp)
+    expect(savedEntry.action).toBe("unlock_success");
+    expect(savedEntry.result).toBe("success");
+    expect(savedEntry.promptId).toBe("1048");
+    expect(savedEntry.walletAddress).toBe(walletAddress.toLowerCase());
+    expect(savedEntry.occurredAt).toBeInstanceOf(Date);
+
+    // Cryptographic tamper-evident hash
+    expect(savedEntry.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(savedEntry.sequence).toBeGreaterThan(0);
+
+    // Ensure plaintext is never exposed
+    expect(savedEntry).not.toHaveProperty("plaintext");
+    expect(savedEntry).not.toHaveProperty("secret");
+    expect(savedEntry).not.toHaveProperty("privateKey");
+  });
 });

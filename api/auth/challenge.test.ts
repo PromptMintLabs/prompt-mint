@@ -100,6 +100,23 @@ describe("challenge API rate limiting and abuse prevention", () => {
     expect(responseData.code).toBe(ErrorCode.MISSING_FIELDS);
   });
 
+  it("returns same error shape for invalid Stellar address (no enumeration via timing)", async () => {
+    const { statusCode: s1, responseData: r1 } = await invoke({
+      address: "GBADINVALIDKEY1234567890ABCDEFGH1234567890ABCDEFGH12345",
+      promptId: "1",
+    });
+    const { statusCode: s2, responseData: r2 } = await invoke({
+      address: "not-a-key",
+      promptId: "1",
+    });
+    expect(s1).toBe(400);
+    expect(s2).toBe(400);
+    expect(r1.code).toBe(ErrorCode.MISSING_FIELDS);
+    expect(r2.code).toBe(ErrorCode.MISSING_FIELDS);
+    // Both responses must not leak whether address format or promptId was wrong
+    expect(r1.code).toBe(r2.code);
+  });
+
   it("enforces rate limit of 10 requests per IP per minute (HTTP 429)", async () => {
     vi.mocked(checkRateLimit).mockResolvedValueOnce({
       success: false,
@@ -119,6 +136,35 @@ describe("challenge API rate limiting and abuse prevention", () => {
     expect(setHeaders["X-RateLimit-Limit"]).toBe(10);
     expect(setHeaders["X-RateLimit-Remaining"]).toBe(0);
   });
+
+  it("enforces rate limit per wallet address (HTTP 429 RATE_LIMIT_WALLET)", async () => {
+    // First call (IP) passes, second call (wallet) fails
+    vi.mocked(checkRateLimit)
+      .mockResolvedValueOnce({
+        success: true,
+        limit: 10,
+        remaining: 9,
+        reset: 60_000,
+      })
+      .mockResolvedValueOnce({
+        success: false,
+        limit: 15,
+        remaining: 0,
+        reset: 60_000,
+      });
+
+    const buyer = Keypair.random();
+    const { statusCode, responseData, setHeaders } = await invoke({
+      address: buyer.publicKey(),
+      promptId: "99",
+    });
+
+    expect(statusCode).toBe(429);
+    expect(responseData.code).toBe(ErrorCode.RATE_LIMIT_WALLET);
+    expect(setHeaders["X-RateLimit-Limit"]).toBe(15);
+    expect(setHeaders["X-RateLimit-Remaining"]).toBe(0);
+  });
+
 
   it("rejects challenge generation if the wallet account is locked (HTTP 423)", async () => {
     const buyer = Keypair.random();

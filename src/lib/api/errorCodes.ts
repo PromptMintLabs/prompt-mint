@@ -72,6 +72,12 @@ export const ErrorCode = {
 
   /** The version requested via Accept-Version is not supported by this server. */
   UNSUPPORTED_VERSION: "UNSUPPORTED_VERSION",
+
+  /** The encrypted payload exceeds the on-chain storage limit. */
+  PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
+
+  /** The buyer's wallet has insufficient balance for this purchase. */
+  WALLET_NOT_FUNDED: "WALLET_NOT_FUNDED",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -146,4 +152,8 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   TEMPORARY_FAILURE: "A temporary server error occurred. Please try again in a moment — your data has not been lost.",
   UNSUPPORTED_VERSION:
     "Your app version is out of date for this request. Please refresh or update the app and try again.",
+  PAYLOAD_TOO_LARGE:
+    "Your prompt content is too large to store on-chain. Please shorten it to under 4,000 characters and try again.",
+  WALLET_NOT_FUNDED:
+    "Your wallet doesn't have enough balance to complete this purchase. Please fund your wallet and try again.",
 };

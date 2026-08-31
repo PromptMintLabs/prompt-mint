@@ -17,6 +17,7 @@ import {
   ChallengeRequestBody,
   parseRequestBody,
 } from "../../src/lib/api/requestSchemas";
+import { createHmac } from "crypto";
 
 async function handler(req: any, res: any) {
   if (req.method !== "POST") {
@@ -36,8 +37,8 @@ async function handler(req: any, res: any) {
   const rateLimit = await checkRateLimit("challenge", clientIp, false);
 
   if (!rateLimit.success) {
-    req.logger.warn({ clientIp }, "Rate limit exceeded for challenge issuance");
-    metrics.trackRateLimitHit("challenge", clientIp);
+    req.logger.warn({ clientIp }, "Rate limit exceeded for challenge issuance (IP)");
+    metrics.trackRateLimitHit("challenge_ip", clientIp);
     void recordAuditEvent({
       action: "challenge_rate_limited",
       result: "blocked",
@@ -56,6 +57,33 @@ async function handler(req: any, res: any) {
       }, version),
     );
     return;
+  }
+
+  // Rate limit by wallet address if present (#449)
+  if (rawAddress && typeof rawAddress === "string") {
+    const walletRateLimit = await checkRateLimit("challenge", `wallet:${rawAddress}`, true);
+    if (!walletRateLimit.success) {
+      req.logger.warn({ address: rawAddress }, "Rate limit exceeded for challenge issuance (Wallet)");
+      metrics.trackRateLimitHit("challenge_wallet", rawAddress);
+      void recordAuditEvent({
+        action: "challenge_rate_limited",
+        result: "blocked",
+        promptId: rawPromptId ? String(rawPromptId) : null,
+        walletAddress: String(rawAddress),
+        requestId: req.requestId ?? null,
+        clientIp,
+        reason: "wallet_rate_limit_exceeded",
+      });
+      res.setHeader("X-RateLimit-Limit", walletRateLimit.limit);
+      res.setHeader("X-RateLimit-Remaining", 0);
+      res.setHeader("X-RateLimit-Reset", walletRateLimit.reset);
+      res.status(429).json(
+        apiError(ErrorCode.RATE_LIMIT_WALLET, "Too many challenge requests for this wallet.", {
+          reset: walletRateLimit.reset,
+        }, version),
+      );
+      return;
+    }
   }
 
   res.setHeader("X-RateLimit-Limit", rateLimit.limit);
@@ -154,6 +182,10 @@ async function handler(req: any, res: any) {
 
   const parsed = parseRequestBody(ChallengeRequestBody, req.body);
   if (!parsed.success) {
+    // Constant-time normalization: perform a dummy HMAC so the response
+    // timing is indistinguishable from a valid-address path, preventing
+    // wallet-address enumeration via timing side-channel.
+    createHmac("sha256", secret).update("padding").digest("base64url");
     res.status(400).json(
       apiError(ErrorCode.MISSING_FIELDS, "address and promptId are required.", undefined, version),
     );

@@ -2,11 +2,9 @@ import { useState, useCallback } from 'react';
 import { useWallet } from '@/hooks/useWallet';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import { PromptHashClient } from '@/lib/stellar/promptHashClient';
-import { browserStellarConfig } from '@/lib/stellar/browserConfig';
 import { detectNetworkMismatch } from '@/lib/wallet/networkDetection';
 import { isValidStellarAddress, shortenAddress } from '@/lib/stellar/addressValidation';
 import { useAsyncTransaction } from '@/components/useAsyncTransaction';
-import { unlockPromptContent } from '@/lib/prompts/unlock';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,9 +14,7 @@ import {
   X,
   Loader2,
   ShieldCheck,
-  Wallet,
   ArrowRight,
-  User,
   Info,
 } from 'lucide-react';
 
@@ -48,7 +44,7 @@ interface GiftPromptProps {
 }
 
 export function GiftPrompt({ prompt, onClose, onSuccess }: GiftPromptProps) {
-  const { address, signMessage } = useWallet();
+  const { address } = useWallet();
   const networkState = useNetworkState();
 
   const [step, setStep] = useState<GiftStep>('input');

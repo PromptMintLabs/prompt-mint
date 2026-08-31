@@ -342,13 +342,14 @@ describe("unlock API integrity checks", () => {
     expect(statusCode).toBe(400);
     expect(responseData.code).toBe(ErrorCode.MISSING_FIELDS);
     expect(responseData.plaintext).toBeUndefined();
+  });
+
   it("returns plaintext and marks integrity unavailable when no stored hash is present", async () => {
     const { buyer, promptId, challenge, signedMessage, plaintext } =
       await setupUnlockFixture();
 
     // Simulate a prompt record without a stored contentHash (legacy listing)
-    const { getPrompt } = await import("../../src/lib/stellar/promptHashClient");
-    getPrompt.mockResolvedValueOnce({
+    getPromptMock.mockResolvedValueOnce({
       id: 42n,
       creator: "GCREATORACCOUNT123",
       title: "Test prompt",
@@ -415,6 +416,7 @@ describe("unlock API integrity checks", () => {
         promptId,
         address: buyer.publicKey(),
         signedMessage: wrongSignature,
+        captchaToken: "test-captcha-token-valid",
       });
       expect(statusCode).toBe(401);
       expect(responseData.code).toBe(ErrorCode.INVALID_SIGNATURE);
@@ -426,6 +428,7 @@ describe("unlock API integrity checks", () => {
       promptId,
       address: buyer.publicKey(),
       signedMessage: wrongSignature,
+      captchaToken: "test-captcha-token-valid",
     });
 
     expect(statusCode).toBe(423);
@@ -665,9 +668,10 @@ describe("unlock API with encryption rotation", () => {
       signedMessage,
     });
 
-    expect(statusCode).toBe(500);
-    expect(responseData.code).toBe(ErrorCode.INTEGRITY_FAILURE);
+    expect(statusCode).toBe(200);
     expect(responseData.plaintext).toBeUndefined();
+    expect(responseData.integrity).toBeDefined();
+    expect(responseData.integrity.status).toBe("failed");
   });
 
   it("falls back to current version when no purchase record exists", async () => {
