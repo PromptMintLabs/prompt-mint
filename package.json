@@ -24,6 +24,7 @@
     "test:gas:harness": "node scripts/check-gas-regression.mjs --self-test",
     "security:dast-target": "node scripts/security/dast-target.mjs",
     "security:contract-analysis": "bash scripts/security/contract-analysis.sh",
+    "benchmark:unlock": "node scripts/benchmark-unlock.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier . --write",

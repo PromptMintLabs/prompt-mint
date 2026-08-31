@@ -292,6 +292,69 @@ fn test_update_prompt_price_appends_history_and_emits_event() {
 }
 
 #[test]
+fn test_create_prompt_emits_prompt_created_event() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let before = env.events().all().len();
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Event Prompt",
+        7_500,
+        &context.xlm,
+    );
+    let after = env.events().all().len();
+
+    assert!(
+        after > before,
+        "expected PromptCreated event, got {} delta",
+        after - before
+    );
+
+    let last = env.events().all().get(after - 1).unwrap();
+    assert_eq!(last.topic, String::from_str(&env, "PromptCreated"));
+}
+
+#[test]
+fn test_buy_prompt_emits_prompt_purchased_event() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let price: i128 = 15_000;
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Purchase Event Prompt",
+        price,
+        &context.xlm,
+    );
+
+    fund_buyer(&xlm_client, &buyer, &context.contract, price);
+
+    let before = env.events().all().len();
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
+    let after = env.events().all().len();
+
+    assert!(
+        after > before,
+        "expected PromptPurchased event, got {} delta",
+        after - before
+    );
+
+    let last = env.events().all().get(after - 1).unwrap();
+    assert_eq!(last.topic, String::from_str(&env, "PromptPurchased"));
+}
+
+#[test]
 fn test_price_history_is_capped() {
     let env: Env = Default::default();
     let context = setup(&env);
