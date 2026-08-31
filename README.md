@@ -393,6 +393,18 @@ Contributor notes:
 
 See `docs/frontend-testing.md` for the recommended pattern when adding new frontend coverage.
 
+## Running all tests
+
+To run the contract, frontend, and API test suites together:
+
+```bash
+yarn test:all
+```
+
+This executes frontend and API tests (Vitest), Soroban contract tests (Cargo), and server tests (Jest) sequentially, stopping at the first failure.
+
+> **Note:** E2E (Playwright) tests require a running dev server and installed browsers. Run them separately with `yarn test:e2e`.
+
 ## Roadmap
 
 - Mainnet-ready deployment configuration
