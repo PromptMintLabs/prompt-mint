@@ -6,6 +6,9 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CreatorDashboard } from "@/components/sell/CreatorDashboard";
 import { TransactionHistoryPanel } from "@/components/dashboard/TransactionHistoryPanel";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Link } from "react-router-dom";
+import { ShoppingBag, PencilLine } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 import { browserStellarConfig } from "@/lib/stellar/browserConfig";
 import {
@@ -25,11 +28,7 @@ import { SkeletonCard } from "@/components/Skeleton";
 import { useMultiSelect } from "@/hooks/useMultiSelect";
 import { runBatchOperation } from "@/lib/marketplace/batchOperations";
 
-const emptyState = (
-  <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-sm text-slate-300">
-    No prompts found yet.
-  </div>
-);
+
 
 interface MyPromptsProps {
   onCreateNew?: () => void;
@@ -527,7 +526,17 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
             ))}
           </div>
         ) : orderedCreatedPrompts.length === 0 ? (
-          emptyState
+          <EmptyState
+            variant="no-listings"
+            action={
+              <Button asChild className="mt-4 bg-emerald-400 text-slate-950 hover:bg-emerald-300 px-6 h-10">
+                <Link to="/sell">
+                  <PencilLine className="mr-2 h-4 w-4" />
+                  Create listing
+                </Link>
+              </Button>
+            }
+          />
         ) : (
           <div className="grid gap-6 xl:grid-cols-2">
             {orderedCreatedPrompts.map((prompt) => (
@@ -653,7 +662,17 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
             ))}
           </div>
         ) : purchasedPrompts.length === 0 ? (
-          emptyState
+          <EmptyState
+            variant="no-purchases"
+            action={
+              <Button asChild className="mt-4 bg-cyan-200 text-slate-950 hover:bg-cyan-100 px-6 h-10">
+                <Link to="/browse">
+                  <ShoppingBag className="mr-2 h-4 w-4" />
+                  Browse marketplace
+                </Link>
+              </Button>
+            }
+          />
         ) : (
           <div className="grid gap-6 xl:grid-cols-2">
             {purchasedPrompts.map((prompt) => (
