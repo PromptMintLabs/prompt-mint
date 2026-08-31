@@ -21,7 +21,8 @@ function base64UrlEncode(value: string) {
 
 function base64UrlDecode(value: string) {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4));
+  const padding =
+    normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4));
   return Buffer.from(`${normalized}${padding}`, "base64").toString("utf8");
 }
 
@@ -78,8 +79,11 @@ export function verifyChallengeToken(
     const expectedSignature = signPayload(sec, encodedPayload);
     const received = Buffer.from(signature, "utf8");
     const expected = Buffer.from(expectedSignature, "utf8");
-    
-    if (received.length === expected.length && timingSafeEqual(received, expected)) {
+
+    if (
+      received.length === expected.length &&
+      timingSafeEqual(received, expected)
+    ) {
       validSignature = true;
       break;
     }
@@ -89,9 +93,13 @@ export function verifyChallengeToken(
     throw new Error("Invalid challenge token signature.");
   }
 
-  const payload = JSON.parse(base64UrlDecode(encodedPayload)) as ChallengePayload;
+  const payload = JSON.parse(
+    base64UrlDecode(encodedPayload),
+  ) as ChallengePayload;
   if (payload.address !== address || payload.promptId !== promptId) {
-    throw new Error("Challenge token does not match the requested prompt unlock.");
+    throw new Error(
+      "Challenge token does not match the requested prompt unlock.",
+    );
   }
 
   if (payload.expiresAt < now) {
@@ -107,19 +115,25 @@ export function verifyChallengeToken(
  * moderation endpoint from being replayed against another; the timestamp lets
  * the server reject stale signatures.
  */
-export function buildModeratorAuthMessage(address: string, purpose: string, timestamp: number): string {
+export function buildModeratorAuthMessage(
+  address: string,
+  purpose: string,
+  timestamp: number,
+): string {
   return `prompt-hash moderator:${address}:${purpose}:${timestamp}`;
 }
 
- * exact target (type + id) and a timestamp means a captured signature cannot
- * replayed to file a different report or after it expires.
+export function verifyChallengeSignature(
   address: string,
   message: string,
   signatureBase64: string,
 ): boolean {
   try {
     const keypair = Keypair.fromPublicKey(address);
-    return keypair.verify(Buffer.from(message, "utf8"), Buffer.from(signatureBase64, "base64"));
+    return keypair.verify(
+      Buffer.from(message, "utf8"),
+      Buffer.from(signatureBase64, "base64"),
+    );
   } catch {
     return false;
   }
@@ -127,8 +141,8 @@ export function buildModeratorAuthMessage(address: string, purpose: string, time
 
 /**
  * Message a reporter wallet signs when filing an abuse report. Scoping it to the
- * exact target (type + id) and a timestamp means a captured signature can't be
- * replayed to file a different report or after it expires.
+ * exact target (type + id) and a timestamp means a captured signature cannot
+ * be replayed to file a different report or after it expires.
  */
 export function buildReportAuthMessage(
   address: string,
@@ -147,11 +161,16 @@ export function verifyReportSignature(
   timestamp: number,
   signature: string,
 ): boolean {
-  const message = buildReportAuthMessage(address, targetType, targetId, timestamp);
+  const message = buildReportAuthMessage(
+    address,
+    targetType,
+    targetId,
+    timestamp,
+  );
   return verifyChallengeSignature(address, message, signature);
 }
 
-const REPORT_SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+const REPORT_SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000;
 
 /**
  * Validates a reporter-supplied signature and timestamp. Returns a normalized
@@ -173,7 +192,11 @@ export function verifyReportAuth({
   now?: number;
 }): { ok: boolean; status: number; error?: string } {
   if (!address) {
-    return { ok: false, status: 401, error: "Reporter wallet address is required" };
+    return {
+      ok: false,
+      status: 401,
+      error: "Reporter wallet address is required",
+    };
   }
   if (!targetType || !targetId) {
     return { ok: false, status: 400, error: "Report target is required" };
@@ -184,7 +207,9 @@ export function verifyReportAuth({
   if (Math.abs(now - timestamp) > REPORT_SIGNATURE_MAX_AGE_MS) {
     return { ok: false, status: 401, error: "Reporter signature has expired" };
   }
-  if (!verifyReportSignature(address, targetType, targetId, timestamp, signature)) {
+  if (
+    !verifyReportSignature(address, targetType, targetId, timestamp, signature)
+  ) {
     return { ok: false, status: 401, error: "Invalid reporter signature" };
   }
   return { ok: true, status: 200 };

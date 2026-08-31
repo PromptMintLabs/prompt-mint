@@ -9,7 +9,10 @@ import {
   normalizeContentHash,
   unwrapPromptKey,
 } from "../../src/lib/crypto/promptCrypto";
-import { fetchFromBlobStorage, isBlobReference } from "../../src/lib/stellar/blobStorage";
+import {
+  fetchFromBlobStorage,
+  isBlobReference,
+} from "../../src/lib/stellar/blobStorage";
 import {
   getPrompt,
   getPromptEncryptionVersion,
@@ -47,32 +50,30 @@ try {
   console.error(err.message);
 }
 
-
 /**
  * Get active secrets for token verification
  * Supports multiple secrets during rotation grace period
  */
 function getActiveSecrets(primarySecret: string): string[] {
   const secrets = [primarySecret];
-  
-  // Check for previous secret within grace period
+
   const previousSecret = process.env.CHALLENGE_TOKEN_SECRET_PREVIOUS;
   const rotationTimestamp = parseInt(
     process.env.CHALLENGE_TOKEN_ROTATION_TIMESTAMP || "0",
-    10
+    10,
   );
   const gracePeriodMs = parseInt(
     process.env.CHALLENGE_TOKEN_GRACE_PERIOD_MS || "300000", // 5 minutes default
-    10
+    10,
   );
-  
+
   if (previousSecret && rotationTimestamp) {
     const timeSinceRotation = Date.now() - rotationTimestamp;
     if (timeSinceRotation < gracePeriodMs) {
       secrets.push(previousSecret);
     }
   }
-  
+
   return secrets;
 }
 
@@ -87,7 +88,9 @@ function getServerConfig(): PromptHashConfig {
     process.env.PUBLIC_STELLAR_NATIVE_ASSET_CONTRACT_ID ??
     "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
   const simulationAccount =
-    process.env.PUBLIC_STELLAR_SIMULATION_ACCOUNT ?? process.env.UNLOCK_PUBLIC_KEY ?? "";
+    process.env.PUBLIC_STELLAR_SIMULATION_ACCOUNT ??
+    process.env.UNLOCK_PUBLIC_KEY ??
+    "";
 
   return {
     rpcUrl,
@@ -104,21 +107,42 @@ async function handler(req: any, res: any) {
     validateUnlockSecrets();
   } catch (err: any) {
     req.logger.error("Configuration validation failed", { error: err.message });
-    res.status(500).json(apiError(ErrorCode.CONFIGURATION_ERROR, "Configuration error."));
+    res
+      .status(500)
+      .json(apiError(ErrorCode.CONFIGURATION_ERROR, "Configuration error."));
     return;
   }
 
   if (req.method !== "POST") {
-    res.status(405).json(apiError(ErrorCode.METHOD_NOT_ALLOWED, "Method not allowed."));
+    res
+      .status(405)
+      .json(apiError(ErrorCode.METHOD_NOT_ALLOWED, "Method not allowed."));
     return;
   }
 
   const version = negotiateVersion(req, res);
   if (!version) return;
 
-  const clientIp = (req.headers["x-forwarded-for"] || req.socket.remoteAddress) as string;
-  const body = req.body ?? {};
-  const { address, promptId } = body as { address?: unknown; promptId?: unknown };
+  const parsed = parseRequestBody(UnlockRequestBody, req.body);
+  if (!parsed.success) {
+    res
+      .status(400)
+      .json(
+        apiError(
+          ErrorCode.MISSING_FIELDS,
+          "token, promptId, address, and signedMessage are required.",
+          undefined,
+          version,
+        ),
+      );
+    return;
+  }
+
+  const unlockRequest = parsed.data;
+  const clientIp = (req.headers["x-forwarded-for"] ||
+    req.socket.remoteAddress) as string;
+  const address = unlockRequest.address;
+  const promptId = unlockRequest.promptId;
 
   // Authenticated bucket: wallet address is present.
   const isAuthenticated = Boolean(address);
@@ -141,9 +165,14 @@ async function handler(req: any, res: any) {
     res.setHeader("X-RateLimit-Remaining", 0);
     res.setHeader("X-RateLimit-Reset", ipRateLimit.reset);
     res.status(429).json(
-      apiError(ErrorCode.RATE_LIMIT_IP, "Too many requests. Please try again later.", {
-        reset: ipRateLimit.reset,
-      }, version),
+      apiError(
+        ErrorCode.RATE_LIMIT_IP,
+        "Too many requests. Please try again later.",
+        {
+          reset: ipRateLimit.reset,
+        },
+        version,
+      ),
     );
     return;
   }
@@ -162,21 +191,27 @@ async function handler(req: any, res: any) {
         clientIp,
         reason: "account_locked",
       });
-      res.status(423).json(
-        apiError(
-          ErrorCode.ACCOUNT_LOCKED,
-          "Account is locked due to too many failed authentication attempts.",
-          { lockedUntil: lockStatus.lockedUntil },
-          version,
-        ),
-      );
+      res
+        .status(423)
+        .json(
+          apiError(
+            ErrorCode.ACCOUNT_LOCKED,
+            "Account is locked due to too many failed authentication attempts.",
+            { lockedUntil: lockStatus.lockedUntil },
+            version,
+          ),
+        );
       return;
     }
   }
 
   // Rate limit by wallet address (authenticated bucket — per-wallet brute-force guard).
   if (address) {
-    const walletRateLimit = await checkRateLimit("unlock", String(address), isAuthenticated);
+    const walletRateLimit = await checkRateLimit(
+      "unlock",
+      String(address),
+      isAuthenticated,
+    );
     if (!walletRateLimit.success) {
       req.logger.warn({ address }, "Rate limit exceeded for unlock (Wallet)");
       metrics.trackRateLimitHit("unlock_wallet", String(address));
@@ -193,9 +228,14 @@ async function handler(req: any, res: any) {
       res.setHeader("X-RateLimit-Remaining", 0);
       res.setHeader("X-RateLimit-Reset", walletRateLimit.reset);
       res.status(429).json(
-        apiError(ErrorCode.RATE_LIMIT_WALLET, "Too many unlock attempts for this wallet.", {
-          reset: walletRateLimit.reset,
-        }, version),
+        apiError(
+          ErrorCode.RATE_LIMIT_WALLET,
+          "Too many unlock attempts for this wallet.",
+          {
+            reset: walletRateLimit.reset,
+          },
+          version,
+        ),
       );
       return;
     }
@@ -206,11 +246,13 @@ async function handler(req: any, res: any) {
   const captchaNeeded = await isCaptchaRequired(addressStr, clientIp);
   if (captchaNeeded) {
     const captchaToken =
-      (body as { captchaToken?: unknown }).captchaToken ||
-      req.headers["x-captcha-token"];
+      unlockRequest.captchaToken || req.headers["x-captcha-token"];
 
     if (!captchaToken || typeof captchaToken !== "string") {
-      req.logger.warn({ address: addressStr, clientIp }, "CAPTCHA required for unlock request");
+      req.logger.warn(
+        { address: addressStr, clientIp },
+        "CAPTCHA required for unlock request",
+      );
       void recordAuditEvent({
         action: "unlock_captcha_required",
         result: "blocked",
@@ -220,14 +262,16 @@ async function handler(req: any, res: any) {
         clientIp,
         reason: "captcha_required",
       });
-      res.status(403).json(
-        apiError(
-          ErrorCode.CAPTCHA_REQUIRED,
-          "CAPTCHA verification is required to proceed.",
-          { captchaRequired: true },
-          version,
-        ),
-      );
+      res
+        .status(403)
+        .json(
+          apiError(
+            ErrorCode.CAPTCHA_REQUIRED,
+            "CAPTCHA verification is required to proceed.",
+            { captchaRequired: true },
+            version,
+          ),
+        );
       return;
     }
 
@@ -246,14 +290,16 @@ async function handler(req: any, res: any) {
         clientIp,
         reason: captchaResult.reason ?? "invalid_captcha",
       });
-      res.status(403).json(
-        apiError(
-          ErrorCode.CAPTCHA_INVALID,
-          "Invalid or expired CAPTCHA verification.",
-          { captchaRequired: true },
-          version,
-        ),
-      );
+      res
+        .status(403)
+        .json(
+          apiError(
+            ErrorCode.CAPTCHA_INVALID,
+            "Invalid or expired CAPTCHA verification.",
+            { captchaRequired: true },
+            version,
+          ),
+        );
       return;
     }
   }
@@ -264,29 +310,23 @@ async function handler(req: any, res: any) {
 
   if (!challengeSecret || !unlockPublicKey || !unlockPrivateKey) {
     req.logger.error("Unlock service is missing configuration secrets.");
-    res.status(500).json(apiError(ErrorCode.CONFIGURATION_ERROR, "Configuration error.", undefined, version));
+    res
+      .status(500)
+      .json(
+        apiError(
+          ErrorCode.CONFIGURATION_ERROR,
+          "Configuration error.",
+          undefined,
+          version,
+        ),
+      );
     return;
   }
-
-  const parsed = parseRequestBody(UnlockRequestBody, req.body);
-  if (!parsed.success) {
-    res.status(400).json(
-      apiError(
-        ErrorCode.MISSING_FIELDS,
-        "token, promptId, address, and signedMessage are required.",
-        undefined,
-        version,
-      ),
-    );
-    return;
-  }
-
-  const unlockRequest = parsed.data;
 
   try {
     // Support multiple active secrets during rotation grace period
     const activeSecrets = getActiveSecrets(challengeSecret);
-    
+
     const payload = verifyChallengeToken(
       activeSecrets,
       unlockRequest.token,
@@ -301,13 +341,26 @@ async function handler(req: any, res: any) {
     );
 
     if (!validSignature) {
-      req.logger.warn({ address: unlockRequest.address, promptId: unlockRequest.promptId }, "Invalid wallet signature");
-      metrics.trackUnlockFailure(unlockRequest.address, unlockRequest.promptId, "invalid_signature");
-      
-      const failureStatus = await recordFailedAuthAttempt(unlockRequest.address, clientIp);
+      req.logger.warn(
+        { address: unlockRequest.address, promptId: unlockRequest.promptId },
+        "Invalid wallet signature",
+      );
+      metrics.trackUnlockFailure(
+        unlockRequest.address,
+        unlockRequest.promptId,
+        "invalid_signature",
+      );
+
+      const failureStatus = await recordFailedAuthAttempt(
+        unlockRequest.address,
+        clientIp,
+      );
 
       if (failureStatus.locked) {
-        req.logger.warn({ address: unlockRequest.address }, "Account locked after 5 failed auth attempts");
+        req.logger.warn(
+          { address: unlockRequest.address },
+          "Account locked after 5 failed auth attempts",
+        );
         void recordAuditEvent({
           action: "account_locked",
           result: "blocked",
@@ -317,14 +370,16 @@ async function handler(req: any, res: any) {
           clientIp,
           reason: "max_failed_auth_attempts_exceeded",
         });
-        res.status(423).json(
-          apiError(
-            ErrorCode.ACCOUNT_LOCKED,
-            "Account is locked due to too many failed authentication attempts.",
-            { lockedUntil: failureStatus.lockedUntil },
-            version,
-          ),
-        );
+        res
+          .status(423)
+          .json(
+            apiError(
+              ErrorCode.ACCOUNT_LOCKED,
+              "Account is locked due to too many failed authentication attempts.",
+              { lockedUntil: failureStatus.lockedUntil },
+              version,
+            ),
+          );
         return;
       }
 
@@ -337,7 +392,16 @@ async function handler(req: any, res: any) {
         clientIp,
         reason: "invalid_signature",
       });
-      res.status(401).json(apiError(ErrorCode.INVALID_SIGNATURE, "Invalid wallet signature.", undefined, version));
+      res
+        .status(401)
+        .json(
+          apiError(
+            ErrorCode.INVALID_SIGNATURE,
+            "Invalid wallet signature.",
+            undefined,
+            version,
+          ),
+        );
       return;
     }
 
@@ -364,9 +428,16 @@ async function handler(req: any, res: any) {
         clientIp,
         reason: "replay_attack",
       });
-      res.status(400).json(
-        apiError(ErrorCode.TEMPORARY_FAILURE, "This unlock request has already been processed.", undefined, version),
-      );
+      res
+        .status(400)
+        .json(
+          apiError(
+            ErrorCode.TEMPORARY_FAILURE,
+            "This unlock request has already been processed.",
+            undefined,
+            version,
+          ),
+        );
       return;
     }
 
@@ -392,9 +463,16 @@ async function handler(req: any, res: any) {
         clientIp,
         reason: "no_access",
       });
-      res.status(403).json(
-        apiError(ErrorCode.ACCESS_NOT_PURCHASED, "Prompt access has not been purchased.", undefined, version),
-      );
+      res
+        .status(403)
+        .json(
+          apiError(
+            ErrorCode.ACCESS_NOT_PURCHASED,
+            "Prompt access has not been purchased.",
+            undefined,
+            version,
+          ),
+        );
       return;
     }
 
@@ -443,15 +521,28 @@ async function handler(req: any, res: any) {
 
     if (isBlobReference(encryptedPayload.encryptedPrompt)) {
       try {
-        encryptedPayload.encryptedPrompt = await fetchFromBlobStorage(encryptedPayload.encryptedPrompt);
+        encryptedPayload.encryptedPrompt = await fetchFromBlobStorage(
+          encryptedPayload.encryptedPrompt,
+        );
       } catch (error) {
         req.logger.error(
-          { address: unlockRequest.address, promptId: unlockRequest.promptId, error: error instanceof Error ? error.message : String(error) },
-          "Failed to fetch encrypted prompt from blob storage"
+          {
+            address: unlockRequest.address,
+            promptId: unlockRequest.promptId,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Failed to fetch encrypted prompt from blob storage",
         );
-        res.status(502).json(
-          apiError(ErrorCode.TEMPORARY_FAILURE, "Failed to fetch prompt data from blob storage.", undefined, version),
-        );
+        res
+          .status(502)
+          .json(
+            apiError(
+              ErrorCode.TEMPORARY_FAILURE,
+              "Failed to fetch prompt data from blob storage.",
+              undefined,
+              version,
+            ),
+          );
         return;
       }
     }
@@ -467,34 +558,29 @@ async function handler(req: any, res: any) {
       keyBytes,
     );
     const contentHash = await hashPromptPlaintext(plaintext);
-    const storedHash = normalizeContentHash(encryptedPayload.contentHash);
-    if (contentHash !== storedHash) {
-      req.logger.error(
-        { address: unlockRequest.address, promptId: unlockRequest.promptId },
-        "Prompt integrity check failed",
-      );
-      metrics.trackUnlockFailure(
-        unlockRequest.address,
-        unlockRequest.promptId,
-        "integrity_failure",
-      );
-    const storedHash = normalizeContentHash(prompt.contentHash ?? "");
+    const storedHash = encryptedPayload.contentHash
+      ? normalizeContentHash(encryptedPayload.contentHash)
+      : "";
 
     // Determine integrity state exposed to the buyer
     const integrity = {
       status: ((): "verified" | "failed" | "unavailable" => {
-        if (!prompt.contentHash) return "unavailable";
+        if (!encryptedPayload.contentHash) return "unavailable";
         if (contentHash !== storedHash) return "failed";
         return "verified";
       })(),
       computedHash: contentHash,
-      storedHash: prompt.contentHash ?? null,
+      storedHash: encryptedPayload.contentHash ?? null,
     };
 
     if (integrity.status === "failed") {
       // Integrity mismatch: redact decrypted content, emit diagnostics, and return structured metadata.
       req.logger.error({ address, promptId }, "Prompt integrity check failed");
-      metrics.trackUnlockFailure(String(address), String(promptId), "integrity_failure");
+      metrics.trackUnlockFailure(
+        String(address),
+        String(promptId),
+        "integrity_failure",
+      );
       void recordAuditEvent({
         action: "unlock_integrity_failure",
         result: "failure",
@@ -504,10 +590,6 @@ async function handler(req: any, res: any) {
         clientIp,
         reason: "integrity_failure",
       });
-      res.status(500).json(
-        apiError(ErrorCode.INTEGRITY_FAILURE, "Prompt integrity check failed.", undefined, version),
-      );
-
       // Emit a diagnostic webhook for creators/ops without disclosing plaintext.
       void Promise.resolve(
         dispatchEvent(prompt.creator ?? "", "PromptIntegrityViolation", {
@@ -518,12 +600,17 @@ async function handler(req: any, res: any) {
         }),
       ).catch(() => {});
 
-      // Return structured response with redacted plaintext and integrity metadata.
-      res.status(200).json({
-        promptId: prompt.id.toString(),
-        title: prompt.title,
-        integrity,
-      });
+      res.status(200).json(
+        withVersion(
+          {
+            promptId: prompt.id.toString(),
+            title: prompt.title,
+            contentHash,
+            integrity,
+          },
+          version,
+        ),
+      );
 
       return;
     }
@@ -560,12 +647,14 @@ async function handler(req: any, res: any) {
           title: prompt.title,
           contentHash,
           plaintext,
+          integrity,
         },
         version,
       ),
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to unlock prompt.";
+    const message =
+      error instanceof Error ? error.message : "Failed to unlock prompt.";
     req.logger.error(
       {
         address: unlockRequest.address,
@@ -574,7 +663,11 @@ async function handler(req: any, res: any) {
       },
       "Unlock attempt failed",
     );
-    metrics.trackUnlockFailure(unlockRequest.address, unlockRequest.promptId, "error");
+    metrics.trackUnlockFailure(
+      unlockRequest.address,
+      unlockRequest.promptId,
+      "error",
+    );
 
     // Distinguish expired-challenge errors for finer-grained audit reasons and error codes.
     const isExpired = message.toLowerCase().includes("expired");
@@ -589,13 +682,27 @@ async function handler(req: any, res: any) {
     });
 
     if (isExpired) {
-      res.status(400).json(
-        apiError(ErrorCode.CHALLENGE_EXPIRED, "The challenge token has expired. Please request a new one.", undefined, version),
-      );
+      res
+        .status(400)
+        .json(
+          apiError(
+            ErrorCode.CHALLENGE_EXPIRED,
+            "The challenge token has expired. Please request a new one.",
+            undefined,
+            version,
+          ),
+        );
     } else {
-      res.status(400).json(
-        apiError(ErrorCode.TEMPORARY_FAILURE, "Failed to unlock prompt. Please try again.", undefined, version),
-      );
+      res
+        .status(400)
+        .json(
+          apiError(
+            ErrorCode.TEMPORARY_FAILURE,
+            "Failed to unlock prompt. Please try again.",
+            undefined,
+            version,
+          ),
+        );
     }
   }
 }
