@@ -22,6 +22,7 @@ const defaultWallet: WalletContextType = {
   error: undefined,
   connect: vi.fn(),
   disconnect: vi.fn(),
+  reconnect: vi.fn(),
   signMessage: vi.fn(),
   signTransaction: vi.fn(),
 };

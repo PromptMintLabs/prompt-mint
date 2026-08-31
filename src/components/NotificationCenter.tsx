@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { Bell, CheckCheck, Trash2, X, Info, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
 import { NotificationContext, type NotificationItem, type NotificationType } from "../providers/NotificationProvider";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export const NotificationCenter: React.FC = () => {
   const context = useContext(NotificationContext);
@@ -130,9 +131,16 @@ export const NotificationCenter: React.FC = () => {
           {/* Notification List */}
           <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
             {filteredNotifications.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400">
-                {activeTab === "unread" ? "No unread notifications" : "No notifications yet"}
-              </div>
+              <EmptyState
+                variant="no-notifications"
+                title={activeTab === "unread" ? "No unread notifications" : "No notifications"}
+                description={
+                  activeTab === "unread"
+                    ? "You're all caught up. New activity will appear here."
+                    : "You're all caught up. Alerts about your prompts and activity will show up here."
+                }
+                size="sm"
+              />
             ) : (
               filteredNotifications.map((item) => (
                 <NotificationCard

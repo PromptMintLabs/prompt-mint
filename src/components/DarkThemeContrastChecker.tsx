@@ -40,7 +40,7 @@ export function DarkThemeContrastChecker({
   );
 
   const failures = checks.filter((c) => !c.result.passesAA);
-  const passes = checks.filter((c) => c.result.passesAA);
+
 
   const getGrade = useCallback((r: ContrastResult) => {
     if (r.passesAAA) return { label: "AAA", color: "text-emerald-400" };

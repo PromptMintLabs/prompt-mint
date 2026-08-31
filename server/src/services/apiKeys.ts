@@ -104,6 +104,57 @@ export function hasScope(
   return granted.some((scope) => SCOPE_RANK[scope] >= requiredRank);
 }
 
+export const API_KEY_MAX_AGE_DAYS = 90;
+export const API_KEY_ROTATION_GRACE_DAYS = 7;
+
+/**
+ * Checks whether an API key document is currently valid, considering revocation,
+ * natural 90-day expiration, and overlapping grace period validity windows.
+ */
+export function isKeyValid(
+  keyDoc: {
+    revoked?: boolean;
+    expiresAt?: Date | null;
+    gracePeriodUntil?: Date | null;
+  },
+  now: Date = new Date(),
+): boolean {
+  // If the key has an expiration date that has passed, it is invalid
+  if (keyDoc.expiresAt && keyDoc.expiresAt.getTime() < now.getTime()) {
+    return false;
+  }
+
+  // If the key is not revoked, it is valid
+  if (!keyDoc.revoked) {
+    return true;
+  }
+
+  // If revoked/rotated but has an active overlapping grace period window, it is still valid
+  if (keyDoc.gracePeriodUntil && keyDoc.gracePeriodUntil.getTime() >= now.getTime()) {
+    return true;
+  }
+
+  return false;
+}
+
+export function computeExpirationDate(
+  fromDate: Date = new Date(),
+  maxAgeDays: number = API_KEY_MAX_AGE_DAYS,
+): Date {
+  const d = new Date(fromDate);
+  d.setDate(d.getDate() + maxAgeDays);
+  return d;
+}
+
+export function computeGracePeriodDate(
+  fromDate: Date = new Date(),
+  graceDays: number = API_KEY_ROTATION_GRACE_DAYS,
+): Date {
+  const d = new Date(fromDate);
+  d.setDate(d.getDate() + graceDays);
+  return d;
+}
+
 export function isValidScope(value: string): value is ApiScope {
   return (API_SCOPES as readonly string[]).includes(value);
 }
