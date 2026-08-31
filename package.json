@@ -24,6 +24,7 @@
     "test:gas:harness": "node scripts/check-gas-regression.mjs --self-test",
     "security:dast-target": "node scripts/security/dast-target.mjs",
     "security:contract-analysis": "bash scripts/security/contract-analysis.sh",
+    "benchmark:unlock": "node scripts/benchmark-unlock.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier . --write",
@@ -39,7 +40,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@creit.tech/stellar-wallets-kit": "^2.5.0",
+    "@creit.tech/stellar-wallets-kit": "^1.9.5",
     "@jadonamite/automata-sdk": "^1.0.1",
     "@radix-ui/react-avatar": "^1.2.6",
     "@radix-ui/react-dialog": "^1.1.23",
@@ -78,6 +79,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
+    "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",

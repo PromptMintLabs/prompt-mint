@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   listBookmarks,
-  isBookmarked as isBookmarkedStore,
   addBookmark as addStore,
   removeBookmark as removeStore,
   toggleBookmark as toggleStore,

@@ -98,8 +98,8 @@ if [ "$HTTP_STATUS" = "200" ]; then
   echo "Next Steps:"
   echo "========================================="
   echo "1. Monitor unlock service logs for any token verification errors"
-  echo "2. Previous secret will be automatically invalidated after grace period"
-  echo "3. Schedule next rotation in 30-90 days"
+  echo "2. Previous secret will remain valid during overlapping grace period"
+  echo "3. Automated rotation scheduled every 90 days"
   echo ""
   
   exit 0

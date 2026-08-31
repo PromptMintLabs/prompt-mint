@@ -7,6 +7,9 @@ import {
   AlertTriangle,
   WifiOff,
   LockKeyhole,
+  ReceiptText,
+  BookmarkCheck,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +21,9 @@ export type EmptyStateVariant =
   | "no-purchases"
   | "no-listings"
   | "search-empty"
+  | "no-transactions"
+  | "no-bookmarks"
+  | "no-notifications"
   | "offline"
   | "error"
   | "locked"
@@ -54,6 +60,30 @@ const VARIANT_MAP: Record<
     iconColor: "text-indigo-300",
     defaultTitle: "No matching prompts",
     defaultDescription: "Broaden your search or clear your active filters.",
+  },
+  "no-transactions": {
+    icon: ReceiptText,
+    iconBg: "bg-cyan-500/10",
+    iconColor: "text-cyan-300",
+    defaultTitle: "No transactions yet",
+    defaultDescription:
+      "Your marketplace purchases, sales and transfers will appear here once you trade.",
+  },
+  "no-bookmarks": {
+    icon: BookmarkCheck,
+    iconBg: "bg-emerald-500/10",
+    iconColor: "text-emerald-300",
+    defaultTitle: "No bookmarks yet",
+    defaultDescription:
+      "Browse the marketplace and save the prompts you want to revisit later.",
+  },
+  "no-notifications": {
+    icon: Bell,
+    iconBg: "bg-amber-500/10",
+    iconColor: "text-amber-300",
+    defaultTitle: "No notifications",
+    defaultDescription:
+      "You're all caught up. Alerts about your prompts and activity will show up here.",
   },
   offline: {
     icon: WifiOff,
