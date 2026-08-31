@@ -211,6 +211,10 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
       queryClient.invalidateQueries({ queryKey: ["purchased-prompts"] }),
       queryClient.invalidateQueries({ queryKey: ["marketplace-prompts"] }),
       queryClient.invalidateQueries({ queryKey: ["prompt-access"] }),
+      // #507: detail views and the cart cache read price from separate keys and
+      // must be refreshed too, otherwise the old price lingers after an update.
+      queryClient.invalidateQueries({ queryKey: ["prompt-detail"] }),
+      queryClient.invalidateQueries({ queryKey: ["marketplace-prompts-cache"] }),
     ]);
   };
 
@@ -538,7 +542,7 @@ const MyPrompts = ({ onCreateNew: _onCreateNew }: MyPromptsProps) => {
                 onDragOver={handlePromptDragOver}
                 onDrop={handlePromptDrop(prompt.id.toString())}
                 onDragEnd={() => setDraggedId(null)}
-                className={`border-white/10 bg-slate-950/70 text-white transition-opacity ${
+                className={`relative border-white/10 bg-slate-950/70 text-white transition-opacity ${
                   draggedId === prompt.id.toString() ? "opacity-50" : ""
                 }`}
               >

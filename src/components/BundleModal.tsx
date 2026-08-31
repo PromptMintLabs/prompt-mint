@@ -5,7 +5,7 @@
  * Mirrors the structure of PromptModal but handles the multi-prompt
  * unlock flow via unlockBundleContent.
  */
-import React, { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import {
   CheckCircle,
   ChevronDown,
@@ -28,7 +28,6 @@ import { WalletContext } from "@/providers/WalletProvider";
 import { browserStellarConfig } from "@/lib/stellar/browserConfig";
 import {
   BundleHashClient,
-  getAllPrompts,
   type BundleRecord,
   type PromptRecord,
 } from "@/lib/stellar/promptHashClient";
@@ -441,7 +440,7 @@ export function BundleModal({
                   onClick={handleUnlock}
                   disabled={isBusy}
                 >
-                  {status === "UNLOCKING" ? (
+                  {isBusy ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                       Unlocking…

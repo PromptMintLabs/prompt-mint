@@ -33,6 +33,13 @@ import {
 } from "../../src/lib/stellar/promptHashClient";
 import { withObservability } from "../../src/lib/observability/wrapper";
 import { checkRateLimit } from "../../src/lib/observability/rateLimiter";
+import {
+  isAccountLocked,
+  isCaptchaRequired,
+  recordFailedAuthAttempt,
+  recordSuccessfulAuth,
+  verifyCaptchaToken,
+} from "../../src/lib/auth/abuseProtection";
 import { checkReplayProtection } from "../../src/lib/observability/replayProtection";
 import { metrics } from "../../src/lib/observability/metrics";
 import { dispatchEvent } from "../../server/src/services/webhookDispatcher";
@@ -121,7 +128,7 @@ async function handler(req: any, res: any) {
   const clientIp = (
     req.headers["x-forwarded-for"] || req.socket.remoteAddress
   ) as string;
-  const { token, bundleId, address, signedMessage } = req.body ?? {};
+  const { token, bundleId, address, signedMessage, captchaToken } = req.body ?? {};
 
   const challengeSecret = process.env.CHALLENGE_TOKEN_SECRET;
   const unlockPublicKey = process.env.UNLOCK_PUBLIC_KEY;
@@ -161,11 +168,36 @@ async function handler(req: any, res: any) {
     });
     res.status(429).json(
       apiError(
-        ErrorCode.TEMPORARY_FAILURE,
+        ErrorCode.RATE_LIMIT_IP,
         "Too many requests. Please wait before retrying.",
       ),
     );
     return;
+  }
+
+  // Check if wallet account is locked
+  if (address && typeof address === "string") {
+    const lockStatus = await isAccountLocked(address);
+    if (lockStatus.locked) {
+      req.logger.warn({ address }, "Bundle unlock requested for locked account");
+      void recordAuditEvent({
+        action: "bundle_unlock_account_locked",
+        result: "blocked",
+        promptId: String(bundleId),
+        walletAddress: String(address),
+        requestId: req.requestId ?? null,
+        clientIp,
+        reason: "account_locked",
+      });
+      res.status(423).json(
+        apiError(
+          ErrorCode.ACCOUNT_LOCKED,
+          "Account is locked due to too many failed authentication attempts.",
+          { lockedUntil: lockStatus.lockedUntil },
+        ),
+      );
+      return;
+    }
   }
 
   // Rate-limit: wallet bucket (authenticated / slightly looser)
@@ -179,11 +211,65 @@ async function handler(req: any, res: any) {
     metrics.trackRateLimitHit("bundle_unlock_wallet", String(address));
     res.status(429).json(
       apiError(
-        ErrorCode.TEMPORARY_FAILURE,
+        ErrorCode.RATE_LIMIT_WALLET,
         "Too many requests. Please wait before retrying.",
       ),
     );
     return;
+  }
+
+  // Check if CAPTCHA is required due to repeated failures
+  const addressStr = typeof address === "string" ? address : undefined;
+  const captchaNeeded = await isCaptchaRequired(addressStr, clientIp);
+  if (captchaNeeded) {
+    const resolvedCaptchaToken =
+      captchaToken || req.headers["x-captcha-token"];
+
+    if (!resolvedCaptchaToken || typeof resolvedCaptchaToken !== "string") {
+      req.logger.warn({ address: addressStr, clientIp }, "CAPTCHA required for bundle unlock request");
+      void recordAuditEvent({
+        action: "bundle_unlock_captcha_required",
+        result: "blocked",
+        promptId: String(bundleId),
+        walletAddress: addressStr ?? null,
+        requestId: req.requestId ?? null,
+        clientIp,
+        reason: "captcha_required",
+      });
+      res.status(403).json(
+        apiError(
+          ErrorCode.CAPTCHA_REQUIRED,
+          "CAPTCHA verification is required to proceed.",
+          { captchaRequired: true },
+        ),
+      );
+      return;
+    }
+
+    const captchaResult = await verifyCaptchaToken(resolvedCaptchaToken, clientIp);
+    if (!captchaResult.valid) {
+      req.logger.warn(
+        { address: addressStr, clientIp, reason: captchaResult.reason },
+        "Invalid CAPTCHA token for bundle unlock",
+      );
+      void recordAuditEvent({
+        action: "bundle_unlock_captcha_failed",
+        result: "blocked",
+        promptId: String(bundleId),
+        walletAddress: addressStr ?? null,
+        requestId: req.requestId ?? null,
+        clientIp,
+        reason: captchaResult.reason ?? "invalid_captcha",
+      });
+      res.status(403).json(
+        apiError(
+          ErrorCode.CAPTCHA_INVALID,
+          "Invalid or expired CAPTCHA verification.",
+          { captchaRequired: true },
+        ),
+      );
+      return;
+    }
   }
 
   try {
@@ -205,6 +291,30 @@ async function handler(req: any, res: any) {
     if (!validSignature) {
       req.logger.warn({ address, bundleId }, "Invalid wallet signature");
       metrics.trackUnlockFailure(String(address), String(bundleId), "invalid_signature");
+      
+      const failureStatus = await recordFailedAuthAttempt(String(address), clientIp);
+
+      if (failureStatus.locked) {
+        req.logger.warn({ address }, "Account locked after 5 failed auth attempts");
+        void recordAuditEvent({
+          action: "bundle_account_locked",
+          result: "blocked",
+          promptId: String(bundleId),
+          walletAddress: String(address),
+          requestId: req.requestId ?? null,
+          clientIp,
+          reason: "max_failed_auth_attempts_exceeded",
+        });
+        res.status(423).json(
+          apiError(
+            ErrorCode.ACCOUNT_LOCKED,
+            "Account is locked due to too many failed authentication attempts.",
+            { lockedUntil: failureStatus.lockedUntil },
+          ),
+        );
+        return;
+      }
+
       void recordAuditEvent({
         action: "bundle_unlock_invalid_signature",
         result: "failure",
@@ -332,6 +442,7 @@ async function handler(req: any, res: any) {
     }
 
     // 6. Audit + metrics
+    await recordSuccessfulAuth(String(address), clientIp);
     metrics.trackUnlockSuccess(String(address), String(bundleId));
     req.logger.info(
       { address, bundleId, count: results.length },
