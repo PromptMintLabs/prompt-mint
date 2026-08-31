@@ -9,13 +9,13 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  PackageSearch,
   Loader2,
   BookmarkCheck,
   Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/useWallet";
+import { useDebounce } from "@/hooks/useDebounce";
 import { browserStellarConfig } from "@/lib/stellar/browserConfig";
 import {
   getAllPrompts,
@@ -244,10 +244,11 @@ const FetchAllPrompts = ({
 
   const isFavorited = (promptId: string) => favorites.isFavorite(promptId);
 
-  const favoritePromptIds = useMemo(() => new Set(favorites.favorites), [favorites.favorites]);
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const debouncedCreatorQuery = useDebounce(creatorQuery, 300);
 
   const filteredPrompts = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const normalizedSearch = debouncedSearchQuery.trim().toLowerCase();
     const allPrompts = promptsQuery.data ?? [];
 
     // When favorites-only is active, show ALL favorited prompts (including inactive)
@@ -260,7 +261,7 @@ const FetchAllPrompts = ({
 
     const prompts = allPrompts.filter((prompt) => {
       const promptPrice = parseXlmNumber(prompt.priceStroops);
-      const normalizedCreator = creatorQuery.trim().toLowerCase();
+      const normalizedCreator = debouncedCreatorQuery.trim().toLowerCase();
       const matchesCategory =
         !selectedCategories || selectedCategories.length === 0
           ? !selectedCategory || prompt.category === selectedCategory
@@ -326,7 +327,7 @@ const FetchAllPrompts = ({
       default:
         return [...prompts].sort((a, b) => Number(b.id - a.id));
     }
-  }, [priceRange, promptsQuery.data, searchQuery, creatorQuery, selectedCategories, selectedCategory, sortBy, showInactive, savedPromptIds]);
+  }, [priceRange, promptsQuery.data, debouncedSearchQuery, debouncedCreatorQuery, selectedCategories, selectedCategory, sortBy, showInactive, savedPromptIds]);
 
   const totalPages = Math.max(
     1,

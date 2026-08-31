@@ -74,8 +74,6 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
   const isConnectingRef = useRef(false);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 3;
-  const queryClient = useQueryClient();
-  const previousAddressRef = useRef<string | undefined>(undefined);
 
   const [autoLockSecondsLeft, setAutoLockSecondsLeft] = useState<number | null>(
     null,

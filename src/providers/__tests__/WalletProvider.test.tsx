@@ -8,7 +8,7 @@ import { wallet } from '../../util/wallet';
 
 // 1. Partial Mock: Keeps WalletNetwork intact while mocking the Class
 vi.mock('@creit.tech/stellar-wallets-kit', async (importOriginal: any) => {
-  const actual = await importOriginal<typeof import('@creit.tech/stellar-wallets-kit')>();
+    const actual = await importOriginal();
   return {
     ...actual,
     freighter: vi.fn(),
@@ -137,7 +137,7 @@ describe('WalletProvider Session Persistence', () => {
   it('should handle session restoration when wallet is locked', async () => {
     // Mock getAddress to return no address (simulating locked wallet)
     vi.clearAllMocks();
-    vi.mocked(wallet.getAddress).mockResolvedValue({ address: undefined });
+    vi.mocked(wallet.getAddress).mockResolvedValue({ address: undefined as unknown as string });
 
     storage.setItem('walletId', 'freighter');
     storage.setItem('walletAddress', 'GABC123');

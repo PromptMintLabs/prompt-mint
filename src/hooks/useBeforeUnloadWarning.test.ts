@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { useBeforeUnloadWarning } from "@/hooks/useBeforeUnloadWarning";
 
 describe("useBeforeUnloadWarning", () => {

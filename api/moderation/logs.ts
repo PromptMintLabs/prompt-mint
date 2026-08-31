@@ -81,6 +81,8 @@ export default async function handler(req: any, res: any) {
       apiVersion: version,
       error: "Unauthorized: Only authorized moderators can view audit logs",
     });
+    return;
+  }
   const auth = verifyModeratorAuth({
     address: moderatorAddress,
     timestamp: moderatorTimestamp,
