@@ -292,6 +292,69 @@ fn test_update_prompt_price_appends_history_and_emits_event() {
 }
 
 #[test]
+fn test_create_prompt_emits_prompt_created_event() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let before = env.events().all().len();
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Event Prompt",
+        7_500,
+        &context.xlm,
+    );
+    let after = env.events().all().len();
+
+    assert!(
+        after > before,
+        "expected PromptCreated event, got {} delta",
+        after - before
+    );
+
+    let last = env.events().all().get(after - 1).unwrap();
+    assert_eq!(last.topic, String::from_str(&env, "PromptCreated"));
+}
+
+#[test]
+fn test_buy_prompt_emits_prompt_purchased_event() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let price: i128 = 15_000;
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Purchase Event Prompt",
+        price,
+        &context.xlm,
+    );
+
+    fund_buyer(&xlm_client, &buyer, &context.contract, price);
+
+    let before = env.events().all().len();
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
+    let after = env.events().all().len();
+
+    assert!(
+        after > before,
+        "expected PromptPurchased event, got {} delta",
+        after - before
+    );
+
+    let last = env.events().all().get(after - 1).unwrap();
+    assert_eq!(last.topic, String::from_str(&env, "PromptPurchased"));
+}
+
+#[test]
 fn test_price_history_is_capped() {
     let env: Env = Default::default();
     let context = setup(&env);
@@ -6628,3 +6691,231 @@ fn test_repeated_operations_preserve_idempotency() {
     assert!(!client.get_prompt(&prompt_id).active);
 }
 
+#[test]
+fn test_buy_returns_insufficient_balance_when_wallet_unfunded() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Expensive", 10_000, &context.xlm);
+
+    // Buyer has zero balance — should get InsufficientBalance, not a raw token error.
+    let result = client.try_buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &10_000i128, &None::<Bytes>());
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_buy_supply_enforcement_is_atomic() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Supply Two", 1_000, &context.xlm);
+    client.set_prompt_max_supply(&creator, &prompt_id, &2u64);
+
+    fund_buyer(&xlm_client, &buyer, &context.contract, 100_000);
+
+    // Buy 1 of 2
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &1_000i128, &None::<Bytes>());
+    assert_eq!(client.get_prompt(&prompt_id).sales_count, 1);
+
+    // Buy 2 of 2
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &1_000i128, &None::<Bytes>());
+    assert_eq!(client.get_prompt(&prompt_id).sales_count, 2);
+
+    // Buy 3 — should fail with MaxSupplyReached
+    let result = client.try_buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &1_000i128, &None::<Bytes>());
+    match result {
+        Err(Ok(Error::MaxSupplyReached)) => {}
+        other => panic!("expected MaxSupplyReached, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_buy_bundle_returns_insufficient_balance_when_wallet_unfunded() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+
+    let pid = create_prompt(&env, &client, &creator, "Bundle P", 3_000, &context.xlm);
+    let mut ids = Vec::new(&env);
+    ids.push_back(pid);
+
+    let bundle_id = client.create_bundle(
+        &creator,
+        &String::from_str(&env, "Test Bundle"),
+        &String::from_str(&env, "desc"),
+        &String::from_str(&env, "https://img.example.com/test.png"),
+        &ids,
+        &10_000,
+        &context.xlm,
+    );
+
+    // Buyer has zero balance — should get InsufficientBalance
+    let result = client.try_buy_bundle(&buyer, &bundle_id, &10_000i128, &None::<Address>());
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance for bundle, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_buy_bundle_supply_enforcement_blocks_when_full() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let buyer_a = Address::generate(&env);
+    let buyer_b = Address::generate(&env);
+
+    let pid = create_prompt(&env, &client, &creator, "Supply Bundle", 3_000, &context.xlm);
+    client.set_prompt_max_supply(&creator, &pid, &1u64);
+
+    let mut ids = Vec::new(&env);
+    ids.push_back(pid);
+
+    let bundle_id = client.create_bundle(
+        &creator,
+        &String::from_str(&env, "Supply Bundle"),
+        &String::from_str(&env, "desc"),
+        &String::from_str(&env, "https://img.example.com/test.png"),
+        &ids,
+        &10_000,
+        &context.xlm,
+    );
+
+    fund_buyer(&xlm_client, &buyer_a, &context.contract, 100_000);
+    fund_buyer(&xlm_client, &buyer_b, &context.contract, 100_000);
+
+    // First buyer succeeds
+    client.buy_bundle(&buyer_a, &bundle_id, &10_000i128, &None::<Address>());
+    assert!(client.has_access(&buyer_a, &pid));
+
+    // Second buyer should hit MaxSupplyReached
+    let result = client.try_buy_bundle(&buyer_b, &bundle_id, &10_000i128, &None::<Address>());
+    match result {
+        Err(Ok(Error::MaxSupplyReached)) => {}
+        other => panic!("expected MaxSupplyReached for bundle second purchase, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_lease_returns_insufficient_balance_when_wallet_unfunded() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Lease Prompt", 10_000, &context.xlm);
+
+    // Buyer has zero balance — should get InsufficientBalance
+    let result = client.try_lease_prompt(&buyer, &prompt_id, &3600u64);
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance for lease, got {:?}", other),
+    }
+}
+
+
+#[test]
+fn test_price_bounds() {
+    let env = Env::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    
+    let creator = Address::generate(&env);
+    
+    // Test setting price bounds
+    let min_price = Some(10_000);
+    let max_price = Some(500_000);
+    client.set_price_bounds(&context.admin, &context.admin_two, &min_price, &max_price);
+    
+    let bounds = client.get_price_bounds();
+    assert_eq!(bounds, (min_price, max_price));
+    
+    // Try to create prompt below min price - should fail
+    let title = String::from_str(&env, "Title");
+    let category = String::from_str(&env, "Category");
+    let preview = String::from_str(&env, "Preview");
+    let enc_prompt = String::from_str(&env, "Encrypted");
+    let iv = String::from_str(&env, "IV");
+    let wrapped_key = String::from_str(&env, "WrappedKey");
+    let image_url = String::from_str(&env, "https://example.com/image.png");
+    
+    let mut config = ListingConfig {
+        price: 5_000,
+        asset: context.xlm.clone(),
+        splits: Vec::new(&env),
+        expires_at: 0,
+    };
+    
+    let result = client.try_create_prompt(
+        &creator,
+        &image_url,
+        &title,
+        &category,
+        &preview,
+        &enc_prompt,
+        &iv,
+        &wrapped_key,
+        &BytesN::from_array(&env, &[0; 32]),
+        &config,
+    );
+    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    
+    // Try to create prompt above max price - should fail
+    config.price = 600_000;
+    let result = client.try_create_prompt(
+        &creator,
+        &image_url,
+        &title,
+        &category,
+        &preview,
+        &enc_prompt,
+        &iv,
+        &wrapped_key,
+        &BytesN::from_array(&env, &[0; 32]),
+        &config,
+    );
+    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    
+    // Try to create prompt within bounds - should succeed
+    config.price = 100_000;
+    let prompt_id = client.create_prompt(
+        &creator,
+        &image_url,
+        &title,
+        &category,
+        &preview,
+        &enc_prompt,
+        &iv,
+        &wrapped_key,
+        &BytesN::from_array(&env, &[0; 32]),
+        &config,
+    );
+    
+    // Try to update prompt above max price - should fail
+    let result = client.try_update_prompt_price(&creator, &prompt_id, &600_000);
+    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    
+    // Try to update prompt below min price - should fail
+    let result = client.try_update_prompt_price(&creator, &prompt_id, &5_000);
+    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    
+    // Try to update prompt within bounds - should succeed
+    client.update_prompt_price(&creator, &prompt_id, &200_000);
+}

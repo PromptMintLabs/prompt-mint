@@ -103,6 +103,10 @@ pub enum Error {
     /// The upgrade would break existing license holders; aborted before the
     /// new implementation is installed.
     UpgradeLicenseIntegrity = 54,
+    /// The buyer's token balance is insufficient to cover the payment.
+    InsufficientBalance = 55,
+    /// set_fee_wallet was already called once; the fee wallet is immutable.
+    FeeWalletAlreadySet = 56,
 }
 
 #[contracttype]
@@ -147,6 +151,8 @@ pub enum DataKey {
     Discount(u128),
     // #192 – per-prompt price history log.
     PriceHistory(u128),
+    MinPrice,
+    MaxPrice,
 }
 
 /// #192 – A single recorded price change for a prompt.
@@ -166,7 +172,6 @@ pub struct PriceHistoryEntry {
     /// Monotonic per-prompt sequence number, starting at 1 for the initial
     /// listing price. Used to keep history entries ordered and de-duplicated.
     pub seq: u64,
-    PromptExpiryWarning(u128),
 }
 
 #[contracttype]
@@ -544,6 +549,8 @@ pub trait PromptHashTrait {
     fn get_fee_wallet(env: Env) -> Option<Address>;
     fn set_referral_percentage(env: Env, new_referral_percentage: u32) -> Result<(), Error>;
     fn get_referral_percentage(env: Env) -> u32;
+    fn set_price_bounds(env: Env, approver_a: Address, approver_b: Address, min_price: Option<i128>, max_price: Option<i128>) -> Result<(), Error>;
+    fn get_price_bounds(env: Env) -> (Option<i128>, Option<i128>);
     fn register_referral_code(
         env: Env,
         referrer: Address,

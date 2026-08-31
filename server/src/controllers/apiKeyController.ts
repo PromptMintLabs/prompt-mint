@@ -8,11 +8,13 @@ import {
   generateApiKey,
   isValidScope,
   maskKey,
+  computeExpirationDate,
+  computeGracePeriodDate,
   type ApiScope,
 } from "../services/apiKeys";
 
 /**
- * API key CRUD controllers (#287).
+ * API key CRUD controllers (#287, #255).
  *
  * NOTE: These operate on the caller's own keys, keyed by `ownerWallet`. In
  * production they MUST sit behind this codebase's existing wallet challenge
@@ -37,6 +39,9 @@ function serialize(doc: {
   requestCount: number;
   lastUsedAt: Date | null;
   revoked: boolean;
+  expiresAt?: Date | null;
+  gracePeriodUntil?: Date | null;
+  autoRotated?: boolean;
   createdAt?: Date;
 }) {
   return {
@@ -49,6 +54,9 @@ function serialize(doc: {
     requestCount: doc.requestCount,
     lastUsedAt: doc.lastUsedAt,
     revoked: doc.revoked,
+    expiresAt: doc.expiresAt,
+    gracePeriodUntil: doc.gracePeriodUntil,
+    autoRotated: doc.autoRotated || false,
     createdAt: doc.createdAt,
   };
 }
@@ -63,7 +71,7 @@ export const ListApiKeys = asyncRoute(async (req, res) => {
   res.json({ keys: keys.map(serialize) });
 });
 
-/** POST /api-keys — generate a new key. Returns plaintext ONCE. */
+/** POST /api-keys — generate a new key. Returns plaintext ONCE with 90-day expiration. */
 export const CreateApiKey = asyncRoute(async (req, res) => {
   await connectDb();
   const owner = requireOwner(req.body?.ownerWallet);
@@ -85,6 +93,8 @@ export const CreateApiKey = asyncRoute(async (req, res) => {
       : "free";
 
   const generated = generateApiKey();
+  const expiresAt = computeExpirationDate();
+
   const doc = await ApiKey.create({
     ownerWallet: owner,
     label,
@@ -92,6 +102,7 @@ export const CreateApiKey = asyncRoute(async (req, res) => {
     hashedKey: generated.hash,
     scopes,
     rateLimitTier: tier,
+    expiresAt,
   });
 
   res.status(201).json({
@@ -101,19 +112,23 @@ export const CreateApiKey = asyncRoute(async (req, res) => {
   });
 });
 
-/** POST /api-keys/:id/rotate — issue a new secret, revoke the old record. */
+/** POST /api-keys/:id/rotate — issue a new secret, retain old key during overlapping grace period. */
 export const RotateApiKey = asyncRoute(async (req, res) => {
   await connectDb();
   const owner = requireOwner(req.body?.ownerWallet);
   const existing = await ApiKey.findOne({ _id: req.params.id, ownerWallet: owner });
-  if (!existing || existing.revoked) {
+  if (!existing || (existing.revoked && (!existing.gracePeriodUntil || existing.gracePeriodUntil.getTime() < Date.now()))) {
     throw new AppError("Key not found.", 404, "KEY_NOT_FOUND");
   }
 
+  // Set overlapping grace period validity window (e.g. 7 days) on the old key
   existing.revoked = true;
+  existing.gracePeriodUntil = computeGracePeriodDate();
   await existing.save();
 
   const generated = generateApiKey();
+  const expiresAt = computeExpirationDate();
+
   const doc = await ApiKey.create({
     ownerWallet: owner,
     label: existing.label,
@@ -122,12 +137,17 @@ export const RotateApiKey = asyncRoute(async (req, res) => {
     scopes: existing.scopes,
     rateLimitTier: existing.rateLimitTier,
     rotatedFrom: existing.prefix,
+    expiresAt,
   });
 
-  res.status(201).json({ key: serialize(doc), plaintext: generated.plaintext });
+  res.status(201).json({
+    key: serialize(doc),
+    plaintext: generated.plaintext,
+    previousKeyGraceUntil: existing.gracePeriodUntil,
+  });
 });
 
-/** DELETE /api-keys/:id — soft-delete (revoke). */
+/** DELETE /api-keys/:id — soft-delete (revoke immediately without grace period). */
 export const RevokeApiKey = asyncRoute(async (req, res) => {
   await connectDb();
   const owner = requireOwner(req.body?.ownerWallet ?? req.query.ownerWallet);
@@ -135,6 +155,8 @@ export const RevokeApiKey = asyncRoute(async (req, res) => {
   if (!existing) throw new AppError("Key not found.", 404, "KEY_NOT_FOUND");
 
   existing.revoked = true;
+  existing.gracePeriodUntil = null;
   await existing.save();
   res.json({ key: serialize(existing) });
 });
+
