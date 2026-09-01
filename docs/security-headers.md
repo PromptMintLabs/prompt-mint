@@ -1,6 +1,6 @@
 # Security Headers Implementation
 
-This document describes the security headers implemented across all deployment paths for Prompt Mint.
+This document describes the hardened security headers implemented across all deployment paths for Prompt Mint (#256).
 
 ## Overview
 
@@ -14,51 +14,40 @@ Security headers are applied to all HTTP responses across three deployment paths
 
 ### Common Headers (All Paths)
 
-- **X-Content-Type-Options: nosniff**
-  - Prevents MIME type sniffing
-  - Ensures browser respects declared Content-Type
-  - Protects against MIME confusion attacks
-
-- **X-Frame-Options: DENY**
-  - Prevents clickjacking attacks
-  - Blocks all framing attempts
-  - No exceptions for same-origin framing
-
-- **X-XSS-Protection: 1; mode=block**
-  - Enables browser XSS filtering
-  - Blocks response if XSS attack detected
-  - Legacy protection for older browsers
-
-- **Referrer-Policy: strict-origin-when-cross-origin**
-  - Controls referrer information sent
-  - Full referrer sent to same-origin
-  - Only origin sent to cross-origin requests
-  - No referrer sent to less secure destinations
-
-- **Permissions-Policy: camera=(), microphone=(), geolocation=()**
-  - Restricts browser feature access
-  - Disables camera, microphone, and geolocation
-  - Prevents unauthorized feature access
+- **X-Content-Type-Options: nosniff** — Prevents MIME type sniffing
+- **X-Frame-Options: DENY** — Blocks all framing/clickjacking
+- **X-XSS-Protection: 1; mode=block** — Legacy XSS filter for older browsers
+- **Referrer-Policy: strict-origin-when-cross-origin** — Limits referrer leakage
+- **Permissions-Policy: camera=(), microphone=(), geolocation=()** — Disables sensitive browser APIs
+- **Cross-Origin-Opener-Policy: same-origin** — Process isolation between origins
+- **Cross-Origin-Resource-Policy: same-site** — Restricts cross-origin embedding
 
 ### HTTPS-Specific Headers
 
 - **Strict-Transport-Security: max-age=31536000; includeSubDomains; preload**
-  - Enforces HTTPS connections
-  - Applied only in production with HTTPS
-  - 1-year max-age with subdomain coverage
-  - Eligible for HSTS preload list
-  - **Condition**: `NODE_ENV === "production"` AND HTTPS connection detected
+  - Enforces HTTPS connections for 1 year
+  - Applied in production when HTTPS detected via `req.secure`, `x-forwarded-proto: https`, or `HSTS_FORCE=true`
+  - Applied globally in `vercel.json` at the edge
 
 ### Content Security Policy
 
-#### Express Server
+#### Express Server / Vercel Frontend
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.stellar.org https://horizon.stellar.org https://soroban-testnet.stellar.org https://soroban.stellar.org; frame-ancestors 'none';
+default-src 'self';
+script-src 'self' 'unsafe-inline' 'unsafe-eval';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data: https:;
+font-src 'self' data:;
+connect-src 'self' https://*.stellar.org https://horizon.stellar.org https://horizon-testnet.stellar.org https://soroban-testnet.stellar.org https://soroban.stellar.org https://secret-ai-gateway.onrender.com;
+frame-ancestors 'none';
+base-uri 'self';
+form-action 'self';
+object-src 'none'
 ```
 
-#### Serverless API Endpoints
+#### Serverless API Endpoints (pure JSON, no UI)
 ```
-Content-Security-Policy: default-src 'none'; frame-ancestors 'none';
+default-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'; object-src 'none'
 ```
 
 ## Deployment Path Details
@@ -229,53 +218,54 @@ Content-Security-Policy: default-src 'none'; frame-ancestors 'none';
 
 ## Testing
 
+### Automated Security Scanner
+
+Run the security scanner against the DAST target:
+
+```bash
+# Start DAST target
+node scripts/security/dast-target.mjs &
+
+# Run security header scanner
+node scripts/security/scan-security-headers.mjs
+
+# Or scan a custom target
+node scripts/security/scan-security-headers.mjs https://your-domain.com
+```
+
 ### Manual Testing
 
-#### Verify Headers Present
 ```bash
-curl -I https://your-domain.com
-curl -I https://your-domain.com/api/health
+# Verify all headers on any endpoint
+curl -I https://your-domain.com/health
+
+# Verify CSP
+curl -sI https://your-domain.com | grep -i content-security-policy
+
+# Verify CORS blocks unknown origin
+curl -I -H "Origin: https://evil-attacker.com" https://your-domain.com/api/health
 ```
 
-#### Verify HSTS
-```bash
-curl -I https://your-domain.com/api/health
-# Look for: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-```
+### Automated Test Suites
 
-#### Verify CSP
-```bash
-curl -I https://your-domain.com
-# Look for: Content-Security-Policy: ...
-```
-
-### Automated Testing
-
-See `src/lib/observability/wrapper.test.ts` for security header tests.
+- `server/src/middleware/securityHeaders.test.ts` — Covers all headers, CSP directives, HSTS proxy detection, HSTS_FORCE override, COOP/CORP.
+- `server/src/config/cors.test.ts` — Covers origin normalization, allowlist enforcement, exposed headers, preflight maxAge.
 
 ## Security Considerations
 
 ### HSTS Preload
-- Current configuration is preload-eligible
-- Consider submitting to HSTS preload list
-- Requires permanent commitment to HTTPS
-- Test thoroughly before submission
+- Configuration is preload-eligible
+- Consider submitting to the HSTS preload list at https://hstspreload.org/
 
 ### CSP Evolution
-- Current CSP allows inline scripts/styles
-- Consider migrating to nonce-based CSP
-- Consider adding CSP violation reporting
-- Monitor CSP violations in production
+- Current CSP allows `unsafe-inline` and `unsafe-eval` for React/frontend compatibility
+- Future: migrate to nonce-based CSP with `Content-Security-Policy-Report-Only` for testing
+- Consider adding `report-uri` or `report-to` for CSP violation reporting in production
 
-### Header Review
-- Review headers quarterly for security best practices
-- Stay updated on new security headers
-- Consider adding Content-Security-Policy-Report-Only for testing
-- Consider adding Cross-Origin-Opener-Policy for isolation
-
-## References
+### References
 
 - [OWASP Security Headers](https://owasp.org/www-project-secure-headers/)
 - [MDN Web Security](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers)
 - [HSTS Preload List](https://hstspreload.org/)
 - [Content Security Policy Level 3](https://www.w3.org/TR/CSP3/)
+- [MDN Cross-Origin-Opener-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Opener-Policy)

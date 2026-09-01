@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -41,6 +41,9 @@ jobs:
         with:
           node-version: "22"
           cache: "yarn"
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2

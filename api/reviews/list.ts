@@ -22,7 +22,6 @@ export default async function handler(req: any, res: any) {
   const version = negotiateVersion(req, res);
   if (!version) return;
 
-  const { promptId } = req.query;
   const { promptId, page: rawPage, limit: rawLimit, sort: rawSort = "newest", rating: rawRating } = req.query;
 
   if (!promptId) {
