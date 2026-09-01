@@ -2,6 +2,8 @@ import "dotenv/config";
 import "./instrumentation";
 import express from "express";
 import cors from "cors";
+import { buildCorsOptions } from "./config/cors";
+import { securityHeaders } from "./middleware/securityHeaders";
 import { TestPromptProxy } from "./controllers/controllers";
 import { proxyrouter } from "./routes/proxyRoutes";
 import { promptRouter } from "./routes/promptRoutes";
@@ -15,11 +17,14 @@ import { robotsRouter } from "./routes/robotsRoutes";
 import { licenseTermsRouter } from "./routes/licenseTermsRoutes";
 import { runBackup, getBackupHealth } from "./services/backupService";
 import { runRestoreDrill } from "./services/restoreService";
+import { blobRouter } from "./routes/blobRoutes";
 import { IndexerState } from "./models/IndexerState"; 
 import creatorReputationHandler from "./controllers/creatorReputationController";
 import cron from "node-cron";
 import { JSON_BODY_LIMIT, jsonBodyTooLargeHandler } from "./middleware/bodySizeLimit";
 import { docsRouter } from "./routes/docsRoutes";
+import { metricsRouter } from "./routes/metricsRoutes";
+import { metricsMiddleware } from "./middleware/metricsMiddleware";
 import { idempotency } from "./middleware/idempotency";
 import { versionNegotiation } from "./middleware/versioning";
 import type { Server } from "node:http";
@@ -41,7 +46,20 @@ app.use((req, res, next) => {
 
 const port = 5000;
 
-app.use(cors());
+// Hardened CORS — only allowlisted origins receive CORS headers
+app.use(cors(buildCorsOptions()));
+
+// CORS error handler: return clean 403 JSON instead of Express default
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err && typeof err.message === "string" && err.message.startsWith("CORS:")) {
+    res.status(403).json({ error: "Forbidden", code: "CORS_FORBIDDEN" });
+    return;
+  }
+  next(err);
+});
+
+// Hardened security headers: CSP, HSTS, X-Frame-Options, etc.
+app.use(securityHeaders);
 
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
@@ -60,7 +78,12 @@ app.use(versionNegotiation);
 
 app.use(robotsRouter);
 
+// #448 - Prometheus/Grafana metrics collection and export
+app.use(metricsMiddleware);
+
 app.use("/api/docs", docsRouter);
+app.use("/api/metrics", metricsRouter);
+app.use("/metrics", metricsRouter);
 
 app.use("/api/improve-proxy", proxyrouter);
 
@@ -72,6 +95,7 @@ app.use("/api/chat", chatRouter);
 app.use("/api/webhooks", webhookRouter);
 app.use("/api/versions", versioningRouter);
 app.use("/api/governance", governanceRouter); // Issue #113
+app.use("/api/blobs", blobRouter);
 app.get("/api/creators/reputation", creatorReputationHandler);
 
 app.post("/api/test-prompt", TestPromptProxy);

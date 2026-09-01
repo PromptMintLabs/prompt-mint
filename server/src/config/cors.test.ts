@@ -1,7 +1,14 @@
 import express from "express";
 import type { Server } from "http";
 import cors from "cors";
-import { getAllowedOrigins, isOriginAllowed, buildCorsOptions } from "./cors";
+import {
+  getAllowedOrigins,
+  isOriginAllowed,
+  buildCorsOptions,
+  normalizeOrigin,
+  ALLOWED_CORS_HEADERS,
+  EXPOSED_CORS_HEADERS,
+} from "./cors";
 
 describe("CORS allowlist configuration", () => {
   const originalEnv = process.env;
@@ -90,8 +97,23 @@ describe("CORS allowlist configuration", () => {
   });
 
   // ──────────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────────────
   // SUITE 3 — buildCorsOptions (5 tests)
   // ──────────────────────────────────────────────────────────────────────────
+
+  describe("normalizeOrigin", () => {
+    it("removes trailing slashes", () => {
+      expect(normalizeOrigin("https://app.promptmint.xyz/")).toBe("https://app.promptmint.xyz");
+    });
+
+    it("trims whitespace", () => {
+      expect(normalizeOrigin("  https://app.promptmint.xyz  ")).toBe("https://app.promptmint.xyz");
+    });
+
+    it("returns origin unchanged when already normalized", () => {
+      expect(normalizeOrigin("https://app.promptmint.xyz")).toBe("https://app.promptmint.xyz");
+    });
+  });
 
   describe("buildCorsOptions", () => {
     it("returns CorsOptions object with correct structure", () => {
@@ -100,6 +122,8 @@ describe("CORS allowlist configuration", () => {
       expect(options).toHaveProperty("credentials", true);
       expect(options).toHaveProperty("methods");
       expect(options).toHaveProperty("allowedHeaders");
+      expect(options).toHaveProperty("exposedHeaders");
+      expect(options).toHaveProperty("maxAge", 86400);
       expect(options).toHaveProperty("optionsSuccessStatus", 200);
     });
 
@@ -113,11 +137,27 @@ describe("CORS allowlist configuration", () => {
       expect(options.methods).toContain("OPTIONS");
     });
 
-    it("includes required headers in allowedHeaders", () => {
+    it("includes all hardened headers in allowedHeaders", () => {
       const options = buildCorsOptions();
       expect(options.allowedHeaders).toContain("Content-Type");
       expect(options.allowedHeaders).toContain("Authorization");
       expect(options.allowedHeaders).toContain("X-Requested-With");
+      expect(options.allowedHeaders).toContain("X-API-Version");
+      expect(options.allowedHeaders).toContain("Idempotency-Key");
+      expect(options.allowedHeaders).toContain("X-Captcha-Token");
+    });
+
+    it("exposes rate-limit and version headers to browsers", () => {
+      const options = buildCorsOptions();
+      expect(options.exposedHeaders).toContain("X-RateLimit-Limit");
+      expect(options.exposedHeaders).toContain("X-RateLimit-Remaining");
+      expect(options.exposedHeaders).toContain("X-API-Version");
+      expect(options.exposedHeaders).toContain("Deprecation");
+    });
+
+    it("caches preflight responses for 24h (maxAge: 86400)", () => {
+      const options = buildCorsOptions();
+      expect(options.maxAge).toBe(86400);
     });
 
     it("enables credentials for cookie and auth support", () => {
@@ -128,6 +168,19 @@ describe("CORS allowlist configuration", () => {
     it("sets optionsSuccessStatus to 200", () => {
       const options = buildCorsOptions();
       expect(options.optionsSuccessStatus).toBe(200);
+    });
+
+    it("ALLOWED_CORS_HEADERS includes all required headers", () => {
+      expect(ALLOWED_CORS_HEADERS).toContain("X-API-Version");
+      expect(ALLOWED_CORS_HEADERS).toContain("Idempotency-Key");
+      expect(ALLOWED_CORS_HEADERS).toContain("X-Captcha-Token");
+      expect(ALLOWED_CORS_HEADERS).toContain("Accept-Version");
+    });
+
+    it("EXPOSED_CORS_HEADERS includes rate limit and version headers", () => {
+      expect(EXPOSED_CORS_HEADERS).toContain("X-RateLimit-Limit");
+      expect(EXPOSED_CORS_HEADERS).toContain("X-RateLimit-Reset");
+      expect(EXPOSED_CORS_HEADERS).toContain("Deprecation");
     });
   });
 
