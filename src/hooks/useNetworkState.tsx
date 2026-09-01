@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
-import React from "react";
 import { browserStellarConfig } from "../lib/stellar/browserConfig";
 
 export type ServiceHealthStatus = "up" | "degraded" | "down";

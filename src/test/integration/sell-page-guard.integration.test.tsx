@@ -1,6 +1,6 @@
 import { screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import SellPage from "@/pages/sell/page";
 

@@ -8,7 +8,6 @@ import {
   enableRecentlyViewed,
   disableRecentlyViewed,
   addRecentlyViewed,
-  clearRecentlyViewed,
 } from "../lib/browsing/history";
 
 describe("useRecentlyViewed Hook", () => {

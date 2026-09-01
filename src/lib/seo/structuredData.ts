@@ -16,7 +16,6 @@ const SITE_ORIGIN = "https://promptmint.com";
  */
 export function generateProductLD(
   listing: ListingMetadata,
-  origin: string = SITE_ORIGIN,
 ): Record<string, unknown> {
   const price = listing.priceStroops
     ? Number(listing.priceStroops) / 10_000_000

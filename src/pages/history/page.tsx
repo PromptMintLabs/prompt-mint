@@ -14,6 +14,12 @@ import {
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import {
+  XlmAmountTooltip,
+  TimestampTooltip,
+} from "@/components/ui/Tooltip";
 import { useWallet } from "@/hooks/useWallet";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 import type {
@@ -22,7 +28,6 @@ import type {
   TransactionType,
 } from "@/lib/history/transactions";
 import { explorerTxUrl } from "@/lib/stellar/explorer";
-import { formatXLM } from "@/lib/formatters";
 
 const TYPE_META: Record<
   TransactionType,
@@ -151,7 +156,11 @@ function TransactionRow({ tx }: { tx: TransactionRecord }) {
         )}
       </td>
       <td className="py-3 px-4 text-slate-300 font-mono text-sm">
-        {tx.amountStroops ? formatXLM(tx.amountStroops) : "—"}
+        {tx.amountStroops ? (
+          <XlmAmountTooltip stroops={tx.amountStroops} />
+        ) : (
+          "—"
+        )}
       </td>
       <td className="py-3 px-4">
         <Badge className={`border ${STATUS_STYLE[tx.status]}`}>
@@ -159,7 +168,7 @@ function TransactionRow({ tx }: { tx: TransactionRecord }) {
         </Badge>
       </td>
       <td className="py-3 px-4 text-slate-400 text-sm">
-        {new Date(tx.timestamp).toLocaleString()}
+        <TimestampTooltip value={tx.timestamp} />
       </td>
       <td className="py-3 px-4">
         {tx.txHash ? (
@@ -412,13 +421,36 @@ export default function TransactionHistoryPage() {
             </div>
 
             {transactions.length === 0 ? (
-              <div className="py-16 text-center text-slate-400">
-                No transactions yet. Your marketplace activity will appear here.
-              </div>
+              <EmptyState
+                variant="no-transactions"
+                action={
+                  <Button
+                    asChild
+                    className="bg-emerald-500 font-bold text-slate-950 hover:bg-emerald-400"
+                  >
+                    <Link to="/browse">Browse prompts</Link>
+                  </Button>
+                }
+                size="lg"
+              />
             ) : filtered.length === 0 ? (
-              <div className="py-16 text-center text-slate-400">
-                No transactions match the selected filters.
-              </div>
+              <EmptyState
+                variant="search-empty"
+                title="No matching transactions"
+                description="Try clearing or adjusting your filters to see more activity."
+                action={
+                  <Button
+                    variant="outline"
+                    className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+                    onClick={() =>
+                      setFilter({ type: "all", status: "all" })
+                    }
+                  >
+                    Clear filters
+                  </Button>
+                }
+                size="lg"
+              />
             ) : (
               <>
                 {/* Stacked cards on narrow viewports (below sm: 640px) */}
