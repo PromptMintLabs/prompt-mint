@@ -151,17 +151,11 @@ async function handler(req: any, res: any) {
         timestamp: new Date().toISOString(),
         uptime,
         services,
+        circuitBreakers: listCircuitBreakers(),
       },
       version,
     ),
   );
-  res.status(200).json({
-    status: overallStatus,
-    timestamp: new Date().toISOString(),
-    uptime,
-    services,
-    circuitBreakers: listCircuitBreakers(),
-  });
 }
 
 export default withObservability(handler, "status");
