@@ -25,14 +25,17 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '22'
-          cache: yarn
+          node-version: '18.x'
+          cache: 'yarn'
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
         run: yarn install --immutable
 
       - name: Build frontend
-        run: yarn build
+        run: yarn run build
         env:
           CI: true
 
@@ -234,14 +237,17 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '22'
-          cache: yarn
+          node-version: '18.x'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --immutable
 
       - name: Install dependencies
         run: yarn install --immutable
 
       - name: Install CycloneDX tooling
-        run: npm install -g @cyclonedx/cyclonedx-npm
+        run: yarn global add @cyclonedx/cyclonedx-npm
 
       - name: Generate frontend SBOM (CycloneDX)
         run: |
