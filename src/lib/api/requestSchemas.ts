@@ -61,6 +61,7 @@ export const ChallengeRequestBody = z
   .object({
     address: stellarPublicKeySchema,
     promptId: promptIdSchema,
+    captchaToken: z.string().trim().optional(),
   })
   .strict();
 
@@ -72,6 +73,7 @@ export const UnlockRequestBody = z
     promptId: promptIdSchema,
     address: stellarPublicKeySchema,
     signedMessage: z.string().trim().min(1, "signedMessage is required."),
+    captchaToken: z.string().trim().optional(),
   })
   .strict();
 

@@ -10,15 +10,12 @@ import {
   AlertTriangle,
   RefreshCw,
   Wallet,
-  ArrowRight,
 } from 'lucide-react';
 import {
   validateCheckout,
   type CheckoutSummary,
-  type CheckoutItemValidation,
 } from '@/lib/checkout/validation';
 import { PromptHashClient } from '@/lib/stellar/promptHashClient';
-import { browserStellarConfig } from '@/lib/stellar/browserConfig';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import { detectNetworkMismatch } from '@/lib/wallet/networkDetection';
 import { useWallet } from '@/hooks/useWallet';
@@ -172,11 +169,6 @@ export function Checkout({ onClose }: CheckoutProps) {
     } finally {
       setCheckingOut(false);
     }
-  };
-
-  const handleRetryValidation = () => {
-    setSummary(null);
-    validateItems();
   };
 
   const handleRemoveInvalidItems = () => {

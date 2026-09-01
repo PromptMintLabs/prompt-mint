@@ -204,10 +204,12 @@ The Unlock Service is a trusted component with access to the decryption key. If 
 - **Private Keys** for the service must be rotated
 - **Mitigation**: The service should run in a secure environment with proper access controls, HSM-backed keys, and regular security audits
 
-### 2. Network Visibility
-Unlock requests are made over HTTPS, but:
-- **Timing Analysis**: An attacker could observe that a specific wallet frequently unlocks specific prompts
-- **Mitigation**: Rate limiting and monitoring for suspicious patterns
+### 2. Network Visibility & Abuse Protection
+Unlock and authentication endpoints (`/api/auth/challenge`, `/api/prompts/unlock`, `/api/bundles/unlock`) enforce multi-layered abuse prevention:
+- **Rate Limiting**: `/api/auth/challenge` enforces a strict limit of max 10 requests per IP per minute.
+- **Account Lockout**: After 5 consecutive failed authentication attempts (e.g. invalid cryptographic signatures), the wallet account is locked for 15 minutes (HTTP 423 `ACCOUNT_LOCKED`).
+- **CAPTCHA Challenge**: When repeated failures (>=3) are detected from an IP or wallet, subsequent requests require valid CAPTCHA verification (`CAPTCHA_REQUIRED` / `CAPTCHA_INVALID`).
+- **Replay Protection**: Cryptographic challenge nonces and signatures are single-use within their validity window.
 
 ### 3. Content Leakage via Metadata
 Preview metadata is public:

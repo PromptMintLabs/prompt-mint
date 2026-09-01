@@ -46,7 +46,6 @@ export function PromotionalPriceDisplay({
     promotion,
     originalPrice,
     isLoading,
-    refresh,
   } = usePromotionalPrice(promptId, basePrice);
 
   if (isLoading) {

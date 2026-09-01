@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "@/hooks/useWallet";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
+import { AnalyticsDashboardSkeleton } from "@/components/PageSkeletons";
 import { getPromptsByCreator } from "@/lib/stellar/promptHashClient";
 import { browserStellarConfig } from "@/lib/stellar/browserConfig";
 import { stroopsToXlmString } from "@/lib/stellar/format";
@@ -13,7 +14,6 @@ import {
   Activity,
   Eye,
   Target,
-  Loader2,
   AlertCircle,
 } from "lucide-react";
 import {
@@ -244,12 +244,7 @@ export default function CreatorAnalyticsPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-6 w-6 text-slate-400 animate-spin" />
-            <span className="ml-3 text-slate-400">
-              Loading analytics data...
-            </span>
-          </div>
+          <AnalyticsDashboardSkeleton />
         ) : isError ? (
           <div className="rounded-2xl border border-rose-400/20 bg-rose-500/10 p-8 text-center">
             <AlertCircle className="h-8 w-8 text-rose-400 mx-auto mb-3" />

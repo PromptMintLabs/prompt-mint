@@ -89,7 +89,6 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
   const defaultOGTitle = "Prompt Mint";
   const defaultOGDescription = "Discover and buy AI prompts on the Stellar blockchain";
   const defaultOGImage = ""; // Site-wide default if any; can be empty
-  const defaultOGType = "website";
 
   // Determine effective metadata: use listing metadata if available, otherwise fallback to defaults
   const ogTitle = listingMetadata?.title || defaultOGTitle;
@@ -159,7 +158,6 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
           creator: listingMetadata.creator,
           category: listingMetadata.category,
         },
-        effectiveOrigin,
       );
       injectStructuredData(productLD);
     } else {
