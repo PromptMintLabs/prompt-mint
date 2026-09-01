@@ -1,17 +1,26 @@
 import {
   StellarWalletsKit,
-  WalletNetwork,
-  allowAllModules,
+  Networks,
   type ISupportedWallet,
 } from "@creit.tech/stellar-wallets-kit";
+import { FreighterModule } from "@creit.tech/stellar-wallets-kit/modules/freighter";
+import { AlbedoModule } from "@creit.tech/stellar-wallets-kit/modules/albedo";
+import { xBullModule } from "@creit.tech/stellar-wallets-kit/modules/xbull";
+import { LobstrModule } from "@creit.tech/stellar-wallets-kit/modules/lobstr";
+import { HotWalletModule } from "@creit.tech/stellar-wallets-kit/modules/hotwallet";
 import { Horizon } from "@stellar/stellar-sdk";
 import { horizonUrl, stellarNetwork, stellarWalletNetwork } from "../lib/env";
 
-// allowAllModules() returns an array containing albedo, freighter, etc.
-// This prevents us from having to import them individually and hitting the "Missing Export" error.
-export const kit: StellarWalletsKit = new StellarWalletsKit({
-  network: stellarWalletNetwork as WalletNetwork,
-  modules: allowAllModules(),
+// Initialise the kit with the supported wallet modules.
+StellarWalletsKit.init({
+  network: stellarWalletNetwork as Networks,
+  modules: [
+    new FreighterModule(),
+    new AlbedoModule(),
+    new xBullModule(),
+    new LobstrModule(),
+    new HotWalletModule(),
+  ],
 });
 
 function getHorizonHost(mode: string) {
@@ -35,7 +44,6 @@ export const fetchBalance = async (address: string) => {
     const { balances } = await horizon.accounts().accountId(address).call();
     return { ok: true, balances };
   } catch (e) {
-    // Re-throw the error so callers can handle it appropriately
     console.error("Error fetching balance:", e);
     throw e;
   }
@@ -43,11 +51,11 @@ export const fetchBalance = async (address: string) => {
 
 export type Balance = Awaited<ReturnType<typeof fetchBalance>>["balances"][number];
 
-export const wallet = kit;
+export const wallet = StellarWalletsKit;
 
 // Restore removed connectWallet export for backward compatibility
 export const connectWallet = async (...args: any[]) => {
-  return (kit as any).openModal(...args);
+  return (StellarWalletsKit as any).openModal(...args);
 };
 
 /**
@@ -56,5 +64,5 @@ export const connectWallet = async (...args: any[]) => {
  * the connection modal for wallets that aren't usable.
  */
 export const getSupportedWallets = (): Promise<ISupportedWallet[]> => {
-  return kit.getSupportedWallets();
+  return StellarWalletsKit.refreshSupportedWallets();
 };

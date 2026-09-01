@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import wasm from "vite-plugin-wasm";
 import { VitePWA } from "vite-plugin-pwa";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
-// import tailwindcss from '@tailwindcss/vite';
+import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 // https://vite.dev/config/
@@ -11,6 +11,7 @@ export default defineConfig(() => {
   return {
     plugins: [
       react(),
+      tailwindcss(),
       // tailwindcss(),
       VitePWA({
         registerType: "autoUpdate",
