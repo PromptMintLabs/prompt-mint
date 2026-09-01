@@ -151,6 +151,7 @@ pub enum DataKey {
     Discount(u128),
     // #192 – per-prompt price history log.
     PriceHistory(u128),
+    PromptExpiryWarning(u128),
     MinPrice,
     MaxPrice,
 }
@@ -221,6 +222,17 @@ pub struct Promotion {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Settlement {
+    pub buyer_amount: i128,
+    pub creator_amount: i128,
+    pub platform_amount: i128,
+    pub referrer: Option<Address>,
+    pub referrer_amount: i128,
+    pub split_amount: i128,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Purchase {
     pub prompt_id: u128,
     pub original_creator: Address,
@@ -266,6 +278,24 @@ pub struct ListingConfig {
     pub expires_at: u64,
     /// Optional co-creator revenue splits (empty Vec = no splits).
     pub splits: Vec<Split>,
+}
+
+/// Input payload for a single prompt in a batch-creation call.
+/// Mirrors the individual parameters of `create_prompt` but packaged into
+/// one Soroban-transportable struct so the batch entrypoint can accept a
+/// `Vec<PromptInput>` instead of repeating the full parameter list.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PromptInput {
+    pub image_url: String,
+    pub title: String,
+    pub category: String,
+    pub preview_text: String,
+    pub encrypted_prompt: String,
+    pub encryption_iv: String,
+    pub wrapped_key: String,
+    pub content_hash: BytesN<32>,
+    pub listing: ListingConfig,
 }
 
 /// Canonical taxonomy for content classification.
@@ -411,6 +441,12 @@ pub trait PromptHashTrait {
         listing: ListingConfig,
     ) -> Result<u128, Error>;
 
+    fn create_prompt_batch(
+        env: Env,
+        creator: Address,
+        prompts: Vec<PromptInput>,
+    ) -> Result<Vec<u128>, Error>;
+
     fn set_prompt_sale_status(
         env: Env,
         creator: Address,
@@ -548,6 +584,7 @@ pub trait PromptHashTrait {
     fn get_fee_percentage(env: Env) -> u32;
     fn get_fee_wallet(env: Env) -> Option<Address>;
     fn set_referral_percentage(env: Env, new_referral_percentage: u32) -> Result<(), Error>;
+    fn get_referral_percentage(env: Env) -> u32;    fn register_referral_code(
     fn get_referral_percentage(env: Env) -> u32;
     fn set_price_bounds(env: Env, approver_a: Address, approver_b: Address, min_price: Option<i128>, max_price: Option<i128>) -> Result<(), Error>;
     fn get_price_bounds(env: Env) -> (Option<i128>, Option<i128>);
@@ -556,6 +593,13 @@ pub trait PromptHashTrait {
         referrer: Address,
         code_hash: BytesN<32>,
     ) -> Result<(), Error>;
+
+    fn revoke_referral_code(
+        env: Env,
+        referrer: Address,
+        code_hash: BytesN<32>,
+    ) -> Result<(), Error>;
+
     fn set_pause_status(
         env: Env,
         paused: bool,

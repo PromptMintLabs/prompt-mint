@@ -6,6 +6,7 @@
   "operations": {
     "constructor": { "cpu": 0, "mem": 0 },
     "create_prompt": { "cpu": 0, "mem": 0 },
+    "create_prompt_batch": { "cpu": 0, "mem": 0 },
     "set_prompt_sale_status": { "cpu": 0, "mem": 0 },
     "set_prompt_max_supply": { "cpu": 0, "mem": 0 },
     "update_prompt_price": { "cpu": 0, "mem": 0 },
