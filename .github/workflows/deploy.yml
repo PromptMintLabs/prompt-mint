@@ -273,7 +273,7 @@ jobs:
           mkdir -p sbom
           jq -n \
             --arg sha "${{ github.sha }}" \
-            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
             --arg repo "${{ github.repository }}" \
             --arg run_id "${{ github.run_id }}" \
             '{release: $sha, generatedAt: $ts, repository: $repo, runId: $run_id, sbomFiles: ["frontend-sbom.json","contract-sbom.json","server-sbom.json"]}' \

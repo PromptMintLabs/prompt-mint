@@ -20,6 +20,10 @@ vi.mock("../../src/lib/observability/rateLimiter", () => ({
   checkRateLimit: vi.fn(),
 }));
 
+vi.mock("../../src/lib/observability/redisClient", () => ({
+  getRedisClient: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("../../src/lib/observability/metrics", () => ({
   metrics: {
     trackChallengeIssued: vi.fn(),

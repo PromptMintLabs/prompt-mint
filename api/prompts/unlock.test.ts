@@ -8,7 +8,7 @@ import {
   createChallengeToken,
 } from "../../src/lib/auth/challenge";
 import { ErrorCode } from "../../src/lib/api/errorCodes";
-import { resetAbuseProtectionState } from "../../src/lib/auth/abuseProtection";
+import { resetAbuseProtectionState, recordFailedAuthAttempt } from "../../src/lib/auth/abuseProtection";
 
 const hasAccessMock = vi.fn();
 const getPromptMock = vi.fn();
@@ -43,6 +43,10 @@ vi.mock("../../src/lib/observability/rateLimiter", () => ({
     remaining: 4,
     reset: 60_000,
   }),
+}));
+
+vi.mock("../../src/lib/observability/redisClient", () => ({
+  getRedisClient: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("../../src/lib/observability/metrics", () => ({
@@ -422,7 +426,7 @@ describe("unlock API integrity checks", () => {
       expect(responseData.code).toBe(ErrorCode.INVALID_SIGNATURE);
     }
 
-    // 5th failed attempt locks the account and returns 423
+    // Next attempt: account is locked
     const { statusCode, responseData } = await invokeUnlock({
       token: challenge.token,
       promptId,

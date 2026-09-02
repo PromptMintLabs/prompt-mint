@@ -73,3 +73,14 @@ ENV PATH="${CARGO_HOME}/bin:/home/${USERNAME}/.cargo/bin:${PATH}" \
     RUSTUP_HOME="${RUSTUP_HOME}"
 
 CMD ["/bin/bash"]
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        gnupg \
+        libdbus-1-dev \
+        libssl-dev \
+        pkg-config \
+    && rm -rf /var/lib/apt/lists/*

@@ -127,7 +127,7 @@ describe("secretsRotation service", () => {
         message: "Secret rotated successfully.",
       });
 
-      expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect(mockRecordAuditEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "secrets_rotated",
           result: "success",
