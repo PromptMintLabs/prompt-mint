@@ -413,10 +413,17 @@ describe("unlock API integrity checks", () => {
       wrongSigner.sign(Buffer.from(challenge.challenge, "utf8")),
     ).toString("base64");
 
-    // Seed 5 failures directly so the account is locked (threshold is 5)
-    // and bypasses the CAPTCHA gate entirely.
-    for (let i = 0; i < 5; i++) {
-      await recordFailedAuthAttempt(buyer.publicKey(), "127.0.0.1");
+    // First 4 failed attempts return 401
+    for (let i = 0; i < 4; i++) {
+      const { statusCode, responseData } = await invokeUnlock({
+        token: challenge.token,
+        promptId,
+        address: buyer.publicKey(),
+        signedMessage: wrongSignature,
+        captchaToken: "test-captcha-token-valid",
+      });
+      expect(statusCode).toBe(401);
+      expect(responseData.code).toBe(ErrorCode.INVALID_SIGNATURE);
     }
 
     // Next attempt: account is locked
@@ -425,6 +432,7 @@ describe("unlock API integrity checks", () => {
       promptId,
       address: buyer.publicKey(),
       signedMessage: wrongSignature,
+      captchaToken: "test-captcha-token-valid",
     });
 
     expect(statusCode).toBe(423);
