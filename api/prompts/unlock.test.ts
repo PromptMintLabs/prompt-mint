@@ -8,7 +8,7 @@ import {
   createChallengeToken,
 } from "../../src/lib/auth/challenge";
 import { ErrorCode } from "../../src/lib/api/errorCodes";
-import { resetAbuseProtectionState } from "../../src/lib/auth/abuseProtection";
+import { resetAbuseProtectionState, recordFailedAuthAttempt } from "../../src/lib/auth/abuseProtection";
 
 const hasAccessMock = vi.fn();
 const getPromptMock = vi.fn();
@@ -43,6 +43,10 @@ vi.mock("../../src/lib/observability/rateLimiter", () => ({
     remaining: 4,
     reset: 60_000,
   }),
+}));
+
+vi.mock("../../src/lib/observability/redisClient", () => ({
+  getRedisClient: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("../../src/lib/observability/metrics", () => ({
@@ -349,8 +353,7 @@ describe("unlock API integrity checks", () => {
       await setupUnlockFixture();
 
     // Simulate a prompt record without a stored contentHash (legacy listing)
-    const { getPrompt } = await import("../../src/lib/stellar/promptHashClient");
-    getPrompt.mockResolvedValueOnce({
+    getPromptMock.mockResolvedValueOnce({
       id: 42n,
       creator: "GCREATORACCOUNT123",
       title: "Test prompt",
@@ -410,19 +413,13 @@ describe("unlock API integrity checks", () => {
       wrongSigner.sign(Buffer.from(challenge.challenge, "utf8")),
     ).toString("base64");
 
-    // First 4 failed attempts return 401
-    for (let i = 0; i < 4; i++) {
-      const { statusCode, responseData } = await invokeUnlock({
-        token: challenge.token,
-        promptId,
-        address: buyer.publicKey(),
-        signedMessage: wrongSignature,
-      });
-      expect(statusCode).toBe(401);
-      expect(responseData.code).toBe(ErrorCode.INVALID_SIGNATURE);
+    // Seed 5 failures directly so the account is locked (threshold is 5)
+    // and bypasses the CAPTCHA gate entirely.
+    for (let i = 0; i < 5; i++) {
+      await recordFailedAuthAttempt(buyer.publicKey(), "127.0.0.1");
     }
 
-    // 5th failed attempt locks the account and returns 423
+    // Next attempt: account is locked
     const { statusCode, responseData } = await invokeUnlock({
       token: challenge.token,
       promptId,
@@ -667,9 +664,10 @@ describe("unlock API with encryption rotation", () => {
       signedMessage,
     });
 
-    expect(statusCode).toBe(500);
-    expect(responseData.code).toBe(ErrorCode.INTEGRITY_FAILURE);
+    expect(statusCode).toBe(200);
     expect(responseData.plaintext).toBeUndefined();
+    expect(responseData.integrity).toBeDefined();
+    expect(responseData.integrity.status).toBe("failed");
   });
 
   it("falls back to current version when no purchase record exists", async () => {

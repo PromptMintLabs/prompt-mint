@@ -13,8 +13,10 @@ import {
   NINETY_DAYS_MS,
 } from "./secretsRotation";
 
+const mockRecordAuditEvent = vi.hoisted(() => vi.fn());
+
 vi.mock("../../server/src/services/auditTrail", () => ({
-  recordAuditEvent: vi.fn(),
+  recordAuditEvent: mockRecordAuditEvent,
 }));
 
 describe("secretsRotation service", () => {
@@ -116,8 +118,6 @@ describe("secretsRotation service", () => {
 
   describe("team notification dispatch", () => {
     it("records audit trail event and handles notification payload", async () => {
-      const { recordAuditEvent } = await import("../../server/src/services/auditTrail");
-
       await notifyTeamOnRotation({
         secretType: "CHALLENGE_TOKEN_SECRET",
         rotationTimestamp: Date.now(),
@@ -127,7 +127,7 @@ describe("secretsRotation service", () => {
         message: "Secret rotated successfully.",
       });
 
-      expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect(mockRecordAuditEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "secrets_rotated",
           result: "success",
