@@ -271,3 +271,29 @@ We apologize for the disruption and appreciate your patience while we work to fu
 
 Regards,
 [promptmint/IT Team]
+
+---
+
+# Failed Vercel Deployment Rollback
+
+Use this runbook when a Vercel deployment fails and Vercel automatically rolls back to the last successful deployment, or when you need to manually roll back a bad deployment.
+
+## Rollback Procedure
+
+1. Go to the Vercel project dashboard.
+2. Open the **Deployments** tab.
+3. Locate the failed deployment and note the error status.
+4. If Vercel did not automatically roll back, open the last successful deployment.
+5. Select **Promote to Production** to redeploy the last known-good version.
+6. Confirm the new production deployment reaches **Ready**.
+7. Verify the application health endpoint, critical user flows, and environment variables after rollback.
+
+## Reading Deployment Failure Logs
+
+1. Open the failed deployment in Vercel.
+2. Select **Logs** to view build/runtime logs.
+3. Look for `ERROR`, `Failed`, `Rolling back`, or non-zero exit codes near the failure point.
+4. For build failures, check dependency installation, environment variable resolution, and compile output.
+5. For runtime failures, inspect function logs for startup crashes, missing secrets, or invalid configuration.
+6. If the failure is intermittent, download or copy the logs immediately because Vercel retains deployment logs for a limited time.
+7. Attach the relevant log lines and deployment URL to the incident record before closing the issue.

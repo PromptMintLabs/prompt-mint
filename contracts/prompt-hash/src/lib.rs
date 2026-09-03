@@ -1,6 +1,8 @@
-#![no_std]
-#![allow(dead_code)]
-#![allow(clippy::too_many_arguments)]
+#clo_std]
+
+#[allow(dead_code)]
+
+#[allow(clippy::too_many_arguments)]
 
 // Test builds get `std` (and therefore `alloc`) back so dev-dependencies like
 // `proptest` work normally; the deployed wasm contract stays strictly `no_std`.
@@ -15,10 +17,13 @@ mod types;
 #[cfg(test)]
 mod mock_asset;
 
-#[cfg(all(test, not(feature = "isolate-gas-bench")))]
+#[cfg(test)]
+mod mock_has_access;
+
+#[cfg(all(test, not(feature = "isolate-gas-bench"))]
 mod test;
 
-#[cfg(all(test, not(feature = "isolate-gas-bench")))]
+#[cfg(all(test, not(feature = "isolate-gas-bench"))]
 mod fuzz;
 
 #[cfg(test)]

@@ -129,6 +129,8 @@ PromptHash takes a **3% platform fee** on all sales:
 - Creator receives: 97% of purchase price
 - Platform receives: 3% of purchase price
 
+For the exact on-chain stroop math, integer rounding rules, and how splits are computed in the Soroban contract, see [Fee Model and Split Math](./fee-model-and-split-math.md).
+
 **Example:**
 - Buyer pays: 10 XLM
 - Creator receives: 9.7 XLM

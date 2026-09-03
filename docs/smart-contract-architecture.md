@@ -173,6 +173,8 @@ sequenceDiagram
 
 ## 4. Fee Calculation Engine & Revenue Splits
 
+> **Canonical reference:** [Fee Model and Split Math](./fee-model-and-split-math.md) documents the exact stroop-level split between seller and platform, integer rounding rules, and worked examples aligned with `contract.rs`.
+
 ### 4.1 Basis Points Math Model
 All percentages in the smart contract are represented as Basis Points (BPS), where $1 \text{ BPS} = 0.01\%$ and $10,000 \text{ BPS} = 100\%$.
 
@@ -191,27 +193,27 @@ P_{\text{raw}} & \text{otherwise}
 \end{cases}$$
 
 ### 4.3 Payout Breakdown
-1. **Platform Fee**:
-   $$\text{Amount}_{\text{platform}} = \frac{P_{\text{effective}} \times F_{\text{bps}}}{10000}$$
+1. **Platform Fee** (integer division; fractional stroops are not collected):
+   $$\text{Amount}_{\text{platform}} = \left\lfloor \frac{P_{\text{effective}} \times F_{\text{bps}}}{10000} \right\rfloor$$
 
-2. **Referral Payout**:
+2. **Referral Payout** (from full $P_{\text{effective}}$, not from creator share):
    $$\text{Amount}_{\text{referrer}} = \begin{cases}
-   \frac{P_{\text{effective}} \times R_{\text{bps}}}{10000} & \text{if referrer is valid and not creator/buyer} \\
+   \left\lfloor \frac{P_{\text{effective}} \times R_{\text{bps}}}{10000} \right\rfloor & \text{if referrer is valid and not creator/buyer} \\
    0 & \text{otherwise}
    \end{cases}$$
 
-3. **Creator Net Proceeds**:
-   $$\text{Amount}_{\text{creator}} = P_{\text{effective}} - \text{Amount}_{\text{platform}} - \text{Amount}_{\text{referrer}}$$
+3. **Co-Creator Revenue Splits** (each from full $P_{\text{effective}}$):
+   If the prompt listing defines collaborator shares $(\alpha_1, \alpha_2, \dots, \alpha_k)$:
+   $$\text{Share}_i = \left\lfloor \frac{P_{\text{effective}} \times \alpha_i}{10000} \right\rfloor$$
 
-4. **Multi-party Creator Revenue Splits**:
-   If the prompt listing defines collaborator shares $(\alpha_1, \alpha_2, \dots, \alpha_k)$ where $\sum \alpha_i = 10000$:
-   $$\text{Share}_i = \frac{\text{Amount}_{\text{creator}} \times \alpha_i}{10000}$$
+4. **Creator Net Proceeds** (absorbs all integer rounding remainder):
+   $$\text{Amount}_{\text{creator}} = P_{\text{effective}} - \text{Amount}_{\text{platform}} - \text{Amount}_{\text{referrer}} - \sum \text{Share}_i$$
 
 ### 4.4 Arithmetic Overflow & Safety Guards
 - All arithmetic uses Rust checked operations (`checked_add`, `checked_sub`, `checked_mul`, `checked_div`).
 - Any calculation that overflows returns `Error::ArithmeticOverflow`.
 - Payout amounts are strictly bounded so that:
-  $$\text{Amount}_{\text{platform}} + \text{Amount}_{\text{referrer}} + \sum \text{Share}_i == P_{\text{effective}}$$
+  $$\text{Amount}_{\text{platform}} + \text{Amount}_{\text{referrer}} + \sum \text{Share}_i + \text{Amount}_{\text{creator}} = P_{\text{effective}}$$
 
 ---
 

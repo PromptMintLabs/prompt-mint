@@ -9,6 +9,20 @@ import {
 // eslint-disable-next-line no-unused-vars
 type SignMessageFn = (_message: string) => Promise<{ signedMessage?: string } | string>;
 
+export const WALLET_DISCONNECTED_DURING_UNLOCK_MESSAGE =
+  "Wallet disconnected during unlock. Reconnect your wallet to continue decrypting this prompt.";
+
+export class WalletDisconnectedDuringUnlockError extends Error {
+  constructor(message = WALLET_DISCONNECTED_DURING_UNLOCK_MESSAGE) {
+    super(message);
+    this.name = "WalletDisconnectedDuringUnlockError";
+  }
+}
+
+export interface UnlockPromptContentOptions {
+  isWalletConnected?: () => boolean;
+}
+
 /**
  * Cryptographic provenance metadata returned by the unlock API and
  * re-verified client-side.
@@ -124,6 +138,12 @@ function normalizePromptId(promptId: string | bigint | number): string {
   return typeof promptId === "bigint" ? promptId.toString() : String(promptId);
 }
 
+function assertWalletStillConnected(options?: UnlockPromptContentOptions) {
+  if (options?.isWalletConnected && !options.isWalletConnected()) {
+    throw new WalletDisconnectedDuringUnlockError();
+  }
+}
+
 /**
  * Unlock a purchased prompt via challenge → wallet sign → unlock API.
  * Re-verifies the returned plaintext hash client-side when contentHash is present.
@@ -132,11 +152,15 @@ export async function unlockPromptContent(
   address: string,
   promptId: string | bigint | number,
   signMessage: SignMessageFn,
+  options?: UnlockPromptContentOptions,
 ): Promise<UnlockResult> {
   const id = normalizePromptId(promptId);
 
+  assertWalletStillConnected(options);
   const challenge = await requestChallenge(address, id);
+  assertWalletStillConnected(options);
   const signature = await signMessage(challenge.challenge);
+  assertWalletStillConnected(options);
 
   if (!signature) {
     throw new Error("User declined message signing.");
@@ -195,12 +219,13 @@ export async function unlockPrompt(
   _txHash: string,
   signMessage: SignMessageFn,
   address?: string,
+  options?: UnlockPromptContentOptions,
 ): Promise<{ decryptedContent: string; plaintext: string }> {
   if (!address) {
     throw new Error("Connect a Stellar wallet before unlocking.");
   }
 
-  const result = await unlockPromptContent(address, itemId, signMessage);
+  const result = await unlockPromptContent(address, itemId, signMessage, options);
   return {
     decryptedContent: result.plaintext,
     plaintext: result.plaintext,

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import FetchAllPrompts from "@/pages/browse/FetchAllPrompts";
 import { makePrompt } from "@/test/fixtures/prompts";
 import { renderWithProviders } from "@/test/render";
@@ -37,6 +37,10 @@ vi.mock("@/lib/prompts/unlock", () => ({
 }));
 
 describe("marketplace purchase and unlock integration coverage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("shows only active listings on the marketplace grid", async () => {
     const activePrompt = makePrompt({
       id: 3n,

@@ -495,10 +495,13 @@ async function handler(req: any, res: any) {
       reason: isExpired ? "expired_challenge" : "error",
     });
 
-    const errorCode = isExpired
-      ? ErrorCode.TEMPORARY_FAILURE
-      : ErrorCode.CONFIGURATION_ERROR;
-    res.status(isExpired ? 400 : 500).json(apiError(errorCode, message));
+    if (isExpired) {
+      res.status(401).json(
+        apiError(ErrorCode.CHALLENGE_EXPIRED, "The challenge token has expired. Please request a new one."),
+      );
+    } else {
+      res.status(500).json(apiError(ErrorCode.CONFIGURATION_ERROR, message));
+    }
   }
 }
 

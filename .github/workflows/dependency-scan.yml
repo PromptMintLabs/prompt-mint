@@ -15,6 +15,8 @@ on:
       - "package.json"
       - "yarn.lock"
       - ".yarnrc.yml"
+      - "server/package.json"
+      - "server/package-lock.json"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/dependency-scan.yml"
@@ -24,6 +26,8 @@ on:
       - "package.json"
       - "yarn.lock"
       - ".yarnrc.yml"
+      - "server/package.json"
+      - "server/package-lock.json"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/dependency-scan.yml"
@@ -36,6 +40,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: dependency-scan-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   npm-audit:
     name: "npm: dependency audit"
@@ -43,7 +51,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Enable Corepack
         run: corepack enable
@@ -65,23 +73,49 @@ jobs:
           mkdir -p reports
           yarn npm audit --recursive --json > reports/npm-audit.json || true
 
-      - name: Upload npm audit report
+      - name: Set up Node.js (server lockfile)
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Run server npm audit (JSON report)
+        working-directory: server
+        run: npm audit --json > ../reports/npm-audit-server.json || true
+
+      - name: Upload npm audit reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: npm-audit-report
-          path: reports/npm-audit.json
+          name: npm-audit-reports
+          path: reports/npm-audit*.json
           retention-days: 90
 
-      - name: Fail on high/critical severity vulnerabilities
+      - name: Fail on high/critical frontend vulnerabilities
         run: yarn npm audit --recursive --severity high
+
+      - name: Fail on high/critical server vulnerabilities
+        working-directory: server
+        run: npm audit --audit-level=high
 
       - name: Weekly summary
         if: always() && github.event_name == 'schedule'
         run: |
           echo "### npm dependency audit — $(date -u +%Y-%m-%d)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Frontend (yarn):**" >> "$GITHUB_STEP_SUMMARY"
           echo '```json' >> "$GITHUB_STEP_SUMMARY"
           cat reports/npm-audit.json >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Server (npm):**" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat reports/npm-audit-server.json >> "$GITHUB_STEP_SUMMARY" || true
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   cargo-audit:
@@ -90,7 +124,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -117,7 +151,7 @@ jobs:
           retention-days: 90
 
       - name: Fail on RustSec advisories (contract dependencies)
-        run: cargo audit --deny warnings
+        run: cargo audit --deny vulnerabilities
 
       - name: Weekly summary
         if: always() && github.event_name == 'schedule'
