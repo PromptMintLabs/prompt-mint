@@ -28,6 +28,9 @@ export const ErrorCode = {
   /** The challenge token is invalid (bad signature, wrong address/promptId). */
   CHALLENGE_INVALID: "CHALLENGE_INVALID",
 
+  /** The unlock challenge nonce was already consumed (signature replay). */
+  CHALLENGE_REPLAY: "CHALLENGE_REPLAY",
+
   /** The wallet signature does not match the challenge message. */
   INVALID_SIGNATURE: "INVALID_SIGNATURE",
 
@@ -135,6 +138,8 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   INVALID_INPUT: "Some of the information you entered isn't valid. Please review your entries and try again.",
   CHALLENGE_EXPIRED: "Your unlock session has expired for your security. Please restart the unlock flow to get a new one.",
   CHALLENGE_INVALID: "This unlock request is no longer valid. Please restart the unlock flow from the prompt page.",
+  CHALLENGE_REPLAY:
+    "This unlock signature was already used. Request a fresh challenge from the prompt page and sign again.",
   INVALID_SIGNATURE: "We couldn't verify your wallet signature. Please try signing the request again in your wallet.",
   ACCESS_NOT_PURCHASED: "You haven't purchased access to this prompt yet. Purchase it from the prompt page to unlock the content.",
   RATE_LIMIT_IP: "Too many requests from your network. Please wait a minute before trying again.",
