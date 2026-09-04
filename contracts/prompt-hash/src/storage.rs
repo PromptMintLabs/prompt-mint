@@ -24,21 +24,34 @@ fn ensure(condition: bool, error: Error) -> Result<(), Error> {
 }
 
 impl Storage {
-    pub fn set_admin_signers(env: &Env, signers: &Vec<Address>) {
+    pub fn set_config_admin_signers(env: &Env, signers: &Vec<Address>) {
         let key = DataKey::AdminSigners;
         env.storage().persistent().set(&key, signers);
         Self::extend_key_ttl(env, &key);
     }
 
-    pub fn is_admin_signer(env: &Env, signer: &Address) -> bool {
-        let key = DataKey::AdminSigners;
+    pub fn is_config_admin_signer(env: &Env, signer: &Address) -> bool {
+        Self::is_signer(env, &DataKey::AdminSigners, signer)
+    }
+
+    pub fn set_upgrade_admin_signers(env: &Env, signers: &Vec<Address>) {
+        let key = DataKey::UpgradeAdminSigners;
+        env.storage().persistent().set(&key, signers);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn is_upgrade_admin_signer(env: &Env, signer: &Address) -> bool {
+        Self::is_signer(env, &DataKey::UpgradeAdminSigners, signer)
+    }
+
+    fn is_signer(env: &Env, key: &DataKey, signer: &Address) -> bool {
         let signers: Vec<Address> = env
             .storage()
             .persistent()
-            .get(&key)
+            .get(key)
             .unwrap_or_else(|| Vec::new(env));
-        if env.storage().persistent().has(&key) {
-            Self::extend_key_ttl(env, &key);
+        if env.storage().persistent().has(key) {
+            Self::extend_key_ttl(env, key);
         }
         for index in 0..signers.len() {
             if signers.get(index).unwrap() == signer.clone() {

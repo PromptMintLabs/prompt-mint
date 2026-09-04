@@ -2,12 +2,12 @@
 
 PromptHash Stellar utilizes a Soroban smart contract that stores prompt listings and purchase rights. As the protocol evolves, it may be necessary to upgrade the smart contract without losing the underlying state (prompt data, purchase records, balances). 
 
-The contract implements the `Ownable` trait, meaning that the `admin` who initialized the contract has the exclusive right to upgrade the contract's Wasm logic.
+Contract upgrades are authorized by the dedicated upgrade-admin signer group configured during initialization. Fee and pause configuration use a separate config-admin signer group, so a config administrator cannot propose, confirm, or cancel contract upgrades.
 
 ## Upgrade Assumptions & Requirements
 
 To successfully perform an upgrade, the following conditions must be met:
-1. **Admin Key Access:** You must have access to the Stellar identity/private key that was configured as the `admin` during the contract's `__constructor` initialization. Without this key, the `upgrade` invocation will fail with an authorization error.
+1. **Upgrade Admin Key Access:** You must have access to two distinct Stellar identities/private keys from the upgrade-admin signer group configured during the contract's `__constructor` initialization. Without two upgrade-admin approvals, upgrade operations fail with an authorization error.
 2. **State Compatibility:** The new Wasm code must maintain state compatibility with the existing storage. This means:
    - Data structures (like `Prompt`) must be backward compatible if modifying existing fields.
    - Storage keys must not overlap unintentionally or break the current mapping of data.
@@ -26,12 +26,13 @@ export CONTRACT_ID=C...
 ```
 
 ### 2. Configure Your Environment
-Ensure your `ADMIN_ALIAS` identity exists in your local `stellar-cli` configuration (`stellar keys address admin`). 
+Ensure the two upgrade admin identities you will use exist in your local `stellar-cli` configuration, for example `stellar keys address upgrade_admin` and `stellar keys address upgrade_admin_two`.
 
 By default, the script targets `testnet`. To target a different network, set the `NETWORK` variable:
 ```bash
 export NETWORK=mainnet
-export ADMIN_ALIAS=admin_mainnet
+export UPGRADE_ADMIN_ALIAS=upgrade_admin_mainnet
+export UPGRADE_ADMIN_TWO_ALIAS=upgrade_admin_two_mainnet
 ```
 
 ### 3. Run the Upgrade Script
@@ -83,7 +84,7 @@ The contract tracks this with two additional owner-only/read-only endpoints:
 2. Bump `CONTRACT_SCHEMA_VERSION` in `contract.rs` and add the actual
    migration steps to `migrate` (e.g. backfilling a new key from an old one).
 3. Deploy via `upgrade` as usual.
-4. Immediately call `migrate(new_version)` as the admin. Until this call
+4. Immediately call `migrate(new_version)` as the config admin owner. Until this call
    succeeds, `get_schema_version()` still reports the old version, so
    off-chain tooling can detect an upgrade that hasn't been migrated yet.
 5. Verify with `get_schema_version()` before resuming normal writes that

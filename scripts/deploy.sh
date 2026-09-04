@@ -29,9 +29,12 @@ else
 fi
 
 # Identities
-ADMIN_ALIAS=${ADMIN_ALIAS:-admin}
-ADMIN_TWO_ALIAS=${ADMIN_TWO_ALIAS:-admin_two}
-ADMIN_THREE_ALIAS=${ADMIN_THREE_ALIAS:-admin_three}
+CONFIG_ADMIN_ALIAS=${CONFIG_ADMIN_ALIAS:-config_admin}
+CONFIG_ADMIN_TWO_ALIAS=${CONFIG_ADMIN_TWO_ALIAS:-config_admin_two}
+CONFIG_ADMIN_THREE_ALIAS=${CONFIG_ADMIN_THREE_ALIAS:-config_admin_three}
+UPGRADE_ADMIN_ALIAS=${UPGRADE_ADMIN_ALIAS:-upgrade_admin}
+UPGRADE_ADMIN_TWO_ALIAS=${UPGRADE_ADMIN_TWO_ALIAS:-upgrade_admin_two}
+UPGRADE_ADMIN_THREE_ALIAS=${UPGRADE_ADMIN_THREE_ALIAS:-upgrade_admin_three}
 FEE_WALLET_ALIAS=${FEE_WALLET_ALIAS:-fee_wallet}
 
 echo "🌐 Using network: $NETWORK ($STELLAR_NETWORK)"
@@ -68,14 +71,20 @@ setup_identity() {
     fi
 }
 
-setup_identity $ADMIN_ALIAS
-setup_identity $ADMIN_TWO_ALIAS
-setup_identity $ADMIN_THREE_ALIAS
+setup_identity $CONFIG_ADMIN_ALIAS
+setup_identity $CONFIG_ADMIN_TWO_ALIAS
+setup_identity $CONFIG_ADMIN_THREE_ALIAS
+setup_identity $UPGRADE_ADMIN_ALIAS
+setup_identity $UPGRADE_ADMIN_TWO_ALIAS
+setup_identity $UPGRADE_ADMIN_THREE_ALIAS
 setup_identity $FEE_WALLET_ALIAS
 
-ADMIN_ADDRESS=$(stellar keys address $ADMIN_ALIAS)
-ADMIN_TWO_ADDRESS=$(stellar keys address $ADMIN_TWO_ALIAS)
-ADMIN_THREE_ADDRESS=$(stellar keys address $ADMIN_THREE_ALIAS)
+CONFIG_ADMIN_ADDRESS=$(stellar keys address $CONFIG_ADMIN_ALIAS)
+CONFIG_ADMIN_TWO_ADDRESS=$(stellar keys address $CONFIG_ADMIN_TWO_ALIAS)
+CONFIG_ADMIN_THREE_ADDRESS=$(stellar keys address $CONFIG_ADMIN_THREE_ALIAS)
+UPGRADE_ADMIN_ADDRESS=$(stellar keys address $UPGRADE_ADMIN_ALIAS)
+UPGRADE_ADMIN_TWO_ADDRESS=$(stellar keys address $UPGRADE_ADMIN_TWO_ALIAS)
+UPGRADE_ADMIN_THREE_ADDRESS=$(stellar keys address $UPGRADE_ADMIN_THREE_ALIAS)
 FEE_WALLET_ADDRESS=$(stellar keys address $FEE_WALLET_ALIAS)
 
 # Handle XLM SAC
@@ -85,7 +94,7 @@ if [ "$NETWORK" == "testnet" ]; then
     XLM_SAC="CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"
 else
     # For local, we might need to deploy it if it doesn't exist
-    stellar contract asset deploy --asset native --source $ADMIN_ALIAS --network $NETWORK > /dev/null 2>&1 || true
+    stellar contract asset deploy --asset native --source $CONFIG_ADMIN_ALIAS --network $NETWORK > /dev/null 2>&1 || true
     XLM_SAC=$(stellar contract id asset --asset native --network $NETWORK)
 fi
 echo "XLM SAC ID: $XLM_SAC"
@@ -95,7 +104,7 @@ echo ""
 echo "🚀 Deploying contract..."
 CONTRACT_ID=$(stellar contract deploy \
     --wasm $WASM_PATH \
-    --source $ADMIN_ALIAS \
+    --source $CONFIG_ADMIN_ALIAS \
     --network $NETWORK \
     --alias prompt_hash)
 
@@ -106,13 +115,16 @@ echo ""
 echo "⚙️ Initializing contract..."
 stellar contract invoke \
     --id $CONTRACT_ID \
-    --source $ADMIN_ALIAS \
+    --source $CONFIG_ADMIN_ALIAS \
     --network $NETWORK \
     -- \
     __constructor \
-    --admin $ADMIN_ADDRESS \
-    --admin_two $ADMIN_TWO_ADDRESS \
-    --admin_three $ADMIN_THREE_ADDRESS \
+    --config_admin $CONFIG_ADMIN_ADDRESS \
+    --config_admin_two $CONFIG_ADMIN_TWO_ADDRESS \
+    --config_admin_three $CONFIG_ADMIN_THREE_ADDRESS \
+    --upgrade_admin $UPGRADE_ADMIN_ADDRESS \
+    --upgrade_admin_two $UPGRADE_ADMIN_TWO_ADDRESS \
+    --upgrade_admin_three $UPGRADE_ADMIN_THREE_ADDRESS \
     --fee_wallet $FEE_WALLET_ADDRESS \
     --xlm_sac $XLM_SAC
 
@@ -153,7 +165,7 @@ echo "🔍 Running basic verification..."
 # Call a getter to ensure it works
 PROMPTS_COUNT=$(stellar contract invoke \
     --id $CONTRACT_ID \
-    --source $ADMIN_ALIAS \
+    --source $CONFIG_ADMIN_ALIAS \
     --network $NETWORK \
     -- \
     get_all_prompts)
@@ -162,8 +174,11 @@ echo "Current prompts count: $PROMPTS_COUNT"
 echo "--------------------------------------------------------"
 echo "Deployment successful!"
 echo "Contract ID: $CONTRACT_ID"
-echo "Admin: $ADMIN_ADDRESS"
-echo "Admin 2: $ADMIN_TWO_ADDRESS"
-echo "Admin 3: $ADMIN_THREE_ADDRESS"
+echo "Config admin: $CONFIG_ADMIN_ADDRESS"
+echo "Config admin 2: $CONFIG_ADMIN_TWO_ADDRESS"
+echo "Config admin 3: $CONFIG_ADMIN_THREE_ADDRESS"
+echo "Upgrade admin: $UPGRADE_ADMIN_ADDRESS"
+echo "Upgrade admin 2: $UPGRADE_ADMIN_TWO_ADDRESS"
+echo "Upgrade admin 3: $UPGRADE_ADMIN_THREE_ADDRESS"
 echo "--------------------------------------------------------"
 
