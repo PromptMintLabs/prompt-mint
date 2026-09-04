@@ -41,6 +41,7 @@ import { CreatorVerificationCard } from "@/components/CreatorVerificationCard";
 import { VerifiedCreatorBadge } from "@/components/VerifiedCreatorBadge";
 import { RecentlyViewed } from "@/components/RecentlyViewed";
 import { SkeletonCard } from "@/components/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,51 +124,7 @@ function LoadingState({ label }: { label: string }) {
   );
 }
 
-function EmptyState({
-  icon: Icon,
-  title,
-  body,
-  action,
-  accent = "cyan",
-}: {
-  icon: LucideIcon;
-  title: string;
-  body: string;
-  action: { label: string; to: string; icon: LucideIcon };
-  accent?: "cyan" | "amber";
-}) {
-  const ActionIcon = action.icon;
-  const isCyan = accent === "cyan";
 
-  return (
-    <div className="grid min-h-80 place-items-center rounded-xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center">
-      <div className="max-w-sm">
-        <div
-          className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${
-            isCyan ? "bg-cyan-200/10 text-cyan-100" : "bg-amber-300/10 text-amber-200"
-          }`}
-        >
-          <Icon className="h-8 w-8" />
-        </div>
-        <h3 className="mt-5 text-xl font-semibold text-white">{title}</h3>
-        <p className="mt-3 text-sm leading-7 text-slate-400">{body}</p>
-        <Button
-          asChild
-          className={`mt-6 h-10 px-6 ${
-            isCyan
-              ? "bg-cyan-200 text-slate-950 hover:bg-cyan-100"
-              : "bg-amber-300 text-slate-950 hover:bg-amber-200"
-          }`}
-        >
-          <Link to={action.to}>
-            <ActionIcon className="h-4 w-4" />
-            {action.label}
-          </Link>
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 function DisconnectedProfile() {
   return (
@@ -1084,15 +1041,17 @@ export default function ProfilePage() {
                 <LoadingState label="Loading creator listings..." />
               ) : publicListings.length === 0 ? (
                 <EmptyState
-                  icon={Boxes}
+                  variant="no-listings"
                   title="No public listings"
-                  body="This creator does not currently have any active marketplace listings."
-                  action={{
-                    label: "Browse marketplace",
-                    to: "/browse",
-                    icon: ShoppingBag,
-                  }}
-                  accent="cyan"
+                  description="This creator does not currently have any active marketplace listings."
+                  action={
+                    <Button asChild className="bg-emerald-400 text-slate-950 hover:bg-emerald-300">
+                      <Link to="/browse">
+                        <ShoppingBag className="mr-2 h-4 w-4" />
+                        Browse marketplace
+                      </Link>
+                    </Button>
+                  }
                 />
               ) : (
                 <div className="space-y-4">
@@ -1210,15 +1169,17 @@ export default function ProfilePage() {
                       <LoadingState label="Loading your licensed prompts..." />
                     ) : purchasedPrompts.length === 0 ? (
                       <EmptyState
-                        icon={LibraryBig}
+                        variant="no-purchases"
                         title="Your library is empty"
-                        body="When this wallet buys access, prompts appear here with a direct unlock path back to the protected content."
-                        action={{
-                          label: "Browse marketplace",
-                          to: "/browse",
-                          icon: ShoppingBag,
-                        }}
-                        accent="cyan"
+                        description="When this wallet buys access, prompts appear here with a direct unlock path back to the protected content."
+                        action={
+                          <Button asChild className="bg-cyan-200 text-slate-950 hover:bg-cyan-100">
+                            <Link to="/browse">
+                              <ShoppingBag className="mr-2 h-4 w-4" />
+                              Browse marketplace
+                            </Link>
+                          </Button>
+                        }
                       />
                     ) : (
                       <div className="space-y-4">
@@ -1241,15 +1202,17 @@ export default function ProfilePage() {
                       <LoadingState label="Loading your creator inventory..." />
                     ) : createdPrompts.length === 0 ? (
                       <EmptyState
-                        icon={Boxes}
+                        variant="no-listings"
                         title="No creator inventory"
-                        body="Create your first encrypted prompt listing to see pricing controls, sales counts, and listing states here."
-                        action={{
-                          label: "Create listing",
-                          to: "/sell",
-                          icon: ArrowUpRight,
-                        }}
-                        accent="amber"
+                        description="Create your first encrypted prompt listing to see pricing controls, sales counts, and listing states here."
+                        action={
+                          <Button asChild className="bg-emerald-400 text-slate-950 hover:bg-emerald-300">
+                            <Link to="/sell">
+                              <ArrowUpRight className="mr-2 h-4 w-4" />
+                              Create listing
+                            </Link>
+                          </Button>
+                        }
                       />
                     ) : (
                       <div className="space-y-4">
@@ -1286,15 +1249,17 @@ export default function ProfilePage() {
                       <LoadingState label="Loading your saved listings..." />
                     ) : savedPrompts.length === 0 ? (
                       <EmptyState
-                        icon={Bookmark}
+                        variant="no-bookmarks"
                         title="No saved listings yet"
-                        body="Save marketplace prompts while browsing to keep a short list of listings you want to revisit or compare later."
-                        action={{
-                          label: "Browse marketplace",
-                          to: "/browse",
-                          icon: ShoppingBag,
-                        }}
-                        accent="cyan"
+                        description="Save marketplace prompts while browsing to keep a short list of listings you want to revisit or compare later."
+                        action={
+                          <Button asChild className="bg-emerald-400 text-slate-950 hover:bg-emerald-300">
+                            <Link to="/browse">
+                              <ShoppingBag className="mr-2 h-4 w-4" />
+                              Browse marketplace
+                            </Link>
+                          </Button>
+                        }
                       />
                     ) : (
                       <div className="space-y-4">
