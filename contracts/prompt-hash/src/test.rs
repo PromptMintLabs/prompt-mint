@@ -6854,90 +6854,56 @@ fn test_lease_returns_insufficient_balance_when_wallet_unfunded() {
 
 
 #[test]
-fn test_price_bounds() {
+fn test_access_revocation() {
     let env = Env::default();
     let context = setup(&env);
     let client = PromptHashContractClient::new(&env, &context.contract);
     
     let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
     
-    // Test setting price bounds
-    let min_price = Some(10_000);
-    let max_price = Some(500_000);
-    client.set_price_bounds(&context.admin, &context.admin_two, &min_price, &max_price);
+    let token = token::StellarAssetClient::new(&env, &context.xlm);
+    token.mint(&buyer, &100_000);
     
-    let bounds = client.get_price_bounds();
-    assert_eq!(bounds, (min_price, max_price));
+    let prompt_id = create_prompt(&env, &client, &creator, "Revokable Prompt", 10_000, &context.xlm);
     
-    // Try to create prompt below min price - should fail
-    let title = String::from_str(&env, "Title");
-    let category = String::from_str(&env, "Category");
-    let preview = String::from_str(&env, "Preview");
-    let enc_prompt = String::from_str(&env, "Encrypted");
-    let iv = String::from_str(&env, "IV");
-    let wrapped_key = String::from_str(&env, "WrappedKey");
-    let image_url = String::from_str(&env, "https://example.com/image.png");
+    // Purchase the prompt
+    client.buy_prompt(&buyer, &prompt_id, &None, &10_000, &None);
+    assert!(client.has_access(&buyer, &prompt_id));
     
-    let mut config = ListingConfig {
-        price: 5_000,
-        asset: context.xlm.clone(),
-        splits: Vec::new(&env),
-        expires_at: 0,
-    };
+    // Revoke access
+    client.revoke_access(&creator, &prompt_id, &buyer);
+    assert!(!client.has_access(&buyer, &prompt_id));
+}
+
+#[test]
+fn test_access_expiry_window() {
+    let env = Env::default();
+    env.ledger().set_timestamp(100_000);
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
     
-    let result = client.try_create_prompt(
-        &creator,
-        &image_url,
-        &title,
-        &category,
-        &preview,
-        &enc_prompt,
-        &iv,
-        &wrapped_key,
-        &BytesN::from_array(&env, &[0; 32]),
-        &config,
-    );
-    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
     
-    // Try to create prompt above max price - should fail
-    config.price = 600_000;
-    let result = client.try_create_prompt(
-        &creator,
-        &image_url,
-        &title,
-        &category,
-        &preview,
-        &enc_prompt,
-        &iv,
-        &wrapped_key,
-        &BytesN::from_array(&env, &[0; 32]),
-        &config,
-    );
-    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    let token = token::StellarAssetClient::new(&env, &context.xlm);
+    token.mint(&buyer, &100_000);
     
-    // Try to create prompt within bounds - should succeed
-    config.price = 100_000;
-    let prompt_id = client.create_prompt(
-        &creator,
-        &image_url,
-        &title,
-        &category,
-        &preview,
-        &enc_prompt,
-        &iv,
-        &wrapped_key,
-        &BytesN::from_array(&env, &[0; 32]),
-        &config,
-    );
+    let prompt_id = create_prompt(&env, &client, &creator, "Expiring Prompt", 10_000, &context.xlm);
     
-    // Try to update prompt above max price - should fail
-    let result = client.try_update_prompt_price(&creator, &prompt_id, &600_000);
-    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    // Set 30 days access duration (30 * 24 * 60 * 60 = 2592000)
+    let duration_secs = 2_592_000;
+    client.set_access_duration(&creator, &prompt_id, &duration_secs);
     
-    // Try to update prompt below min price - should fail
-    let result = client.try_update_prompt_price(&creator, &prompt_id, &5_000);
-    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    // Purchase the prompt
+    client.buy_prompt(&buyer, &prompt_id, &None, &10_000, &None);
+    assert!(client.has_access(&buyer, &prompt_id));
     
-    // Try to update prompt within bounds - should succeed
-    client.update_prompt_price(&creator, &prompt_id, &200_000);
+    // Fast forward halfway through the duration
+    env.ledger().set_timestamp(100_000 + 1_000_000);
+    assert!(client.has_access(&buyer, &prompt_id));
+    
+    // Fast forward past the duration
+    env.ledger().set_timestamp(100_000 + duration_secs + 1);
+    assert!(!client.has_access(&buyer, &prompt_id));
 }

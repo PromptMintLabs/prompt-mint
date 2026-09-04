@@ -162,6 +162,20 @@ struct SubscriptionRenewed {
     pub renewal_count: u32,
 }
 
+#[contractevent]
+struct AccessDurationSet {
+    #[topic]
+    pub prompt_id: u128,
+    pub duration_secs: u64,
+}
+
+#[contractevent]
+struct AccessRevoked {
+    #[topic]
+    pub prompt_id: u128,
+    pub buyer: Address,
+}
+
 pub struct Events;
 
 impl Events {
@@ -861,5 +875,17 @@ impl Events {
             prompt_id,
         }
         .publish(env);
+    }
+
+    pub fn emit_access_duration_set(env: &Env, prompt_id: u128, duration_secs: u64) {
+        AccessDurationSet {
+            prompt_id,
+            duration_secs,
+        }
+        .publish(env);
+    }
+
+    pub fn emit_access_revoked(env: &Env, prompt_id: u128, buyer: Address) {
+        AccessRevoked { prompt_id, buyer }.publish(env);
     }
 }

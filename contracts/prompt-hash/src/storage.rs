@@ -296,6 +296,26 @@ impl Storage {
         Self::extend_key_ttl(env, &key);
     }
 
+    pub fn revoke_purchase(env: &Env, prompt_id: u128, buyer: &Address) {
+        let key = DataKey::Purchase(prompt_id, buyer.clone());
+        env.storage().persistent().remove(&key);
+    }
+
+    pub fn set_access_duration(env: &Env, prompt_id: u128, duration_secs: u64) {
+        let key = DataKey::AccessDuration(prompt_id);
+        env.storage().persistent().set(&key, &duration_secs);
+        Self::extend_key_ttl(env, &key);
+    }
+
+    pub fn get_access_duration(env: &Env, prompt_id: u128) -> Option<u64> {
+        let key = DataKey::AccessDuration(prompt_id);
+        let duration = env.storage().persistent().get(&key);
+        if env.storage().persistent().has(&key) {
+            Self::extend_key_ttl(env, &key);
+        }
+        duration
+    }
+
     pub fn remove_purchase(env: &Env, prompt_id: u128, owner: &Address) {
         let key = DataKey::Purchase(prompt_id, owner.clone());
         env.storage().persistent().remove(&key);
