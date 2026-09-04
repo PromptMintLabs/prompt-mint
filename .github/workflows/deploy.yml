@@ -59,7 +59,7 @@ jobs:
           retention-days: 30
 
       - name: Deploy to Vercel
-        uses: vercel/action@v5
+        uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -88,16 +88,16 @@ jobs:
       - name: Cache cargo registry
         uses: actions/cache@v6
         with:
-          path: \~/.cargo/registry
-          key: \( {{ runner.os }}-cargo-registry- \){{ hashFiles('**/Cargo.lock') }}
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-registry-
 
       - name: Cache cargo index
         uses: actions/cache@v6
         with:
-          path: \~/.cargo/git
-          key: \( {{ runner.os }}-cargo-git- \){{ hashFiles('**/Cargo.lock') }}
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-git-
 
@@ -105,7 +105,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: target
-          key: \( {{ runner.os }}-cargo-build-target- \){{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-build-target-
 
@@ -178,7 +178,7 @@ jobs:
       - name: Set up cosign
         uses: sigstore/cosign-installer@v3
         with:
-          cosign-release: 'v2.4.3'
+          cosign-release: "v2.4.3"
 
       - name: Download WASM artifacts
         uses: actions/download-artifact@v8
