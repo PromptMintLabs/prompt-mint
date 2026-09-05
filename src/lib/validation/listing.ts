@@ -117,15 +117,36 @@ export function validateListingForm(
   const priceXlm = trim(input.priceXlm);
 
   if (!imageUrl) {
+    errors.imageUrl = "Image URL is required.";
+  } else if (imageUrl.length > LISTING_LIMITS.imageUrl) {
+    errors.imageUrl = `Shorten the image URL to ${LISTING_LIMITS.imageUrl} characters or fewer.`;
     errors.imageUrl = "Add an image URL so your listing has a cover on browse cards.";
   } else if (utf8Length(imageUrl) > LISTING_LIMITS.imageUrl) {
     errors.imageUrl = `Shorten the image URL to ${LISTING_LIMITS.imageUrl} bytes or fewer.`;
   } else if (!/^https?:\/\/.+/i.test(imageUrl)) {
-    errors.imageUrl =
-      "Use a full URL starting with http:// or https:// so the cover image loads correctly.";
+    errors.imageUrl = "Image URL must start with http:// or https://.";
   }
 
   if (!title) {
+    errors.title = "Title is required.";
+  } else if (title.length < 3) {
+    errors.title = "Title must be at least 3 characters.";
+  } else if (title.length > LISTING_LIMITS.title) {
+    errors.title = `Shorten the title to ${LISTING_LIMITS.title} characters or fewer.`;
+  }
+
+  if (!category) {
+    errors.category = "Category is required.";
+  } else if (category.length > LISTING_LIMITS.category) {
+    errors.category = `Choose a shorter category (max ${LISTING_LIMITS.category} characters).`;
+  }
+
+  if (!previewText) {
+    errors.previewText = "Preview text is required.";
+  } else if (previewText.length < 10) {
+    errors.previewText = "Preview text must be at least 10 characters.";
+  } else if (previewText.length > LISTING_LIMITS.preview) {
+    errors.previewText = `Shorten the preview to ${LISTING_LIMITS.preview} characters or fewer.`;
     errors.title = "Add a title that tells buyers what your prompt does.";
   } else if (utf8Length(title) < 3) {
     errors.title = "Use at least 3 characters so the title is descriptive enough.";
@@ -150,11 +171,9 @@ export function validateListingForm(
   }
 
   if (!fullPrompt) {
-    errors.fullPrompt =
-      "Paste the full prompt content — it is encrypted in your browser before submission.";
+    errors.fullPrompt = "Full prompt content is required.";
   } else if (fullPrompt.length < 10) {
-    errors.fullPrompt =
-      "Add at least 10 characters of prompt content so buyers receive meaningful value.";
+    errors.fullPrompt = "Full prompt must be at least 10 characters.";
   } else if (fullPrompt.length > LISTING_LIMITS.fullPrompt) {
     errors.fullPrompt = `Shorten the prompt to ${LISTING_LIMITS.fullPrompt.toLocaleString()} characters or fewer.`;
   } else if (estimateEncryptedPayloadSize(fullPrompt) > LISTING_LIMITS.encryptedPrompt) {
@@ -162,7 +181,7 @@ export function validateListingForm(
   }
 
   if (!priceXlm) {
-    errors.priceXlm = "Enter a price in XLM — use a value greater than zero.";
+    errors.priceXlm = "Price is required.";
   } else {
     const precisionError = validatePricePrecision(priceXlm);
     if (precisionError) {
@@ -171,7 +190,7 @@ export function validateListingForm(
       try {
         const price = xlmToStroops(priceXlm);
         if (price <= 0n) {
-          errors.priceXlm = "Set a price greater than zero XLM.";
+          errors.priceXlm = "Price must be greater than 0.";
         }
       } catch (error) {
         errors.priceXlm =
@@ -187,6 +206,8 @@ export function validateListingForm(
     if (!CONTENT_CLASSIFICATIONS.some((c) => c.value === input.classification)) {
       errors.classification = "Selected classification is not in the recognized taxonomy.";
     }
+  } else {
+    errors.classification = "Content classification is required.";
   }
 
   // Safety flags are optional — valid if provided
@@ -255,11 +276,25 @@ export function buildListingChecklistItems(
 
   for (const { id, label } of fieldChecks) {
     const message = errors[id];
+    let hint: string | undefined = message;
+
+    if (!hint && id === "title") {
+      hint = "A descriptive title helps buyers discover your prompt.";
+    } else if (!hint && id === "priceXlm") {
+      hint = "Set a price greater than 0 XLM to list your prompt for sale.";
+    } else if (!hint && id === "imageUrl") {
+      hint = "A cover image makes your listing stand out on browse cards.";
+    } else if (!hint && id === "previewText") {
+      hint = "This public snippet appears on browse cards before purchase.";
+    } else if (!hint && id === "fullPrompt") {
+      hint = "The full prompt content is encrypted before it reaches the blockchain.";
+    }
+
     items.push({
       id,
       label,
       status: message ? "fail" : "pass",
-      hint: message,
+      hint,
     });
   }
 
