@@ -59,12 +59,11 @@ jobs:
           retention-days: 30
 
       - name: Deploy to Vercel
-        uses: vercel/action@v5
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
+        if: |
+          env.VERCEL_TOKEN != '' &&
+          env.VERCEL_ORG_ID != '' &&
+          env.VERCEL_PROJECT_ID != ''
+        run: yarn dlx vercel@latest --prod --yes
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -83,7 +82,8 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          toolchain: '1.91.0'
+          targets: wasm32v1-none
 
       - name: Cache cargo registry
         uses: actions/cache@v6
@@ -110,16 +110,16 @@ jobs:
             ${{ runner.os }}-cargo-build-target-
 
       - name: Build contract
-        run: cargo build --release -p prompt-hash --target wasm32-unknown-unknown
+        run: cargo build --release -p prompt-hash --target wasm32v1-none
         env:
           CARGO_TERM_COLOR: always
 
       - name: List WASM artifacts
-        run: ls -lah target/wasm32-unknown-unknown/release/*.wasm
+        run: ls -lah target/wasm32v1-none/release/*.wasm
 
       - name: Generate WASM checksums
         run: |
-          cd target/wasm32-unknown-unknown/release
+          cd target/wasm32v1-none/release
           sha256sum *.wasm > ../../../wasm-checksums.txt
           sha256sum ../../../wasm-checksums.txt > ../../../wasm-checksums.txt.sha256
 
@@ -127,7 +127,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: contract-wasm-${{ github.sha }}
-          path: target/wasm32-unknown-unknown/release/*.wasm
+          path: target/wasm32v1-none/release/*.wasm
           retention-days: 30
 
       - name: Upload WASM checksums
@@ -264,40 +264,43 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Install CycloneDX tooling
-        run: npm install -g @cyclonedx/cyclonedx-npm
-
       - name: Generate frontend SBOM (CycloneDX)
         run: |
           mkdir -p sbom
-          cyclonedx-npm --output-format JSON --output-file sbom/frontend-sbom.json
+          yarn dlx -q @cyclonedx/yarn-plugin-cyclonedx \
+            --lockfile-only \
+            --output-format JSON \
+            --output-file sbom/frontend-sbom.json
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          toolchain: '1.91.0'
+          targets: wasm32v1-none
 
       - name: Install cargo-cyclonedx
         run: cargo install cargo-cyclonedx
 
       - name: Generate contract SBOM (CycloneDX)
         run: |
-          mkdir -p sbom
-          cd contracts
-          cargo cyclonedx --output ../sbom/contract-sbom.json 2>/dev/null || echo "{\"warning\":\"cargo-cyclonedx not available for contract crate\",\"generatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > ../sbom/contract-sbom.json
+          cargo cyclonedx \
+            --manifest-path contracts/prompt-hash/Cargo.toml \
+            --format json \
+            --override-filename contract-sbom
+          mv contracts/prompt-hash/contract-sbom.json sbom/contract-sbom.json
 
       - name: Generate server SBOM
         run: |
           mkdir -p sbom
           cd server
-          npx -y @cyclonedx/cyclonedx-npm --output-format JSON --output-file ../sbom/server-sbom.json 2>/dev/null || echo "{\"warning\":\"cyclonedx-npm not available for server\",\"generatedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > ../sbom/server-sbom.json
+          npx -y @cyclonedx/cyclonedx-npm --output-format JSON --output-file ../sbom/server-sbom.json
 
       - name: Create SBOM manifest
         run: |
           mkdir -p sbom
           jq -n \
             --arg sha "${{ github.sha }}" \
-            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
             --arg repo "${{ github.repository }}" \
             --arg run_id "${{ github.run_id }}" \
             '{release: $sha, generatedAt: $ts, repository: $repo, runId: $run_id, sbomFiles: ["frontend-sbom.json","contract-sbom.json","server-sbom.json"]}' \
