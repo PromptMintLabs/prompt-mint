@@ -65,17 +65,13 @@ async function handler(_req: any, res: any) {
   const version = negotiateVersion(_req, res);
   if (!version) return;
 
-  try {
-    await connectDb();
-  } catch {
-    // Ignore DB connection errors if indexer state is optional in standalone mode
-  }
-
   let state: any = null;
   try {
+    await connectDb();
     state = await IndexerState.findOne({ key: "prompt_hash_contract" });
-  } catch {
-    // Graceful fallback if DB is not connected
+  } catch (error) {
+    // Ignore DB connection errors if indexer state is optional in standalone mode
+    console.error("Health check DB error:", error);
   }
 
   const contractCheck = verifyContractIdConfig();
