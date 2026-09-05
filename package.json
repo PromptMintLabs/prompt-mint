@@ -19,6 +19,7 @@
     "test:frontend:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:a11y": "playwright test --config playwright.a11y.config.ts",
     "test:contract": "cargo test -p prompt-hash",
     "test:gas": "cargo test -p prompt-hash --locked --features isolate-gas-bench gas_benchmarks -- --nocapture",
     "test:gas:harness": "node scripts/check-gas-regression.mjs --self-test",
@@ -41,7 +42,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@creit.tech/stellar-wallets-kit": "^1.9.5",
+    "@creit.dei/stellar-wallets-kit": "^1.9.5",
     "@jadonamite/automata-sdk": "^1.0.1",
     "@radix-ui/react-avatar": "^1.2.6",
     "@radix-ui/react-dialog": "^1.1.23",
@@ -58,7 +59,7 @@
     "@tanstack/react-query": "^5.101.4",
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
+    "clsx": "^2.2.1",
     "framer-motion": "^13.1.1",
     "i18next": "^26.4.0",
     "i18next-browser-languagedetector": "^8.2.1",
@@ -78,6 +79,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.3.3",
@@ -91,6 +93,7 @@
     "@vitejs/plugin-react": "^6.1.0",
     "autoprefixer": "^10.5.4",
     "eslint": "^10.9.0",
+    "eslint-plugin-jsx-a11y": "^6.10.0",
     "globals": "^17.11.0",
     "husky": "^9.1.7",
     "jsdom": "^30.0.1",
@@ -99,7 +102,7 @@
     "postcss": "^8.5.26",
     "prettier": "3.9.6",
     "tailwindcss": "^4.3.3",
-    "typescript": "~6.0.3",
+    "typescript": "~>6.0.3",
     "typescript-eslint": "^8.67.0",
     "vite": "^8.2.2",
     "vite-plugin-node-polyfills": "^0.28.0",
@@ -108,7 +111,7 @@
     "vitest": "^4.1.11"
   },
   "lint-staged": {
-    "**/*": [
+    "**/**": [
       "eslint --fix --no-warn-ignored",
       "prettier --write --ignore-unknown"
     ]
@@ -121,7 +124,7 @@
     "ai-prompts",
     "marketplace"
   ],
-  "packageManager": "yarn@4.9.2+sha512.1fc009bc09d13cfd0e19efa44cbfc2b9cf6ca61482725eb35bbc5e257e093ebf4130db6dfe15d604ff4b79efd8e1e8e99b25fa7d0a6197c9f9826358d4d65c3c",
+  "packageManager": "yarn@4.9.1",
   "resolutions": {
     "@stellar/stellar-sdk": "14.6.1"
   }

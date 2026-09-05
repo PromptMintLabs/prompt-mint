@@ -19,6 +19,8 @@ on:
       - "postcss.config.js"
       - "components.json"
       - "index.html"
+      - "playwright.a11y.config.ts"
+      - "src/test/a11y/**"
   push:
     branches:
       - main
@@ -40,6 +42,8 @@ on:
       - "postcss.config.js"
       - "components.json"
       - "index.html"
+      - "playwright.a11y.config.ts"
+      - "src/test/a11y/**"
 
 permissions:
   contents: read
@@ -51,16 +55,15 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Enable Corepack
-        run: corepack enable
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
+
+      - name: Install Yarn
+        run: npm install -g yarn@4.9.1
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -88,10 +91,34 @@ jobs:
 
       - name: Upload visual regression artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-visual-regression
           path: |
             playwright-report/
             test-results/
           if-no-files-found: ignore
+
+  accessibility:
+    name: Accessibility Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Yarn
+        run: npm install -g yarn@4.9.1
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Install Playwright browsers
+        run: yarn playwright install --with-deps chromium
+
+      - name: Run accessibility audit
+        run: yarn test:a11y

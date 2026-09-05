@@ -56,6 +56,9 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
+      - name: Correct packageManager manifest for Corepack
+        run: corepack use yarn@4.9.2
+
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:

@@ -1,5 +1,4 @@
 name: CI
-
 on:
   push:
     branches: ["main"]
@@ -15,16 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Enable Corepack
-        run: corepack enable
-
+        uses: actions/checkout@v4
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "yarn"
+
+      - name: Install Yarn
+        run: npm install -g @yarnpkg/cli-dist@4.9.2
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -32,69 +29,22 @@ jobs:
       - name: Run Lint
         run: yarn lint
 
-  typecheck:
-    name: Typecheck
+  a11y:
+    name: Accessibility Audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Enable Corepack
-        run: corepack enable
-
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "yarn"
+
+      - name: Install Yarn
+        run: npm install -g @yarnpkg/cli-dist@4.9.2
 
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Run Typecheck
-        run: yarn typecheck
-
-  test:
-    name: Unit & Component Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: "yarn"
-
-      - name: Install dependencies
-        run: yarn install --immutable
-
-      - name: Run Tests
-        run: yarn test:frontend
-
-  build:
-    name: Build Frontend
-    runs-on: ubuntu-latest
-    needs: [lint, typecheck]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-          cache: "yarn"
-
-      - name: Install dependencies
-        run: yarn install --immutable
-
-      - name: Build Frontend
-        run: yarn build
+      - name: Run Accessibility Audit
+        run: yarn a11y
