@@ -9,7 +9,7 @@ import {
 import { wallet } from "../util/wallet";
 import storage from "../util/storage";
 import { stellarNetwork } from "../lib/env";
-import { ALBEDO_ID } from "@creit.tech/stellar-wallets-kit";
+import { ALBEDO_ID } from "@creit.tech/stellar-wallets-kit/modules/albedo";
 import { useAsyncTransaction } from "../components/useAsyncTransaction";
 import { trackEvent, trackEventWithWallet } from "../lib/analytics/track";
 import { useQueryClient } from "@tanstack/react-query";
