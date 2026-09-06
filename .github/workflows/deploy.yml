@@ -23,7 +23,7 @@ jobs:
         run: corepack enable
 
       - name: Use Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: yarn
@@ -43,14 +43,14 @@ jobs:
           sha256sum ../frontend-checksums.txt > ../frontend-checksums.txt.sha256
 
       - name: Upload frontend build
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-build-${{ github.sha }}
           path: dist/
           retention-days: 30
 
       - name: Upload frontend checksums
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-checksums-${{ github.sha }}
           path: |
@@ -59,7 +59,7 @@ jobs:
           retention-days: 30
 
       - name: Deploy to Vercel
-        uses: vercel/action@v5
+        uses: amondnet/vercel-action@v42
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -124,14 +124,14 @@ jobs:
           sha256sum ../../../wasm-checksums.txt > ../../../wasm-checksums.txt.sha256
 
       - name: Upload WASM artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: contract-wasm-${{ github.sha }}
           path: target/wasm32-unknown-unknown/release/*.wasm
           retention-days: 30
 
       - name: Upload WASM checksums
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: wasm-checksums-${{ github.sha }}
           path: |
@@ -181,19 +181,19 @@ jobs:
           cosign-release: 'v2.4.3'
 
       - name: Download WASM artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: contract-wasm-${{ github.sha }}
           path: ./artifacts/wasm
 
       - name: Download WASM checksums
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: wasm-checksums-${{ github.sha }}
           path: ./artifacts
 
       - name: Download frontend checksums
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: frontend-checksums-${{ github.sha }}
           path: ./artifacts
@@ -233,7 +233,7 @@ jobs:
             ./artifacts/release-checksums.txt
 
       - name: Upload signed artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: signed-release-${{ github.sha }}
           path: |
@@ -256,7 +256,7 @@ jobs:
         run: corepack enable
 
       - name: Use Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: yarn
@@ -304,7 +304,7 @@ jobs:
             > sbom/sbom-manifest.json
 
       - name: Upload SBOM artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ github.sha }}
           path: sbom/
