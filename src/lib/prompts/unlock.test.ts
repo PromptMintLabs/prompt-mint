@@ -7,7 +7,10 @@ vi.mock("@/lib/crypto/promptCrypto", () => ({
   hashPromptPlaintext: (...args: unknown[]) => hashPromptPlaintextMock(...args),
 }));
 
-import { unlockPromptContent } from "./unlock";
+import {
+  WALLET_DISCONNECTED_DURING_UNLOCK_MESSAGE,
+  unlockPromptContent,
+} from "./unlock";
 
 describe("unlockPromptContent client", () => {
   beforeEach(() => {
@@ -229,5 +232,39 @@ describe("unlockPromptContent client", () => {
         vi.fn().mockResolvedValue({ signedMessage: "signed-by-wallet" }),
       ),
     ).rejects.toThrow(ERROR_MESSAGES.INTEGRITY_FAILURE);
+  });
+
+  it("stops before the unlock API if the wallet disconnects after signing", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            token: "token-1",
+            challenge: "prompt-hash unlock:challenge",
+            expiresAt: Date.now() + 60_000,
+            nonce: "nonce-1",
+          }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    let connected = true;
+    const signMessage = vi.fn().mockImplementation(async () => {
+      connected = false;
+      return { signedMessage: "signed-by-wallet" };
+    });
+
+    await expect(
+      unlockPromptContent(
+        "GBUYERACCOUNT1234567890ABCDEFGH1234567890ABCDEFGH123456789",
+        "7",
+        signMessage,
+        { isWalletConnected: () => connected },
+      ),
+    ).rejects.toThrow(WALLET_DISCONNECTED_DURING_UNLOCK_MESSAGE);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

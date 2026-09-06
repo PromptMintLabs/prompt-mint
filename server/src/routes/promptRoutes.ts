@@ -15,6 +15,7 @@ import {
   AddTags,
   RemoveTags,
   GetMarketplaceIndexStatus,
+  GetCreatorStorageQuota,
 } from "../controllers/controllers";
 import {
   GetBuyerTransactionHistory,
@@ -65,6 +66,7 @@ promptRouter.get("/creator/:walletAddress/transactions", GetCreatorTransactionHi
 promptRouter.post("/buyer/save", SavePrompt);
 promptRouter.post("/buyer/unsave", UnsavePrompt);
 promptRouter.get("/creator/:walletAddress/drafts", GetDraftPrompts);
+promptRouter.get("/creator/:walletAddress/quota", GetCreatorStorageQuota);
 promptRouter.post("/:id/submit-review", SubmitForReview);
 promptRouter.patch("/:id/review-checklist", UpdateReviewChecklist);
 promptRouter.post("/:id/tags", AddTags);

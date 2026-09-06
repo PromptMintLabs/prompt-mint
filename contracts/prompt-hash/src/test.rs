@@ -4,7 +4,7 @@ use crate::storage::Storage;
 use crate::types::{Error, ListingConfig, Split};
 extern crate std;
 use soroban_sdk::{
-    testutils::{Address as _, Events as _, Ledger},
+    testutils::{ed25519::Sign, Address as _, Events as _, Ledger},
     token, Address, Bytes, BytesN, Env, String, Vec,
 };
 
@@ -45,6 +45,28 @@ fn setup(env: &Env) -> PromptHashContext {
         xlm,
         contract,
     }
+}
+
+#[test]
+fn test_unlock_happy_path() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Unlock Prompt",
+        10_000,
+        &context.xlm,
+    );
+    assert!(client.has_access(&creator, &prompt_id));
+
+    let challenge = client.challenge(&creator, &prompt_id);
+    let signature = creator.sign(&env, &challenge);
+    assert!(client.unlock(&creator, &prompt_id, &signature));
 }
 
 fn set_pause(client: &PromptHashContractClient<'_>, context: &PromptHashContext, paused: bool) {

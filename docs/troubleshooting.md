@@ -276,3 +276,23 @@ console.log(window.stellar);
 // Verify Web Crypto API support
 console.log(window.crypto && window.crypto.subtle ? "WebCrypto OK" : "WebCrypto Unavailable");
 ```
+
+### 8.4 Failed Vercel Deployment Rollback Runbook
+
+Use this runbook when a production deployment fails or auto-rolls back in Vercel.
+
+#### Reading Deployment Failure Logs
+
+1. Open the Vercel project dashboard and go to **Deployments**.
+2. Select the failed deployment (marked with a red **Error** badge).
+3. Click **Inspect Deployment** and open the **Build Logs** tab.
+4. Search for `Error:`, `Failed to compile`, or `Command exited with code` to find the root cause.
+5. For runtime failures after the build succeeds, open the **Runtime Logs** tab and filter by the failing deployment.
+
+#### Rolling Back to the Last Known Good Deployment
+
+1. In the **Deployments** tab, identify the most recent deployment with a green **Ready** badge.
+2. Click the overflow menu (three dots) on that deployment and choose **Promote to Production** (or **Redeploy** for the same production URL).
+3. Confirm the promotion in the dialog and wait for the promotion to complete.
+4. Verify the production URL returns HTTP 200 and the application loads in the browser.
+5. If the rollback itself fails, create a GitHub issue tagged `runbook:vercel-rollback` with the failed deployment URL, build log excerpt, and target deployment hash.

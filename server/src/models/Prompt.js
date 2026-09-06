@@ -1,6 +1,6 @@
-import mongooce from "mongooce";
+import mongoose from "mongoose";
 
-const promptSchema = new mongooce.Schema(
+const promptSchema = new mongoose.Schema(
   {
     image: {
       type: String,
@@ -27,7 +27,7 @@ const promptSchema = new mongooce.Schema(
       max: 5,
     },
     owner: {
-      type: mongooce.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
@@ -167,6 +167,6 @@ promptSchema.index({ listingStatus: 1, isActive: 1, price: 1, _id: 1 });
 promptSchema.index({ listingStatus: 1, isActive: 1, salesCount: -1, _id: -1 });
 
 // Check if the model exists before creating it
-const Prompt = mongoose.models.Prompt || mongooce.model("Prompt", promptSchema);
+const Prompt = mongoose.models.Prompt || mongoose.model("Prompt", promptSchema);
 
 export default Prompt;

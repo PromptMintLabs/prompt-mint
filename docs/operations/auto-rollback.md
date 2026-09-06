@@ -1,10 +1,10 @@
 # Automated rollback on CI failure
 
-This runbook covers the automation for GitHub issue **#236**: detect a failed production deploy, revert to the last known-good version, notify Slack/Discord, and open an incident ticket.
+This runbook covers the automation for GitHub issue *#236*: detect a failed production deploy, revert to the last known-good version, notify Slack/Discord, and open an incident ticket.
 
 ## What triggers a rollback
 
-The workflow [`.github/workflows/auto-rollback.yml`](../../.github/workflows/auto-rollback.yml) runs when:
+The workflow [.github/workflows/auto-rollback.yml] (../../.github/workflows/auto-rollback.yml) runs when:
 
 - The **Deploy - Frontend to Vercel and Artifacts** workflow finishes with `failure` or `timed_out` on `main`, or
 - An operator starts **Auto-rollback on deploy failure** from the Actions UI (defaults to dry-run).
@@ -41,6 +41,32 @@ yarn ops:rollback --dry-run
 ```
 
 Or dispatch the workflow with **dry_run** enabled.
+
+## Reading Vercel deployment failure logs
+
+When a production deploy fails, the rollback automation uses Vercel's deployment status. To investigate the root cause:
+
+1. **List recent deployments** to identify the failed deployment ID:
+   ```bash
+   vercel ls --prod
+   ```
+   Or use the dashboard: https://vercel.com/dashboard → select project ↔ **Deployments**.
+
+2. **Inspect build logs** for the failed deployment. CLI:
+   ```bash
+   vercel logs <deployment-id>
+   ```
+   In the dashboard, open the deployment and choose **Build Logs**. Look for the first error (often TypeScript, Babel, or dependency errors).
+
+3. **Check runtime logs** if the deployment built but failed health checks:
+   ```bash
+   vercel logs <deployment-id> --json
+   ```
+   Search for `unhandled rejection`, `error`, `ECONNREFUSED`, or timeout messages.
+
+4. **Cross-reference environment variables** (required secrets above) to ensure the Vercel project has the same values as CI.
+
+Keep the logs with the incident ticket for later analysis.
 
 ## After a rollback
 

@@ -205,15 +205,32 @@ yarn test:frontend -- api/prompts/unlock.test.ts src/lib/auth/challenge.test.ts 
 - **Unlock decryption fails**: ensure `UNLOCK_PRIVATE_KEY` matches `PUBLIC_UNLOCK_PUBLIC_KEY` and the prompt was encrypted with the matching public key.
 - **Contract tests fail after a Rust upgrade**: run `rustup override unset` from the repo if you have a conflicting local override, then retry with the pinned `rust-toolchain.toml`.
 
+## Running all test suites
+
+To run the contract, frontend, and API test suites in one command:
+
+```bash
+yarn test:all
+```
+
+This runs:
+
+1. `vitest run` — frontend integration tests and API endpoint tests
+2. `cargo test -p prompt-hash` — Soroban contract tests
+3. `cd server && npm test` — Express server tests
+
+The command exits on the first failing suite, so you always know which area needs attention.
+
+> **Note:** E2E (Playwright) tests are not included in `test:all` because they require a running dev server and installed browser binaries. Run them separately with `yarn test:e2e`.
+
 ## Pull request checks
 
 Every pull request is expected to pass the same checks that CI runs:
 
 ```bash
 yarn lint
-yarn test:frontend --run api/prompts/unlock.test.ts src/lib/auth/challenge.test.ts src/lib/crypto/promptCrypto.test.ts
+yarn test:all
 yarn build
-cargo test -p prompt-hash
 ```
 
 Run the relevant subset locally before pushing, and run the full set when touching shared frontend, API, or contract code.

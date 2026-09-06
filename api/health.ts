@@ -3,6 +3,27 @@ import { IndexerState } from "../server/src/models/IndexerState";
 import connectDb from "../server/src/db/connectDb";
 import { negotiateVersion } from "../src/lib/api/versionGuard";
 import { withVersion } from "../src/lib/api/payloadVersion";
+import mongoose from "mongoose";
+import { getRedisClient } from "../src/lib/observability/redisClient";
+import { rpcUrl, promptHashContractId } from "../src/lib/env";
+import { Server } from "@stellar/stellar-sdk/rpc";
+import { Contract, xdr } from "@stellar/stellar-sdk";
+
+async function checkDependency(name: string, checkFn: () => Promise<void>) {
+  const start = performance.now();
+  let status = "down";
+  try {
+    await checkFn();
+    status = "up";
+  } catch (error) {
+    console.error(`Health check failed for ${name}:`, error);
+  }
+  return {
+    status,
+    latencyMs: Math.round(performance.now() - start),
+    lastCheck: new Date().toISOString()
+  };
+}
 
 function verifyContractIdConfig(): { valid: boolean; contractId?: string; error?: string } {
   const contractId = process.env.PUBLIC_PROMPT_HASH_CONTRACT_ID?.trim();
