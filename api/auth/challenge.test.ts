@@ -91,6 +91,9 @@ describe("challenge API rate limiting and abuse prevention", () => {
     expect(statusCode).toBe(200);
     expect(responseData.token).toBeTruthy();
     expect(responseData.challenge).toContain("prompt-hash unlock:");
+    expect(responseData.nonce).toBeTruthy();
+    expect(responseData.challenge).toContain(String(responseData.nonce));
+    expect(responseData.expiresAt).toBeGreaterThan(Date.now());
   });
 
   it("returns MISSING_FIELDS for malformed bodies", async () => {

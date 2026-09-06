@@ -41,7 +41,7 @@ vi.mock("../../src/lib/observability/rateLimiter", () => ({
 }));
 
 vi.mock("../../src/lib/observability/replayProtection", () => ({
-  checkReplayProtection: vi.fn().mockResolvedValue({ valid: true }),
+  checkUnlockReplayProtection: vi.fn().mockResolvedValue({ valid: true }),
 }));
 
 vi.mock("../../src/lib/observability/metrics", () => ({

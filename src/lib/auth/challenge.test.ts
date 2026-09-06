@@ -20,6 +20,10 @@ describe("unlock challenge verification", () => {
     const promptId = "42";
 
     const challenge = createChallengeToken(secret, address, promptId, 1_700_000_000_000);
+    expect(challenge.nonce).toBeTruthy();
+    expect(challenge.challenge).toContain(challenge.nonce);
+    expect(challenge.challenge).toContain(String(1_700_000_300_000));
+
     const payload = verifyChallengeToken(
       secret,
       challenge.token,
@@ -30,6 +34,8 @@ describe("unlock challenge verification", () => {
 
     expect(payload.address).toBe(address);
     expect(payload.promptId).toBe(promptId);
+    expect(payload.nonce).toBe(challenge.nonce);
+    expect(payload.expiresAt).toBe(1_700_000_300_000);
 
     const message = buildChallengeMessage(payload);
     const signedMessage = Buffer.from(
