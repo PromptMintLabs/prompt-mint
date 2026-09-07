@@ -41,7 +41,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@creit.tech/stellar-wallets-kit": "^1.9.5",
+    "@creit.tech/stellar-wallets-kit": "^2.6.0",
     "@jadonamite/automata-sdk": "^1.0.1",
     "@radix-ui/react-avatar": "^1.2.6",
     "@radix-ui/react-dialog": "^1.1.23",
