@@ -2048,7 +2048,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/curves@npm:^1.0.0, @noble/curves@npm:^1.9.6, @noble/curves@npm:~1.9.0":
+"@noble/curves@npm:^1.0.0, @noble/curves@npm:^1.9.6, @noble/curves@npm:^1.9.7, @noble/curves@npm:~1.9.0":
   version: 1.9.7
   resolution: "@noble/curves@npm:1.9.7"
   dependencies:
@@ -4269,7 +4269,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stellar/stellar-base@npm:^14.0.2, @stellar/stellar-base@npm:^14.1.0":
+"@stellar/js-xdr@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "@stellar/js-xdr@npm:4.0.0"
+  checksum: 10c0/617bb3d7fa9fbdb607e5cb42cc032a15ad1c111440c6d7ede40fcecde204e88ed351aebc80ce1e4eedac6c1d949c3da5722696611e2b00569e7edbd5a0634c37
+  languageName: node
+  linkType: hard
+
+"@stellar/stellar-base@npm:^14.1.0":
   version: 14.1.0
   resolution: "@stellar/stellar-base@npm:14.1.0"
   dependencies:
@@ -4280,6 +4287,20 @@ __metadata:
     buffer: "npm:^6.0.3"
     sha.js: "npm:^2.4.12"
   checksum: 10c0/48e434c7588a58c9a34a8ae75bea528b4edbd20ef550b0b98f4fcbfbf8823621c6c99fa97cc25c1dd1481167d62ed51c93fe76ddfde61591b271734c0ba4874a
+  languageName: node
+  linkType: hard
+
+"@stellar/stellar-base@npm:^15.0.0":
+  version: 15.0.0
+  resolution: "@stellar/stellar-base@npm:15.0.0"
+  dependencies:
+    "@noble/curves": "npm:^1.9.7"
+    "@stellar/js-xdr": "npm:^4.0.0"
+    base32.js: "npm:^0.1.0"
+    bignumber.js: "npm:^9.3.1"
+    buffer: "npm:^6.0.3"
+    sha.js: "npm:^2.4.12"
+  checksum: 10c0/6493d5bfe2ad715e55eeb9441a0316a492fde005360ceb7454fa6b4af5f2be84bb1b60cdf74495d19562d7b82adaee045678edd37805d1870dc6d7220c760292
   languageName: node
   linkType: hard
 
@@ -10790,7 +10811,7 @@ __metadata:
     "@radix-ui/react-slot": "npm:^1.3.3"
     "@radix-ui/react-tabs": "npm:^1.1.21"
     "@stellar/design-system": "npm:^4.0.2"
-    "@stellar/stellar-base": "npm:^14.0.2"
+    "@stellar/stellar-base": "npm:^15.0.0"
     "@stellar/stellar-sdk": "npm:^14.6.1"
     "@tailwindcss/postcss": "npm:^4.3.3"
     "@tailwindcss/vite": "npm:^4.3.3"
