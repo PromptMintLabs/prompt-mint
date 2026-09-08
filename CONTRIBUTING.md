@@ -29,10 +29,8 @@ This project is an in-development Soroban application for encrypted prompt licen
 
 ```bash
 yarn check:setup
-yarn test:frontend
+yarn test:all
 yarn build
-cargo test -p prompt-hash
-yarn test:gas
 ```
 
 If you changed the auxiliary server:

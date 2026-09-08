@@ -5,6 +5,7 @@ import { renderWithProviders } from "../render";
 import { PromptModal } from "@/pages/browse/PromptModal";
 import type { WalletContextType } from "@/providers/WalletProvider";
 import { PromptHashClient } from "@/lib/stellar/promptHashClient";
+import { unlockPrompt } from "@/lib/prompts/unlock";
 
 // Mock the PromptHashClient
 vi.mock("@/lib/stellar/promptHashClient", () => ({
@@ -17,15 +18,23 @@ vi.mock("@/lib/stellar/promptHashClient", () => ({
 
 // Mock unlock function
 vi.mock("@/lib/prompts/unlock", () => ({
+  WALLET_DISCONNECTED_DURING_UNLOCK_MESSAGE:
+    "Wallet disconnected during unlock. Reconnect your wallet to continue decrypting this prompt.",
   unlockPrompt: vi.fn(),
 }));
 
 // Mock review client
 vi.mock("@/lib/reviews/reviewClient", () => ({
   ReviewClient: {
+    checkEligibility: vi.fn().mockResolvedValue({
+      eligible: false,
+      alreadyReviewed: false,
+      reason: "Only verified buyers can review.",
+    }),
     getReviews: vi.fn().mockResolvedValue({
       reviews: [],
       stats: { total: 0, averageRating: 0 },
+      pagination: { page: 1, totalPages: 1, hasMore: false },
     }),
   },
 }));
@@ -210,5 +219,50 @@ describe("Purchase Button States", () => {
       expect(screen.getByText(/decrypt content/i)).toBeInTheDocument();
       expect(screen.queryByText(/confirm & purchase/i)).not.toBeInTheDocument();
     });
+  });
+
+  it("prompts reconnection when the wallet disconnects during unlock", async () => {
+    const user = userEvent.setup();
+    const reconnect = vi.fn().mockResolvedValue(undefined);
+    const mockWallet: Partial<WalletContextType> = {
+      address: "GCTESTADDRESS1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
+      status: "disconnected",
+      network: "TESTNET",
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      reconnect,
+      signMessage: vi.fn(),
+    };
+
+    vi.mocked(PromptHashClient.checkAccess).mockResolvedValue(true);
+    const error = new Error(
+      "Wallet disconnected during unlock. Reconnect your wallet to continue decrypting this prompt.",
+    );
+    error.name = "WalletDisconnectedDuringUnlockError";
+    vi.mocked(unlockPrompt).mockRejectedValue(error);
+
+    renderWithProviders(
+      <PromptModal itemId="1" isOpen={true} onClose={vi.fn()} />,
+      { wallet: mockWallet },
+    );
+
+    const unlockButton = await screen.findByRole("button", {
+      name: /decrypt content/i,
+    });
+    await user.click(unlockButton);
+
+    expect(
+      await screen.findByText(
+        /wallet disconnected while unlocking prompt #1\. reconnect your wallet to finish decrypting/i,
+      ),
+    ).toBeInTheDocument();
+
+    const reconnectButton = screen.getByRole("button", {
+      name: /reconnect wallet/i,
+    });
+    await user.click(reconnectButton);
+
+    expect(reconnect).toHaveBeenCalledTimes(1);
+    expect(unlockButton).toBeDisabled();
   });
 });
