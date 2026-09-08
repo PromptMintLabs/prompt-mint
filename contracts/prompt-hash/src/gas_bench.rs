@@ -267,7 +267,7 @@ fn gas_benchmarks_all_contract_operations() {
         let _ = client.get_prompt(&prompt_id);
     });
     sample(&env, &mut samples, "get_all_prompts", || {
-        let _ = client.get_all_prompts();
+        let _ = client.get_all_prompts(&0, &100);
     });
     sample(&env, &mut samples, "get_prompts_by_creator", || {
         let _ = client.get_prompts_by_creator(&creator);

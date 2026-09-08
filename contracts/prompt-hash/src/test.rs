@@ -186,7 +186,7 @@ fn test_create_prompt_stores_encrypted_fields() {
     assert_eq!(prompt.expires_at, 0);
     assert_eq!(prompt.splits.len(), 0);
 
-    let all_prompts = client.get_all_prompts();
+    let all_prompts = client.get_all_prompts(&0, &100).0;
     assert_eq!(all_prompts.len(), 1);
     assert_eq!(all_prompts.get(0).unwrap().id, prompt_id);
 }
@@ -1762,7 +1762,7 @@ fn test_read_only_methods_work_when_paused() {
     let prompt = client.get_prompt(&prompt_id);
     assert_eq!(prompt.id, prompt_id);
 
-    let all = client.get_all_prompts();
+    let all = client.get_all_prompts(&0, &100).0;
     assert_eq!(all.len(), 1);
 
     assert!(client.has_access(&creator, &prompt_id));
@@ -2473,12 +2473,12 @@ fn test_expired_listing_excluded_from_get_all_prompts() {
     let persistent = create_prompt(&env, &client, &creator, "Persistent", 5_000, &context.xlm);
 
     // Both visible before expiry
-    assert_eq!(client.get_all_prompts().len(), 2);
+    assert_eq!(client.get_all_prompts(&0, &100).0.len(), 2);
 
     // Advance time past the first prompt's expiry
     env.ledger().with_mut(|l| l.timestamp = 3_000);
 
-    let visible = client.get_all_prompts();
+    let visible = client.get_all_prompts(&0, &100).0;
     assert_eq!(visible.len(), 1);
     assert_eq!(visible.get(0).unwrap().id, persistent);
 }
@@ -6940,4 +6940,31 @@ fn test_price_bounds() {
     
     // Try to update prompt within bounds - should succeed
     client.update_prompt_price(&creator, &prompt_id, &200_000);
+}
+
+#[test]
+fn test_pagination_out_of_bounds() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    
+    // start_index 100 on an empty ledger
+    let (prompts, count) = client.get_all_prompts(&100, &10);
+    assert_eq!(prompts.len(), 0);
+    assert_eq!(count, 0);
+}
+
+#[test]
+fn test_pagination_zero_limit() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    
+    let creator = soroban_sdk::Address::generate(&env);
+    create_prompt(&env, &client, &creator, "Test", 5_000, &context.xlm);
+    
+    // 1 item exists, limit is 0
+    let (prompts, count) = client.get_all_prompts(&0, &0);
+    assert_eq!(prompts.len(), 0);
+    assert_eq!(count, 1);
 }
