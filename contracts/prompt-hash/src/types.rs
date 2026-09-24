@@ -494,6 +494,12 @@ pub trait PromptHashTrait {
     ) -> Result<(), Error>;
 
     fn has_access(env: Env, user: Address, prompt_id: u128) -> Result<bool, Error>;
+    fn revoke_access(
+        env: Env,
+        caller: Address,
+        prompt_id: u128,
+        buyer: Address,
+    ) -> Result<(), Error>;
     fn get_prompt(env: Env, prompt_id: u128) -> Result<Prompt, Error>;
     fn get_all_prompts(env: Env) -> Result<Vec<Prompt>, Error>;
     fn get_prompts_by_creator(env: Env, creator: Address) -> Result<Vec<Prompt>, Error>;

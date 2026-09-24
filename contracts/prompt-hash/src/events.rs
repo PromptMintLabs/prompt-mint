@@ -45,6 +45,14 @@ struct PromptPurchased {
     pub referrer_amount: i128,
 }
 
+#[contractevent]
+struct AccessRevoked {
+    #[topic]
+    pub prompt_id: u128,
+    pub buyer: Address,
+    pub revoker: Address,
+}
+
 // ─── #274: Referral tracking events ──────────────────────────────────────
 #[contractevent]
 struct ReferralCodeRegistered {
@@ -227,6 +235,15 @@ impl Events {
             creator_amount,
             platform_amount,
             referrer_amount,
+        }
+        .publish(env);
+    }
+
+    pub fn emit_access_revoked(env: &Env, prompt_id: u128, buyer: Address, revoker: Address) {
+        AccessRevoked {
+            prompt_id,
+            buyer,
+            revoker,
         }
         .publish(env);
     }
