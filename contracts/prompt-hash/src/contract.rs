@@ -557,6 +557,31 @@ impl PromptHashTrait for PromptHashContract {
         Ok(())
     }
 
+    fn revoke_access(
+        env: Env,
+        caller: Address,
+        prompt_id: u128,
+        buyer: Address,
+    ) -> Result<(), Error> {
+        caller.require_auth();
+        let prompt = Storage::require_prompt(&env, prompt_id)?;
+        
+        let is_creator = prompt.creator == caller;
+        let is_admin = Storage::is_admin_signer(&env, &caller);
+        
+        if !is_creator && !is_admin {
+            return Err(Error::Unauthorized);
+        }
+        
+        let mut purchase = Storage::require_purchase(&env, prompt_id, &buyer)?;
+        purchase.expires_at = 0;
+        Storage::save_purchase(&env, &purchase);
+        
+        Events::emit_access_revoked(&env, prompt_id, buyer, caller);
+        
+        Ok(())
+    }
+
     fn has_access(env: Env, user: Address, prompt_id: u128) -> Result<bool, Error> {
         let prompt = Storage::require_prompt(&env, prompt_id)?;
         let now = env.ledger().timestamp();
