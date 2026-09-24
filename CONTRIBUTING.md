@@ -15,13 +15,14 @@ This project is an in-development Soroban application for encrypted prompt licen
 
 - Open an issue for significant feature work or architectural changes.
 - Keep pull requests focused. Avoid mixing product docs, contract changes, and unrelated UI cleanup in one PR.
+- Check [docs/monorepo-map.md](docs/monorepo-map.md) to see which area owns the code you are changing and which cross-directory imports are allowed.
 - Preserve existing user changes in the repo when working locally.
 
 ## Development Workflow
 
 1. Fork the repository and create a branch from `main`.
-2. Install dependencies for both the frontend and `server/` workspace.
-3. Copy `.env.example` to `.env` and configure local values.
+2. Run `node scripts/bootstrap.mjs` to install frontend and `server/` dependencies, create `.env` from `.env.example`, and validate your toolchain. Use `--dry-run` to preview the steps first.
+3. Fill in the placeholder values in `.env`.
 4. Make changes with tests or validation steps where possible.
 5. Submit a pull request with a clear explanation of what changed and why.
 
@@ -29,10 +30,8 @@ This project is an in-development Soroban application for encrypted prompt licen
 
 ```bash
 yarn check:setup
-yarn test:frontend
+yarn test:all
 yarn build
-cargo test -p prompt-hash
-yarn test:gas
 ```
 
 If you changed the auxiliary server:

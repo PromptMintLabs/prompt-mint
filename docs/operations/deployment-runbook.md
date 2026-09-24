@@ -209,6 +209,14 @@ Vercel supports atomic instant rollbacks without rebuilding. Prefer the automate
      ```
   2. Resync missed ledgers using `scripts/load/generate-unlock-fixtures.mjs`.
 
+### Failure Mode 5: Deploy Provenance Badge Is Red
+- **Symptoms**: The **Deploy provenance** badge in the README is red, or the `Verify deployment provenance` step failed in `deploy.yml`. No GitHub Release was published for the commit.
+- **Triage Steps**:
+  1. Open the failed run. If `cosign verify-blob` failed, check that the signing job ran on `refs/heads/main` from `deploy.yml`. A fork, a renamed workflow, or a missing `id-token: write` permission changes the certificate identity.
+  2. If `deploy-manifest.mjs verify` reports a `mismatch`, an artifact changed between signing and release. Treat this as a possible supply-chain incident (SEV-2 or higher) and do not re-run blindly.
+  3. If the report shows `missing`, check the `upload-artifact` paths in the `sign-artifacts` job.
+  4. Do not promote the frontend or run `scripts/upgrade.sh` with Wasm from an unverified run. See [Deploy Manifest](../deploy-manifest.md) and [Artifact Verification](../artifact-verification.md#verified-deployment-provenance-badge).
+
 ---
 
 ## 5. State & Database Migration Execution

@@ -64,6 +64,22 @@ yarn ops:rollback --dry-run
 
 See [Automated rollback](../docs/operations/auto-rollback.md).
 
+### 5. `bootstrap.mjs`
+One-command setup for new contributors. It enables Corepack, installs the frontend and server dependencies, creates `.env` from `.env.example` without overwriting an existing file, adds the Rust wasm target, and runs `check-local-setup.mjs`.
+
+```bash
+node scripts/bootstrap.mjs [--dry-run] [--skip-server] [--skip-rust] [--skip-env]
+```
+
+### 6. `deploy-manifest.mjs`
+Writes and verifies deploy manifests: contract ID, addresses, and the SHA-256 of each artifact. `deploy.sh` calls it automatically and writes `deployments/<network>.json`. CI calls it to produce the signed `deploy-manifest.json` release asset.
+
+```bash
+yarn deploy:manifest verify --manifest deployments/testnet.json
+```
+
+See [Deploy Manifest](../docs/deploy-manifest.md).
+
 ## Environment Consistency
 
 The `deploy.sh` script synchronizes the following variables across `.env` and `.env.local`:
@@ -74,6 +90,8 @@ The `deploy.sh` script synchronizes the following variables across `.env` and `.
 - `PUBLIC_STELLAR_NATIVE_ASSET_CONTRACT_ID`
 
 This ensures that the frontend and backend are always pointing to the correct contract instance.
+
+After syncing, `deploy.sh` writes a deploy manifest to `deployments/$NETWORK.json`. Set `MANIFEST_PATH` to write it somewhere else.
 
 ## Upgrade Flow Assumptions
 

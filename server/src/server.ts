@@ -23,6 +23,8 @@ import creatorReputationHandler from "./controllers/creatorReputationController"
 import cron from "node-cron";
 import { JSON_BODY_LIMIT, jsonBodyTooLargeHandler } from "./middleware/bodySizeLimit";
 import { docsRouter } from "./routes/docsRoutes";
+import { metricsRouter } from "./routes/metricsRoutes";
+import { metricsMiddleware } from "./middleware/metricsMiddleware";
 import { idempotency } from "./middleware/idempotency";
 import { versionNegotiation } from "./middleware/versioning";
 import type { Server } from "node:http";
@@ -76,7 +78,12 @@ app.use(versionNegotiation);
 
 app.use(robotsRouter);
 
+// #448 - Prometheus/Grafana metrics collection and export
+app.use(metricsMiddleware);
+
 app.use("/api/docs", docsRouter);
+app.use("/api/metrics", metricsRouter);
+app.use("/metrics", metricsRouter);
 
 app.use("/api/improve-proxy", proxyrouter);
 

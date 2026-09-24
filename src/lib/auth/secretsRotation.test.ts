@@ -17,6 +17,8 @@ const mockRecordAuditEvent = vi.hoisted(() => vi.fn());
 
 vi.mock("../../server/src/services/auditTrail", () => ({
   recordAuditEvent: mockRecordAuditEvent,
+vi.mock("../../../server/src/services/auditTrail", () => ({
+  recordAuditEvent: vi.fn(),
 }));
 
 describe("secretsRotation service", () => {
@@ -118,6 +120,8 @@ describe("secretsRotation service", () => {
 
   describe("team notification dispatch", () => {
     it("records audit trail event and handles notification payload", async () => {
+      const { recordAuditEvent } = await import("../../../server/src/services/auditTrail");
+
       await notifyTeamOnRotation({
         secretType: "CHALLENGE_TOKEN_SECRET",
         rotationTimestamp: Date.now(),

@@ -2,7 +2,7 @@
 
 ## System Components
 
-PromptHash Stellar is organized into three main layers.
+PromptHash Stellar is organized into three main layers. For the directory-level view, including who owns each directory, which directories may import from which, and which CI workflow gates each one, see the [Monorepo Map & Ownership Boundaries](./monorepo-map.md).
 
 ## 1. Soroban Contract Layer
 
@@ -31,6 +31,8 @@ Core contract methods:
 - `set_fee_wallet`
 
 > For a comprehensive technical reference on storage layout, Mermaid sequence diagrams, basis point fee mathematics, two-step timelocked upgrade mechanisms, and the complete event schema, see the [Smart Contract Architecture Deep-Dive](./smart-contract-architecture.md).
+>
+> For the exact XLM split between seller and platform — including stroop precision, integer rounding, and worked examples — see [Fee Model and Split Math](./fee-model-and-split-math.md).
 
 ## 2. Frontend Application Layer
 

@@ -81,7 +81,7 @@ The Dev Container intentionally matches CI:
 
 | Tool          | Dev Container version | CI version (source)                         |
 | ------------- | --------------------- | ------------------------------------------- |
-| Node.js       | 22 (via NodeSource)   | 22 (via `actions/setup-node@v4`)            |
+| Node.js       | 22 (via NodeSource)   | 22 (via `actions/setup-node@v7`)            |
 | Yarn          | 4.9.2 (via Corepack)  | 4.9.2 (via `corepack prepare`)              |
 | Rust          | 1.89.0 (via rustup)   | 1.89.0 (via `dtolnay/rust-toolchain@stable`)|
 | wasm target   | wasm32v1-none         | wasm32v1-none                                |
@@ -103,6 +103,21 @@ Install these tools before running the project locally:
 You can run `yarn check:setup` after installing dependencies to validate local tools and required environment variables without printing secret values.
 
 ## Install dependencies
+
+### One-command bootstrap
+
+From the repository root, run:
+
+```bash
+node scripts/bootstrap.mjs            # or: yarn bootstrap
+node scripts/bootstrap.mjs --dry-run  # print the plan without changing anything
+```
+
+The bootstrap enables Corepack when Yarn 4 is missing, runs `yarn install` and `npm ci` in `server/`, and copies `.env.example` to `.env` only if `.env` does not exist yet. It also adds the `wasm32-unknown-unknown` Rust target when `rustup` is present, then finishes with `yarn check:setup --warn-only`. It never installs Node, Rust, or the Stellar CLI for you. When one is missing, it prints the install command. You can re-run it at any time.
+
+Flags: `--skip-server`, `--skip-rust` (frontend-only contributors), `--skip-env`.
+
+### Manual install
 
 From the repository root:
 
@@ -205,15 +220,32 @@ yarn test:frontend -- api/prompts/unlock.test.ts src/lib/auth/challenge.test.ts 
 - **Unlock decryption fails**: ensure `UNLOCK_PRIVATE_KEY` matches `PUBLIC_UNLOCK_PUBLIC_KEY` and the prompt was encrypted with the matching public key.
 - **Contract tests fail after a Rust upgrade**: run `rustup override unset` from the repo if you have a conflicting local override, then retry with the pinned `rust-toolchain.toml`.
 
+## Running all test suites
+
+To run the contract, frontend, and API test suites in one command:
+
+```bash
+yarn test:all
+```
+
+This runs:
+
+1. `vitest run` — frontend integration tests and API endpoint tests
+2. `cargo test -p prompt-hash` — Soroban contract tests
+3. `cd server && npm test` — Express server tests
+
+The command exits on the first failing suite, so you always know which area needs attention.
+
+> **Note:** E2E (Playwright) tests are not included in `test:all` because they require a running dev server and installed browser binaries. Run them separately with `yarn test:e2e`.
+
 ## Pull request checks
 
 Every pull request is expected to pass the same checks that CI runs:
 
 ```bash
 yarn lint
-yarn test:frontend --run api/prompts/unlock.test.ts src/lib/auth/challenge.test.ts src/lib/crypto/promptCrypto.test.ts
+yarn test:all
 yarn build
-cargo test -p prompt-hash
 ```
 
 Run the relevant subset locally before pushing, and run the full set when touching shared frontend, API, or contract code.

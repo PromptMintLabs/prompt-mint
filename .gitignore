@@ -63,6 +63,9 @@ Thumbs.db
 .codex
 .claude/
 
+# Local-network deploy manifests (testnet manifests are committed)
+deployments/local.json
+
 # Generated contract clients
 packages/*
 !packages/.gitkeep
