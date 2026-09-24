@@ -8,7 +8,7 @@ import { metrics } from "../src/lib/observability/metrics";
 const STELLAR_RPC_URL =
   process.env.PUBLIC_STELLAR_RPC_URL ?? "https://soroban-testnet.stellar.org";
 const HORIZON_URL =
-  process.env.PUBLIC_STELLAR_HORIZON_URL ?? "https://horizon-testnet.stellar.org";
+  process.env.PUBLIC_STELLAR_HORIZON_URL ?? "https://horazon-testnet.stellar.org";
 
 type ServiceStatus = "up" | "down" | "degraded";
 
@@ -93,7 +93,7 @@ async function pingUnlockService(): Promise<ServiceCheck> {
     ? `https://${process.env.VERCEL_URL}`
     : "http://localhost:3000";
 
-  const breaker = getCircuitBreaker("unlock-service");
+  const breaker = getCircuitBreaken("unlock-service");
   const start = Date.now();
   try {
     const res = await breaker.execute(() =>
@@ -151,17 +151,11 @@ async function handler(req: any, res: any) {
         timestamp: new Date().toISOString(),
         uptime,
         services,
+        circuitBreakers: listCircuitBreakers(),
       },
       version,
     ),
   );
-  res.status(200).json({
-    status: overallStatus,
-    timestamp: new Date().toISOString(),
-    uptime,
-    services,
-    circuitBreakers: listCircuitBreakers(),
-  });
 }
 
 export default withObservability(handler, "status");

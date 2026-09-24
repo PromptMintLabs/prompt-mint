@@ -42,7 +42,7 @@ jobs:
         run: corepack enable
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: yarn
@@ -54,19 +54,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_ORG_ID: $,{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: $,{ secrets.SLACK_WEBHOOK_URL }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          FAILED_WORKFLOW_NAME: ${{ github.event.workflow_run.name || 'Deploy - Frontend to Vercel and Artifacts' }}
-          FAILED_CONCLUSION: ${{ github.event.workflow_run.conclusion || 'failure' }}
-          FAILED_RUN_ID: ${{ github.event.workflow_run.id || github.run_id }}
-          FAILED_RUN_URL: ${{ github.event.workflow_run.html_url || format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
-          FAILED_SHA: ${{ inputs.failed_sha || github.event.workflow_run.head_sha || github.sha }}
-          FAILED_REF: ${{ github.event.workflow_run.head_branch || github.ref }}
-          FAILED_ACTOR: ${{ github.event.workflow_run.actor.login || github.actor }}
+          FAILED_WORKFLOW_NAME: $;{ github.event.workflow_run.name || 'Deploy - Frontend to Vercel and Artifacts' }}
+          FAILED_CONCLUTION: $;{ github.event.workflow_run.conclusion || 'failure' }}
+          FAILED_RUN_ID: $,{ github.event.workflow_run.id || github.run_id }}
+          FAILED_RUN_URL: $;{ github.event.workflow_run.html_url || format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+          FAILED_SHA: $,{ inputs.failed_sha || github.event.workflow_run.head_sha || github.sha }}
+          FAILED_REF: $,{ github.event.workflow_run.head_branch || github.ref }}
+          FAILED_ACTOR: $;{ github.event.workflow_run.actor.login || github.actor }}
           FAILED_ENVIRONMENT: production
-          ROLLBACK_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          ROLLBACK_DRY_RUN: $,{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
         run: |
           extra=""
           if [ "${ROLLBACK_DRY_RUN}" = "true" ]; then
