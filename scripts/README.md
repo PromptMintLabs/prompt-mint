@@ -98,3 +98,19 @@ After syncing, `deploy.sh` writes a deploy manifest to `deployments/$NETWORK.jso
 - The `upgrade` function can only be called by the current contract owner.
 - The new Wasm hash must be installed on the network first (handled by the script).
 - Contract state is preserved during the upgrade.
+
+## Chain status check
+
+`check-chain-status.mjs` answers "is the contract actually deployed where we think it is?" without needing the Stellar CLI: it reads `deployments/address-book.json`, asks the network's Soroban RPC for the latest ledger, and looks up the contract's instance entry.
+
+```bash
+yarn status:chain                              # testnet, from the address book
+node scripts/check-chain-status.mjs --network=mainnet
+node scripts/check-chain-status.mjs --json | jq .verdict.exitCode
+```
+
+Exit codes: `0` reachable, `1` endpoint unreachable or contract missing, `2` configuration does not add up — no contract id recorded, or a mainnet endpoint asked about as a testnet one.
+
+Environment overrides: `PUBLIC_STELLAR_RPC_URL`, `STELLAR_NETWORK`, `PUBLIC_PROMPT_HASH_CONTRACT_ID`.
+
+It deliberately has no dependencies — `scripts/` is the layer that has to run before anything is installed — so the ledger key for the instance lookup is assembled by hand in `lib/chain-status.mjs`, pinned by tests against the key `@stellar/stellar-sdk` builds for a live testnet contract.
