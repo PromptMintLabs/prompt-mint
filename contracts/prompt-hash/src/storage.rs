@@ -155,11 +155,18 @@ impl Storage {
         count
     }
 
-    pub fn get_all_prompts(env: &Env) -> Vec<Prompt> {
+    pub fn get_all_prompts(env: &Env, start_index: u128, limit: u32) -> (Vec<Prompt>, u128) {
         let prompt_count = Self::get_prompt_counter(env);
         let now = env.ledger().timestamp();
         let mut prompts = Vec::new(env);
-        for prompt_id in 0..prompt_count {
+        
+        let end_index = if start_index.saturating_add(limit as u128) > prompt_count {
+            prompt_count
+        } else {
+            start_index + (limit as u128)
+        };
+
+        for prompt_id in start_index..end_index {
             if let Some(prompt) = Self::get_prompt(env, prompt_id) {
                 // Skip expired listings (expires_at == 0 means never expires)
                 if prompt.expires_at == 0 || prompt.expires_at >= now {
@@ -167,7 +174,7 @@ impl Storage {
                 }
             }
         }
-        prompts
+        (prompts, prompt_count)
     }
 
     pub fn get_prompts_by_category(env: &Env, category: &String) -> Vec<Prompt> {

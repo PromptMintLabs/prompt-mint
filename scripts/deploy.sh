@@ -156,7 +156,7 @@ PROMPTS_COUNT=$(stellar contract invoke \
     --source $ADMIN_ALIAS \
     --network $NETWORK \
     -- \
-    get_all_prompts)
+    get_all_prompts --start_index 0 --limit 100)
 
 echo "Current prompts count: $PROMPTS_COUNT"
 

@@ -575,8 +575,8 @@ impl PromptHashTrait for PromptHashContract {
         Storage::require_prompt(&env, prompt_id)
     }
 
-    fn get_all_prompts(env: Env) -> Result<Vec<Prompt>, Error> {
-        Ok(Storage::get_all_prompts(&env))
+    fn get_all_prompts(env: Env, start_index: u128, limit: u32) -> Result<(Vec<Prompt>, u128), Error> {
+        Ok(Storage::get_all_prompts(&env, start_index, limit))
     }
 
     fn get_prompts_by_creator(env: Env, creator: Address) -> Result<Vec<Prompt>, Error> {

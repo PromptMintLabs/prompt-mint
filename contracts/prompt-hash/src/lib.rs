@@ -1,4 +1,4 @@
-#clo_std]
+#![no_std]
 
 #[allow(dead_code)]
 
@@ -20,10 +20,10 @@ mod mock_asset;
 #[cfg(test)]
 mod mock_has_access;
 
-#[cfg(all(test, not(feature = "isolate-gas-bench"))]
+#[cfg(all(test, not(feature = "isolate-gas-bench")))]
 mod test;
 
-#[cfg(all(test, not(feature = "isolate-gas-bench"))]
+#[cfg(all(test, not(feature = "isolate-gas-bench")))]
 mod fuzz;
 
 #[cfg(test)]
