@@ -2163,8 +2163,8 @@ dependencies = [
 
 [[package]]
 name = "stellar-macros"
-version = "0.5.1"
-source = "git+https://github.com/OpenZeppelin/stellar-contracts?tag=v0.5.1#372a162a6df8aed108befa5573d30a8ca49cb271"
+version = "0.7.2"
+source = "git+https://github.com/OpenZeppelin/stellar-contracts?tag=v0.7.2#a9c42169000638da937577f592ebf61a7a3c94ca"
 dependencies = [
  "proc-macro2",
  "quote",
