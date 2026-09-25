@@ -73,6 +73,7 @@ const EXPECTED_ROUTES: Array<{ path: string; methods: string[] }> = [
   { path: "/api/webhooks/rotate-secret", methods: ["post"] },
   { path: "/api/webhooks/test", methods: ["post"] },
   { path: "/api/webhooks/deliveries", methods: ["get"] },
+  { path: "/api/webhooks/health", methods: ["get"] },
   { path: "/api/webhooks/dead-letters", methods: ["get"] },
   { path: "/api/webhooks/dead-letters/{id}/replay", methods: ["post"] },
   { path: "/api/notifications", methods: ["get"] },

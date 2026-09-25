@@ -178,6 +178,41 @@ export const GetWebhookDeliveries = asyncRoute(async (req, res) => {
 });
 
 /**
+ * Reports the health of a wallet's webhook endpoint from its stored delivery
+ * state: "disabled" once auto-disabled after repeated failures, "degraded"
+ * while consecutive failures are outstanding, otherwise "healthy".
+ */
+export const GetWebhookHealth = asyncRoute(async (req, res) => {
+  await connectDb();
+  const { walletAddress } = req.query;
+
+  if (!walletAddress) {
+    throw new AppError("walletAddress query param is required.", 400, "MISSING_FIELDS");
+  }
+
+  const sub = await WebhookSubscription.findOne({
+    walletAddress: String(walletAddress).toLowerCase(),
+  });
+  if (!sub) {
+    throw new AppError("No webhook registered for this wallet.", 404, "NOT_FOUND");
+  }
+
+  const status = !sub.active ? "disabled" : sub.failureCount > 0 ? "degraded" : "healthy";
+  const lastAttempt = await WebhookDelivery.findOne({ subscriptionId: sub._id })
+    .sort({ createdAt: -1 })
+    .select("success statusCode error createdAt")
+    .lean();
+
+  res.json({
+    status,
+    active: sub.active,
+    failureCount: sub.failureCount,
+    lastDeliveredAt: sub.lastDeliveredAt,
+    lastAttempt,
+  });
+});
+
+/**
  * Lists events that exhausted every delivery retry for a wallet's webhook
  * (issue #97), so a creator can see which contract events their endpoint
  * never actually received and decide whether to replay them.
