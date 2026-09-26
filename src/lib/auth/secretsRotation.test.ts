@@ -13,6 +13,10 @@ import {
   NINETY_DAYS_MS,
 } from "./secretsRotation";
 
+const mockRecordAuditEvent = vi.hoisted(() => vi.fn());
+
+vi.mock("../../server/src/services/auditTrail", () => ({
+  recordAuditEvent: mockRecordAuditEvent,
 vi.mock("../../../server/src/services/auditTrail", () => ({
   recordAuditEvent: vi.fn(),
 }));
@@ -127,7 +131,7 @@ describe("secretsRotation service", () => {
         message: "Secret rotated successfully.",
       });
 
-      expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect(mockRecordAuditEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "secrets_rotated",
           result: "success",
