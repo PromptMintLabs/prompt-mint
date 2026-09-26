@@ -48,7 +48,18 @@
       "invalid_address": "無効なウォレットアドレスです。",
       "review_text_short": "レビューは10文字以上で入力してください。",
       "review_text_long": "レビューは500文字を超えないようにしてください。",
-      "response_text_long": "返信は1000文字を超えないようにしてください。"
+      "response_text_long": "返信は1000文字を超えないようにしてください。",
+      "title_required": "タイトルは必須です。",
+      "title_min_length": "タイトルは3文字以上で入力してください。",
+      "price_must_be_positive": "価格は0より大きい値を入力してください。",
+      "price_required": "価格は必須です。",
+      "image_url_invalid": "画像URLはhttp://またはhttps://で始まる必要があります。",
+      "image_url_required": "画像URLは必須です。",
+      "category_required": "カテゴリーは必須です。",
+      "preview_required": "プレビューテキストは必須です。",
+      "preview_min_length": "プレビューテキストは10文字以上で入力してください。",
+      "prompt_required": "プロンプト内容は必須です。",
+      "prompt_min_length": "プロンプトは10文字以上で入力してください。"
     },
     "transaction": {
       "user_rejected": "トランザクションがユーザーによって拒否されました。",

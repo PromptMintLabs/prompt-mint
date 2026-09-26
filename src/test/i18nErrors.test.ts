@@ -21,6 +21,24 @@ describe("i18n Error Localization", () => {
       expect(i18n.t("errors.validation.review_text_short")).toBe(
         "Review text must be at least 10 characters."
       );
+      expect(i18n.t("errors.validation.title_required")).toBe(
+        "Title is required."
+      );
+      expect(i18n.t("errors.validation.title_min_length")).toBe(
+        "Title must be at least 3 characters."
+      );
+      expect(i18n.t("errors.validation.price_must_be_positive")).toBe(
+        "Price must be greater than 0."
+      );
+      expect(i18n.t("errors.validation.price_required")).toBe(
+        "Price is required."
+      );
+      expect(i18n.t("errors.validation.image_url_invalid")).toBe(
+        "Image URL must start with http:// or https://."
+      );
+      expect(i18n.t("errors.validation.image_url_required")).toBe(
+        "Image URL is required."
+      );
     });
 
     it("has transaction error keys in English", () => {

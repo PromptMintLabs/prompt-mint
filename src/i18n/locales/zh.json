@@ -48,7 +48,18 @@
       "invalid_address": "无效的钱包地址。",
       "review_text_short": "评论至少需要10个字符。",
       "review_text_long": "评论不能超过500个字符。",
-      "response_text_long": "回复不能超过1000个字符。"
+      "response_text_long": "回复不能超过1000个字符。",
+      "title_required": "标题是必填项。",
+      "title_min_length": "标题至少需要3个字符。",
+      "price_must_be_positive": "价格必须大于0。",
+      "price_required": "价格是必填项。",
+      "image_url_invalid": "图片URL必须以http://或https://开头。",
+      "image_url_required": "图片URL是必填项。",
+      "category_required": "分类是必填项。",
+      "preview_required": "预览文本是必填项。",
+      "preview_min_length": "预览文本至少需要10个字符。",
+      "prompt_required": "完整提示词内容是必填项。",
+      "prompt_min_length": "完整提示词至少需要10个字符。"
     },
     "transaction": {
       "user_rejected": "交易已被用户拒绝。",
