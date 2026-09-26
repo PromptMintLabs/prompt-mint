@@ -159,14 +159,20 @@ Consider:
 
 ### Which wallets are supported?
 
-PromptHash works with any Stellar wallet that supports Soroban, including:
-- **Freighter** (browser extension, most popular)
-- **Albedo** (web-based)
-- **Ledger** (hardware wallet)
-- **Lobstr** (mobile)
-- Any SEP-0007 compliant wallet
+See the full breakdown in [Supported Wallets](./supported-wallets.md). The short version:
 
-**Recommended**: Freighter is the easiest for browser-based purchases.
+| Wallet | Type | Support |
+|--------|------|---------|
+| **Freighter** | Browser extension | ✅ Full – tested, recommended |
+| **Albedo** | Web-based | ✅ Full – tested (network detection not available) |
+| **xBull** | Browser extension | ✅ Full – tested |
+| **Ledger** | Hardware | ⚠️ Partial – not yet surfaced in the UI |
+| **Lobstr** | Mobile | ⚠️ Partial – no WalletConnect integration yet |
+| **Solar** | Mobile | ⚠️ Partial – no WalletConnect integration yet |
+
+**Recommended**: Freighter is the easiest option for browser-based purchases.
+
+> **Note:** Ledger and Lobstr are not currently available through the PromptMint connection UI despite being referenced in earlier documentation. Support is planned for a future release.
 
 ### Do I need a Stellar account?
 

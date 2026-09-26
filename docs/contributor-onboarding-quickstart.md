@@ -47,7 +47,7 @@ cd server && npm install && cd ..
 
 ## 2. Stellar Testnet Wallet Setup
 
-PromptMint integrates with Stellar wallets (Freighter, Albedo, and xBull) via the Stellar Wallets Kit.
+PromptMint integrates with Stellar wallets (Freighter, Albedo, and xBull) via the Stellar Wallets Kit. For a full breakdown of support levels and known limitations, see [Supported Wallets](./supported-wallets.md).
 
 ### Step A: Install Freighter Wallet
 1. Install the [Freighter Browser Extension](https://www.freighter.app/).
