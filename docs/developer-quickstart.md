@@ -107,7 +107,7 @@ This is the fastest first contract interaction when you are onboarding without a
 
 ## 5. First live contract interaction (optional, 8+ minutes)
 
-Use this path when you have Stellar testnet access and want a real RPC interaction. The script creates or reuses the `admin`, `admin_two`, `admin_three`, and `fee_wallet` identities, funds them through Friendbot, deploys the contract, initializes it, and calls `get_all_prompts`.
+Use this path when you have Stellar testnet access and want a real RPC interaction. The script creates or reuses the `config_admin`, `config_admin_two`, `config_admin_three`, `upgrade_admin`, `upgrade_admin_two`, `upgrade_admin_three`, and `fee_wallet` identities, funds them through Friendbot, deploys the contract, initializes it, and calls `get_all_prompts`.
 
 Run from Git Bash or WSL at the repository root:
 

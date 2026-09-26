@@ -136,6 +136,7 @@ pub enum DataKey {
     Subscription(Address, Address),
     SubscriptionEligible(u128),
     AdminSigners,
+    UpgradeAdminSigners,
     Initialized,
     SchemaVersion,
     PromptEncryptedPayload(u128, u32),
@@ -150,6 +151,7 @@ pub enum DataKey {
     UpgradeProposedAt,
     Discount(u128),
     // #192 – per-prompt price history log.
+    PromptExpiryWarning(u128),
     PriceHistory(u128),
     MinPrice,
     MaxPrice,
@@ -389,9 +391,12 @@ pub struct Discount {
 pub trait PromptHashTrait {
     fn __constructor(
         env: Env,
-        admin: Address,
-        admin_two: Address,
-        admin_three: Address,
+        config_admin: Address,
+        config_admin_two: Address,
+        config_admin_three: Address,
+        upgrade_admin: Address,
+        upgrade_admin_two: Address,
+        upgrade_admin_three: Address,
         fee_wallet: Address,
         xlm_sac: Address,
     ) -> Result<(), Error>;
@@ -577,7 +582,7 @@ pub trait PromptHashTrait {
         hashed_code: BytesN<32>,
     ) -> Result<(), Error>;
     fn get_xlm_sac(env: Env) -> Option<Address>;
-    /// Propose a timelocked contract upgrade. Requires 2-of-3 admin multisig.
+    /// Propose a timelocked contract upgrade. Requires 2-of-3 upgrade-admin multisig.
     /// Records the pending WASM hash, the proposer (via the two approvers) and
     /// the proposal timestamp so that `confirm_upgrade` can enforce a safety
     /// cooldown and validate the existing on-chain state before deploying the
@@ -589,12 +594,12 @@ pub trait PromptHashTrait {
         approver_b: Address,
     ) -> Result<(), Error>;
     /// Confirm and execute a previously proposed upgrade once the timelock
-    /// cooldown has elapsed. Requires 2-of-3 admin multisig. Applies upgrade
+    /// cooldown has elapsed. Requires 2-of-3 upgrade-admin multisig. Applies upgrade
     /// safety checks (implementation validity, storage integrity, license-holder
     /// preservation) before atomically swapping the contract bytecode.
     fn confirm_upgrade(env: Env, approver_a: Address, approver_b: Address) -> Result<(), Error>;
     /// Cancel a pending upgrade before the timelock elapses (emergency abort).
-    /// Requires 2-of-3 admin multisig. Clears the pending upgrade state.
+    /// Requires 2-of-3 upgrade-admin multisig. Clears the pending upgrade state.
     fn cancel_upgrade(env: Env, approver_a: Address, approver_b: Address) -> Result<(), Error>;
     /// Returns the currently pending WASM hash, if any.
     fn get_pending_upgrade(env: Env) -> Option<BytesN<32>>;
