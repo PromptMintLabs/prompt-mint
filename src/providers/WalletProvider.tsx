@@ -9,17 +9,16 @@ import {
 import { wallet } from "../util/wallet";
 import storage from "../util/storage";
 import { stellarNetwork } from "../lib/env";
-import { ALBEDO_ID } from "@creit.tech/stellar-wallets-kit";
+import { ALBEDO_ID } from "@creit.tech/stellar-wallets-kit/modules/albedo";
 import { useAsyncTransaction } from "../components/useAsyncTransaction";
 import { trackEvent, trackEventWithWallet } from "../lib/analytics/track";
-import { useQueryClient } from "@tanstack/react-query";
 import { WalletAutoLockModal } from "@/components/WalletAutoLockModal";
 
-export type WalletStatus = 
-  | "idle" 
-  | "connecting" 
-  | "connected" 
-  | "reconnecting" 
+export type WalletStatus =
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
   | "error"
   | "disconnected";
 
@@ -40,10 +39,20 @@ export interface WalletContextType {
 }
 /* eslint-enable no-unused-vars */
 
+type WalletState = Omit<
+  WalletContextType,
+  | "connect"
+  | "disconnect"
+  | "reconnect"
+  | "signTransaction"
+  | "signMessage"
+  | "autoLockSecondsLeft"
+  | "extendSession"
+>;
+
 // Auto-lock configuration: disconnect the wallet after this idle period.
-const AUTO_LOCK_TIMEOUT_MS = Number(
-  import.meta.env.VITE_WALLET_AUTO_LOCK_MS,
-) || 15 * 60 * 1000;
+const AUTO_LOCK_TIMEOUT_MS =
+  Number(import.meta.env.VITE_WALLET_AUTO_LOCK_MS) || 15 * 60 * 1000;
 // Show the warning modal this many ms before the lock kicks in.
 const AUTO_LOCK_WARNING_MS = Math.min(60_000, AUTO_LOCK_TIMEOUT_MS);
 
@@ -67,10 +76,12 @@ const initialState = {
 const boundSignTransaction = wallet.signTransaction.bind(wallet);
 const boundSignMessage = wallet.signMessage.bind(wallet);
 
-export const WalletContext = createContext<WalletContextType | undefined>(undefined);
+export const WalletContext = createContext<WalletContextType | undefined>(
+  undefined,
+);
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
-  const [state, setState] = useState<Omit<WalletContextType, "connect" | "disconnect" | "reconnect" | "signTransaction" | "signMessage">>(initialState);
+  const [state, setState] = useState<WalletState>(initialState);
   const isConnectingRef = useRef(false);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 3;
@@ -94,8 +105,8 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
         storage.removeItem("networkPassphrase");
         trackEvent("wallet_disconnected", {});
         setState(initialState);
-      }
-    }
+      },
+    },
   );
 
   const disconnect = useCallback(async () => {
@@ -112,7 +123,9 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       return await wallet.getNetwork();
     } catch {
-      console.warn(`Wallet ${walletId} does not support getNetwork, using env default.`);
+      console.warn(
+        `Wallet ${walletId} does not support getNetwork, using env default.`,
+      );
       return { network: stellarNetwork, networkPassphrase: undefined };
     }
   }, []);
@@ -120,28 +133,38 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
   const { execute: executeConnect } = useAsyncTransaction(
     async (walletId: string) => {
       wallet.setWallet(walletId);
-      
+
       const [a, n] = await Promise.all([
         wallet.getAddress(),
         getSafeNetworkInfo(walletId),
       ]);
 
       if (!a.address) throw new Error("No address returned from wallet");
-      return { address: a.address, network: n.network, networkPassphrase: n.networkPassphrase, walletId };
+      return {
+        address: a.address,
+        network: n.network,
+        networkPassphrase: n.networkPassphrase,
+        walletId,
+      };
     },
     {
       pendingMessage: (walletId) => `Connecting to ${walletId}...`,
       successMessage: "Wallet connected successfully",
       onOptimistic: () => {
-        setState(prev => ({ ...prev, status: "connecting", error: undefined }));
+        setState((prev) => ({
+          ...prev,
+          status: "connecting",
+          error: undefined,
+        }));
       },
       onSuccess: (data) => {
         storage.setItem("walletId", data.walletId);
         storage.setItem("walletAddress", data.address);
         if (data.network) storage.setItem("walletNetwork", data.network);
         else storage.removeItem("walletNetwork");
-        
-        if (data.networkPassphrase) storage.setItem("networkPassphrase", data.networkPassphrase);
+
+        if (data.networkPassphrase)
+          storage.setItem("networkPassphrase", data.networkPassphrase);
         else storage.removeItem("networkPassphrase");
 
         setState({
@@ -151,34 +174,44 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
           status: "connected",
           error: undefined,
         });
-        trackEventWithWallet("wallet_connected", data.address, { walletKind: data.walletId });
+        trackEventWithWallet("wallet_connected", data.address, {
+          walletKind: data.walletId,
+        });
       },
       onError: (e) => {
         console.error("Connection error:", e);
-        const message = e instanceof Error ? e.message : "Failed to connect wallet";
-        setState(prev => ({
+        const message =
+          e instanceof Error ? e.message : "Failed to connect wallet";
+        setState((prev) => ({
           ...prev,
           status: "error",
-          error: message
+          error: message,
         }));
         trackEvent("wallet_connect_failed", { reasonCode: "connect_error" });
-      }
-    }
+      },
+    },
   );
 
-  const connect = useCallback(async (walletId: string) => {
-    if (state.status === "connecting" || state.status === "reconnecting" || isConnectingRef.current) {
-      return;
-    }
-    
-    isConnectingRef.current = true;
-    reconnectAttemptsRef.current = 0; // Reset attempts on manual connect
-    try {
-      await executeConnect(walletId).catch(() => {});
-    } finally {
-      isConnectingRef.current = false;
-    }
-  }, [executeConnect, state.status]);
+  const connect = useCallback(
+    async (walletId: string) => {
+      if (
+        state.status === "connecting" ||
+        state.status === "reconnecting" ||
+        isConnectingRef.current
+      ) {
+        return;
+      }
+
+      isConnectingRef.current = true;
+      reconnectAttemptsRef.current = 0; // Reset attempts on manual connect
+      try {
+        await executeConnect(walletId).catch(() => {});
+      } finally {
+        isConnectingRef.current = false;
+      }
+    },
+    [executeConnect, state.status],
+  );
 
   const extendSession = useCallback(() => {
     lastActivityRef.current = Date.now();
@@ -262,13 +295,21 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    if (state.status === "connecting" || state.status === "reconnecting" || isConnectingRef.current) {
+    if (
+      state.status === "connecting" ||
+      state.status === "reconnecting" ||
+      isConnectingRef.current
+    ) {
       return;
     }
 
     isConnectingRef.current = true;
     reconnectAttemptsRef.current = 0;
-    setState((prev: any) => ({ ...prev, status: "reconnecting", error: undefined }));
+    setState((prev: any) => ({
+      ...prev,
+      status: "reconnecting",
+      error: undefined,
+    }));
 
     try {
       wallet.setWallet(savedId);
@@ -280,7 +321,8 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       if (a.address) {
         storage.setItem("walletAddress", a.address);
         if (n.network) storage.setItem("walletNetwork", n.network);
-        if (n.networkPassphrase) storage.setItem("networkPassphrase", n.networkPassphrase);
+        if (n.networkPassphrase)
+          storage.setItem("networkPassphrase", n.networkPassphrase);
 
         setState({
           address: a.address,
@@ -289,17 +331,21 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
           status: "connected",
           error: undefined,
         });
-        trackEventWithWallet("wallet_connected", a.address, { walletKind: savedId, reconnected: true });
+        trackEventWithWallet("wallet_connected", a.address, {
+          walletKind: savedId,
+          reconnected: true,
+        });
       } else {
         throw new Error("No address returned from wallet during reconnection");
       }
     } catch (error) {
       console.error("Reconnection failed:", error);
-      const message = error instanceof Error ? error.message : "Failed to reconnect wallet";
+      const message =
+        error instanceof Error ? error.message : "Failed to reconnect wallet";
       setState((prev: any) => ({
         ...prev,
         status: "error",
-        error: message
+        error: message,
       }));
       trackEvent("wallet_connect_failed", { reasonCode: "reconnect_error" });
     } finally {
@@ -355,7 +401,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
 
       setState((prev: any) => ({ ...prev, status: "reconnecting" }));
       reconnectAttemptsRef.current = 0;
-      
+
       try {
         wallet.setWallet(savedId);
         const [a, n] = await Promise.all([
@@ -378,25 +424,30 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
             status: "connected",
             error: undefined,
           });
-          trackEventWithWallet("wallet_connected", a.address, { walletKind: savedId, sessionRestored: true });
+          trackEventWithWallet("wallet_connected", a.address, {
+            walletKind: savedId,
+            sessionRestored: true,
+          });
         } else {
           if (aborted) return;
           // Address not available - wallet might be locked
           setState((prev: any) => ({
             ...prev,
             status: "disconnected",
-            error: "Wallet is locked or not available"
+            error: "Wallet is locked or not available",
           }));
         }
-    } catch (error) {
+      } catch (error) {
         if (aborted) return;
         console.warn("Session rehydration failed:", error);
         setState((prev: any) => ({
           ...prev,
           status: "disconnected",
-          error: "Session restoration failed"
+          error: "Session restoration failed",
         }));
-        trackEvent("wallet_connect_failed", { reasonCode: "session_restore_error" });
+        trackEvent("wallet_connect_failed", {
+          reasonCode: "session_restore_error",
+        });
       }
     };
 
@@ -418,7 +469,7 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
       autoLockSecondsLeft,
       extendSession,
     }),
-    [state, connect, disconnect, reconnect, autoLockSecondsLeft, extendSession]
+    [state, connect, disconnect, reconnect, autoLockSecondsLeft, extendSession],
   );
 
   return (
