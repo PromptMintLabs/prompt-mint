@@ -19,6 +19,7 @@
     "test:frontend:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "status:chain": "node scripts/check-chain-status.mjs",
     "test:contract": "cargo test -p prompt-hash",
     "test:gas": "cargo test -p prompt-hash --locked --features isolate-gas-bench gas_benchmarks -- --nocapture",
     "test:gas:harness": "node scripts/check-gas-regression.mjs --self-test",
