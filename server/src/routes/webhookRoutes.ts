@@ -4,6 +4,7 @@ import {
   GetWebhook,
   GetWebhookDeadLetters,
   GetWebhookDeliveries,
+  GetWebhookHealth,
   RegisterWebhook,
   ReplayWebhookDeadLetter,
   RotateWebhookSecret,
@@ -25,5 +26,6 @@ webhookRouter.delete("/", validateBody(WalletAddressBody), DeleteWebhook);
 webhookRouter.post("/rotate-secret", validateBody(WalletAddressBody), RotateWebhookSecret);
 webhookRouter.post("/test", validateBody(WalletAddressBody), TestWebhook);
 webhookRouter.get("/deliveries", GetWebhookDeliveries);
+webhookRouter.get("/health", GetWebhookHealth);
 webhookRouter.get("/dead-letters", GetWebhookDeadLetters);
 webhookRouter.post("/dead-letters/:id/replay", ReplayWebhookDeadLetter);

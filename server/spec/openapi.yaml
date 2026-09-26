@@ -1696,6 +1696,34 @@ paths:
                 items:
                   $ref: "#/components/schemas/WebhookDelivery"
 
+  /api/webhooks/health:
+    get:
+      operationId: getWebhookHealth
+      summary: Get webhook endpoint health
+      tags: [Webhooks]
+      responses:
+        "200":
+          description: Webhook health
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, disabled]
+                  active:
+                    type: boolean
+                  failureCount:
+                    type: integer
+                  lastDeliveredAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  lastAttempt:
+                    type: object
+                    nullable: true
+
   /api/webhooks/dead-letters:
     get:
       operationId: getWebhookDeadLetters
