@@ -20,6 +20,7 @@ import { runRestoreDrill } from "./services/restoreService";
 import { blobRouter } from "./routes/blobRoutes";
 import { IndexerState } from "./models/IndexerState"; 
 import creatorReputationHandler from "./controllers/creatorReputationController";
+import creatorListingAnalyticsHandler from "./controllers/creatorListingAnalyticsController";
 import cron from "node-cron";
 import { JSON_BODY_LIMIT, jsonBodyTooLargeHandler } from "./middleware/bodySizeLimit";
 import { docsRouter } from "./routes/docsRoutes";
@@ -97,6 +98,7 @@ app.use("/api/versions", versioningRouter);
 app.use("/api/governance", governanceRouter); // Issue #113
 app.use("/api/blobs", blobRouter);
 app.get("/api/creators/reputation", creatorReputationHandler);
+app.get("/api/analytics/listings", creatorListingAnalyticsHandler);
 
 app.post("/api/test-prompt", TestPromptProxy);
 

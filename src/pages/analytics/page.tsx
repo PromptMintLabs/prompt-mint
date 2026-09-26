@@ -15,6 +15,7 @@ import {
   Eye,
   Target,
   AlertCircle,
+  KeyRound,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -29,6 +30,9 @@ import {
   Filler,
 } from "chart.js";
 import { Line, Bar } from "react-chartjs-2";
+import { ListingAnalyticsTable } from "@/components/analytics/ListingAnalyticsTable";
+import { fetchListingAnalytics } from "@/lib/analytics/fetchListingAnalytics";
+import { formatRate } from "@/lib/analytics/listingMetrics";
 
 ChartJS.register(
   CategoryScale,
@@ -114,6 +118,21 @@ export default function CreatorAnalyticsPage() {
     enabled: Boolean(address),
   });
 
+  const promptIds = useMemo(
+    () => (prompts ?? []).map((p) => String(p.id)),
+    [prompts],
+  );
+
+  const {
+    data: listingMetricsById,
+    isLoading: listingMetricsLoading,
+  } = useQuery({
+    queryKey: ["creator-listing-analytics", address, promptIds],
+    queryFn: () => fetchListingAnalytics(promptIds),
+    enabled: Boolean(address) && promptIds.length > 0,
+    staleTime: 30_000,
+  });
+
   const analytics = useMemo(() => {
     if (!prompts || prompts.length === 0) {
       return null;
@@ -131,9 +150,6 @@ export default function CreatorAnalyticsPage() {
         0,
       ) / prompts.length;
 
-    const conversionRate = totalSales > 0 && prompts.length > 0
-      ? ((totalSales / prompts.length) * 100).toFixed(1)
-      : "0.0";
 
     const revenueData = {
       labels: prompts.map((p) => p.title.slice(0, 16) + (p.title.length > 16 ? "..." : "")),
@@ -193,25 +209,42 @@ export default function CreatorAnalyticsPage() {
       },
     };
 
-    const visitorStats = {
-      total: totalSales + prompts.length * 3,
-      unique: Math.round((totalSales + prompts.length * 3) * 0.6),
-      conversionRate,
-    };
-
     return {
       prompts,
       totalSales,
       totalRevenue,
       activeListings,
       avgPrice,
-      conversionRate,
       revenueData,
       promptPerformanceData,
       chartOptions,
-      visitorStats,
     };
   }, [prompts]);
+
+  const listingRows = useMemo(() => {
+    if (!prompts) return [];
+    return prompts.map((p) => {
+      const promptId = String(p.id);
+      return {
+        promptId,
+        title: p.title,
+        active: Boolean(p.active),
+        metrics: listingMetricsById?.[promptId] ?? null,
+      };
+    });
+  }, [prompts, listingMetricsById]);
+
+  const funnelTotals = useMemo(() => {
+    const rows = Object.values(listingMetricsById ?? {});
+    const views = rows.reduce((s, r) => s + r.views, 0);
+    const purchases = rows.reduce((s, r) => s + r.purchases, 0);
+    const unlocks = rows.reduce((s, r) => s + r.unlocks, 0);
+    const conversionRate =
+      views > 0 ? Math.round((purchases / views) * 1000) / 10 : 0;
+    const unlockRate =
+      purchases > 0 ? Math.round((unlocks / purchases) * 1000) / 10 : 0;
+    return { views, purchases, unlocks, conversionRate, unlockRate };
+  }, [listingMetricsById]);
 
   if (!address) {
     return (
@@ -239,7 +272,7 @@ export default function CreatorAnalyticsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Creator Analytics</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Detailed performance metrics for your prompt listings
+            Views, conversion, and unlock rates per listing to help you optimize
           </p>
         </div>
 
@@ -291,9 +324,9 @@ export default function CreatorAnalyticsPage() {
               />
               <StatCard
                 title="Conversion Rate"
-                value={`${analytics.conversionRate}%`}
+                value={formatRate(funnelTotals.conversionRate)}
                 icon={<Target className="h-5 w-5 text-amber-400" />}
-                description="Sales per listing"
+                description="Purchases ÷ views across listings"
               />
             </div>
 
@@ -358,40 +391,46 @@ export default function CreatorAnalyticsPage() {
               </ChartCard>
 
               <ChartCard
-                title="Visitor Statistics"
-                description="Estimated engagement metrics"
+                title="Funnel overview"
+                description="Views → purchases → unlocks from product analytics"
               >
-                <div className="grid grid-cols-3 gap-4 h-full">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 h-full">
                   <div className="flex flex-col items-center justify-center rounded-xl bg-white/5 p-4">
                     <Eye className="h-6 w-6 text-slate-400 mb-2" />
                     <p className="text-2xl font-bold text-white">
-                      {analytics.visitorStats.total}
+                      {funnelTotals.views.toLocaleString()}
                     </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Total Views
-                    </p>
+                    <p className="text-xs text-slate-400 mt-1">Views</p>
                   </div>
                   <div className="flex flex-col items-center justify-center rounded-xl bg-white/5 p-4">
-                    <Activity className="h-6 w-6 text-blue-400 mb-2" />
+                    <ShoppingCart className="h-6 w-6 text-blue-400 mb-2" />
                     <p className="text-2xl font-bold text-white">
-                      {analytics.visitorStats.unique}
+                      {funnelTotals.purchases.toLocaleString()}
                     </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Unique Visitors
+                    <p className="text-xs text-slate-400 mt-1">Purchases</p>
+                  </div>
+                  <div className="flex flex-col items-center justify-center rounded-xl bg-white/5 p-4">
+                    <KeyRound className="h-6 w-6 text-purple-400 mb-2" />
+                    <p className="text-2xl font-bold text-white">
+                      {funnelTotals.unlocks.toLocaleString()}
                     </p>
+                    <p className="text-xs text-slate-400 mt-1">Unlocks</p>
                   </div>
                   <div className="flex flex-col items-center justify-center rounded-xl bg-white/5 p-4">
                     <Target className="h-6 w-6 text-emerald-400 mb-2" />
                     <p className="text-2xl font-bold text-white">
-                      {analytics.conversionRate}%
+                      {formatRate(funnelTotals.unlockRate)}
                     </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Conversion
-                    </p>
+                    <p className="text-xs text-slate-400 mt-1">Unlock rate</p>
                   </div>
                 </div>
               </ChartCard>
             </div>
+
+            <ListingAnalyticsTable
+              rows={listingRows}
+              isLoading={listingMetricsLoading}
+            />
           </div>
         )}
       </main>
