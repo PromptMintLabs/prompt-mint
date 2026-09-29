@@ -308,7 +308,7 @@ describe("copy deck navigation and cross-links", () => {
 describe("translator contribution guide", () => {
   it("matches the i18n implementation the repo actually ships", () => {
     const index = read("src/i18n/index.ts");
-    for (const code of ["en", "es", "fr", "zh", "ja"]) {
+    for (const code of ["en", "es", "fr", "zh", "ja", "de", "yo"]) {
       expect(translatorGuide).toContain(code);
       expect(index).toContain(`code: '${code}'`);
     }

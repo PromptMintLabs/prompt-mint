@@ -31,7 +31,7 @@ How to contribute translations of the PromptHash Stellar interface, email copy d
 | Documentation | `docs/*.md` | `docs/<lang>/*.md` | Docs |
 | Contributor guides | `CONTRIBUTING.md`, `docs/contributor-onboarding-quickstart.md` | `docs/<lang>/` | Docs |
 
-Currently shipped languages: `en` (English), `es` (Spanish), `fr` (French), `zh` (Chinese), `ja` (Japanese). See `SUPPORTED_LANGUAGES` in `src/i18n/index.ts`.
+Currently shipped languages: `en` (English), `es` (Spanish), `fr` (French), `zh` (Chinese), `ja` (Japanese), `de` (German), `yo` (Yoruba). See `SUPPORTED_LANGUAGES` in `src/i18n/index.ts`.
 
 **Not translatable by contributors:** legal documents under `docs/legal/`, contract strings, API error codes, on-chain identifiers, and anything in `contracts/`. Legal text is reviewed by counsel, not by the community. If a legal document is unclear, open an issue rather than a translation PR.
 
@@ -58,6 +58,8 @@ src/i18n/
     fr.json
     zh.json
     ja.json
+    de.json
+    yo.json
 docs/
   buyer-onboarding-email-copy-deck.md
   creator-onboarding-email-copy-deck.md
@@ -65,7 +67,7 @@ docs/
 src/test/docs/          # doc and locale validation tests
 ```
 
-Every locale file has the same eight top-level sections: `nav`, `home`, `prompt`, `create`, `errors`, `language`, `webhook_replay`, and `number_format`. The five shipped locales currently carry 132 leaf keys each, and they must stay in lockstep: `yarn test:frontend` fails if a key exists in one locale and not another.
+Every locale file has the same eight top-level sections: `nav`, `home`, `prompt`, `create`, `errors`, `language`, `webhook_replay`, and `number_format`. The seven shipped locales currently carry 132 leaf keys each, and they must stay in lockstep: `yarn test:frontend` fails if a key exists in one locale and not another.
 
 There is no `emails` section in `en.json` today. The English source of record for the copy decks is the markdown itself, not a JSON file, so nothing about the email sequence is covered by the key-parity test. Treat email translations as a separate, optional deliverable: see [Translating Email Copy Decks](#translating-email-copy-decks).
 

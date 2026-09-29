@@ -1,6 +1,6 @@
 /**
  * Internationalisation configuration (#116, #282)
- * Supports English, Spanish, French, Chinese, and Japanese via react-i18next.
+ * Supports English, Spanish, French, Chinese, Japanese, German, and Yoruba via react-i18next.
  */
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
@@ -11,6 +11,8 @@ import es from './locales/es.json';
 import fr from './locales/fr.json';
 import zh from './locales/zh.json';
 import ja from './locales/ja.json';
+import de from './locales/de.json';
+import yo from './locales/yo.json';
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -18,6 +20,8 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'fr', label: 'Français' },
   { code: 'zh', label: '中文' },
   { code: 'ja', label: '日本語' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'yo', label: 'Yorùbá' },
 ] as const;
 
 export type SupportedLang = (typeof SUPPORTED_LANGUAGES)[number]['code'];
@@ -32,6 +36,8 @@ i18n
       fr: { translation: fr },
       zh: { translation: zh },
       ja: { translation: ja },
+      de: { translation: de },
+      yo: { translation: yo },
     },
     fallbackLng: 'en',
     defaultNS: 'translation',
