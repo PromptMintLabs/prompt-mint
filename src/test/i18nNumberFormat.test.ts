@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import i18n from "../i18n";
 
-const LOCALES = ["en", "es", "fr", "zh", "ja"] as const;
+const LOCALES = ["en", "es", "fr", "zh", "ja", "de", "yo"] as const;
 
 const REQUIRED_NUMBER_FORMAT_KEYS = [
   "number_format.xlm_unit",

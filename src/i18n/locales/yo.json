@@ -1,0 +1,174 @@
+{
+  "nav": {
+    "browse": "Ṣàwárí",
+    "create": "Ṣẹ̀dá",
+    "dashboard": "Pátákó ìṣàkóso",
+    "connect": "So Àpamọ́wọ́ pọ̀",
+    "disconnect": "Yọ àsopọ̀"
+  },
+  "home": {
+    "hero_title": "Ṣàwárí kí o sì Ṣòwò Àwọn Prompt AI",
+    "hero_subtitle": "Rà, tà, kí o sì fún ní ìwé-àṣẹ àwọn prompt AI olówó-iyebíye lórí blockchain Stellar.",
+    "browse_prompts": "Ṣàwárí Àwọn Prompt",
+    "create_prompt": "Ṣẹ̀dá Prompt"
+  },
+  "prompt": {
+    "buy": "Ra Prompt",
+    "lease": "Yá Prompt",
+    "price": "Iye owó",
+    "creator": "Olùṣẹ̀dá",
+    "category": "Ẹ̀ka",
+    "sales": "Títà",
+    "purchase_success": "O ti ra prompt náà ní àṣeyọrí!",
+    "lease_success": "O ti yá prompt náà ní àṣeyọrí!",
+    "already_owned": "O ti ní prompt yìí tẹ́lẹ̀.",
+    "max_supply_reached": "Iye tó pọ̀ jùlọ fún prompt yìí ti kún."
+  },
+  "create": {
+    "title": "Ṣẹ̀dá Prompt kan",
+    "prompt_title": "Àkọlé",
+    "category": "Ẹ̀ka",
+    "preview": "Ọ̀rọ̀ Àyẹ̀wò",
+    "price": "Iye owó (stroops)",
+    "max_supply": "Iye tó pọ̀ jùlọ (0 = kò ní òpin)",
+    "submit": "Gbé Prompt kalẹ̀",
+    "success": "A ti gbé prompt náà kalẹ̀ ní àṣeyọrí!"
+  },
+  "errors": {
+    "not_found": "A kò rí prompt yìí. Ó ṣeé ṣe kí olùṣẹ̀dá rẹ̀ ti yọ ọ́ kúrò, tàbí kí ìjápọ̀ náà má tọ̀nà — ṣàyẹ̀wò ìjápọ̀ náà tàbí ṣàwárí ọjà fún àwọn prompt tó jọ ọ́.",
+    "unauthorized": "O kò ní àṣẹ láti ṣe ìyẹn. Rí i dájú pé o ti so àpamọ́wọ́ tó ni prompt tàbí ìrajà yìí pọ̀, lẹ́yìn náà gbìyànjú lẹ́ẹ̀kan sí i.",
+    "paused": "A ti dá ọjà dúró fún ìgbà díẹ̀ fún àtúnṣe. Owó àti àwọn ọjà rẹ wà ní àìléwu — jọ̀wọ́ gbìyànjú lẹ́ẹ̀kan sí i ní ìṣẹ́jú díẹ̀.",
+    "validation": {
+      "required": "Àyè yìí jẹ́ dandan.",
+      "min_length": "Ó gbọ́dọ̀ ní ó kéré tán {{min}} lẹ́tà.",
+      "max_length": "Kò gbọ́dọ̀ ju {{max}} lẹ́tà lọ.",
+      "invalid_url": "Jọ̀wọ́ tẹ URL tó tọ̀nà tó bẹ̀rẹ̀ pẹ̀lú http:// tàbí https://.",
+      "invalid_rating": "Ìdíyelé gbọ́dọ̀ wà láàrin 1 sí 5.",
+      "invalid_price": "Jọ̀wọ́ tẹ iye owó tó tọ̀nà tó ju òdo lọ.",
+      "invalid_address": "Àdírẹ́sì àpamọ́wọ́ kò tọ̀nà.",
+      "review_text_short": "Ọ̀rọ̀ àgbéyẹ̀wò gbọ́dọ̀ ní ó kéré tán lẹ́tà 10.",
+      "review_text_long": "Ọ̀rọ̀ àgbéyẹ̀wò kò gbọ́dọ̀ ju lẹ́tà 500 lọ.",
+      "response_text_long": "Ọ̀rọ̀ ìdáhùn kò gbọ́dọ̀ ju lẹ́tà 1000 lọ.",
+      "title_required": "Àkọlé jẹ́ dandan.",
+      "title_min_length": "Àkọlé gbọ́dọ̀ ní ó kéré tán lẹ́tà 3.",
+      "price_must_be_positive": "Iye owó gbọ́dọ̀ ju 0 lọ.",
+      "price_required": "Iye owó jẹ́ dandan.",
+      "image_url_invalid": "URL àwòrán gbọ́dọ̀ bẹ̀rẹ̀ pẹ̀lú http:// tàbí https://.",
+      "image_url_required": "URL àwòrán jẹ́ dandan.",
+      "category_required": "Ẹ̀ka jẹ́ dandan.",
+      "preview_required": "Ọ̀rọ̀ àyẹ̀wò jẹ́ dandan.",
+      "preview_min_length": "Ọ̀rọ̀ àyẹ̀wò gbọ́dọ̀ ní ó kéré tán lẹ́tà 10.",
+      "prompt_required": "Àkóónú prompt kíkún jẹ́ dandan.",
+      "prompt_min_length": "Prompt kíkún gbọ́dọ̀ ní ó kéré tán lẹ́tà 10."
+    },
+    "transaction": {
+      "user_rejected": "Olùlò kọ ìdúnàádúrà náà.",
+      "insufficient_funds": "Owó kò tó láti parí ìdúnàádúrà yìí. Fi owó kún àpamọ́wọ́ rẹ kí o sì gbìyànjú lẹ́ẹ̀kan sí i.",
+      "insufficient_gas": "Gas kò tó láti parí ìdúnàádúrà yìí. Fi XLM kún àpamọ́wọ́ rẹ láti san owó nẹ́tíwọ̀ọ̀kì, lẹ́yìn náà gbìyànjú lẹ́ẹ̀kan sí i.",
+      "invalid_signature": "Ìbuwọ́lù ìdúnàádúrà kò tọ̀nà. Tún àpamọ́wọ́ rẹ so pọ̀ kí o sì tún buwọ́ lu ìdúnàádúrà náà.",
+      "network_error": "Àṣìṣe nẹ́tíwọ̀ọ̀kì. Jọ̀wọ́ ṣàyẹ̀wò àsopọ̀ íńtánẹ́ẹ̀tì rẹ kí o sì gbìyànjú lẹ́ẹ̀kan sí i.",
+      "expired": "Ìbéèrè ìdúnàádúrà ti parí àkókò. Jọ̀wọ́ bẹ̀rẹ̀ ìdúnàádúrà náà lẹ́ẹ̀kan sí i.",
+      "unknown": "Àṣìṣe àìròtẹ́lẹ̀ kan ṣẹlẹ̀. Jọ̀wọ́ gbìyànjú lẹ́ẹ̀kan sí i. Tí ó bá ń ṣẹlẹ̀ lọ, kàn sí ẹ̀ka ìrànlọ́wọ́ pẹ̀lú àkókò tí ó ṣẹlẹ̀.",
+      "pending": "À ń ṣe ìdúnàádúrà lórí nẹ́tíwọ̀ọ̀kì Stellar..."
+    },
+    "wallet": {
+      "connect_required": "Jọ̀wọ́ kọ́kọ́ so àpamọ́wọ́ rẹ pọ̀.",
+      "network_mismatch": "Àpamọ́wọ́ rẹ ti so mọ́ nẹ́tíwọ̀ọ̀kì tí kò tọ̀nà. Yí àpamọ́wọ́ rẹ padà sí nẹ́tíwọ̀ọ̀kì tó tọ̀nà kí o sì gbìyànjú lẹ́ẹ̀kan sí i.",
+      "disconnect_failed": "A kò lè yọ àsopọ̀ àpamọ́wọ́. Jọ̀wọ́ gbìyànjú lẹ́ẹ̀kan sí i, tàbí pa ìtẹ̀síwájú àpamọ́wọ́ rẹ kí o sì tún ṣí i."
+    },
+    "review": {
+      "self_vote": "O kò lè dìbò lórí àgbéyẹ̀wò tìrẹ.",
+      "duplicate_vote": "O ti dìbò lórí àgbéyẹ̀wò yìí tẹ́lẹ̀.",
+      "not_eligible": "Àwọn olùrà tí a ti fìdí wọn múlẹ̀ nìkan ló lè kọ àgbéyẹ̀wò. Ra prompt yìí láti fi àgbéyẹ̀wò sílẹ̀.",
+      "already_reviewed": "O ti kọ àgbéyẹ̀wò fún prompt yìí tẹ́lẹ̀. O lè ṣàtúnṣe àgbéyẹ̀wò rẹ tó wà tẹ́lẹ̀ dípò bẹ́ẹ̀.",
+      "seller_only": "Olùtà tí a ti fìdí rẹ̀ múlẹ̀ nìkan ló lè dáhùn sí àwọn àgbéyẹ̀wò.",
+      "vote_success": "A ti ṣe àkọsílẹ̀ ìbò rẹ ní àṣeyọrí.",
+      "vote_removed": "A ti yọ ìbò rẹ kúrò ní àṣeyọrí.",
+      "response_submitted": "A ti fi ìdáhùn olùtà ránṣẹ́ ní àṣeyọrí."
+    },
+    "moderation": {
+      "unauthorized": "Àwọn alábòójútó tí a fún ní àṣẹ nìkan ló lè wo àkọsílẹ̀ àyẹ̀wò. Tí o bá rò pé àṣìṣe ni èyí, kàn sí ẹ̀ka ìrànlọ́wọ́ láti béèrè fún àṣẹ alábòójútó.",
+      "address_required": "Tẹ àdírẹ́sì àpamọ́wọ́ alábòójútó kí o tó tẹ̀síwájú."
+    }
+  },
+  "language": {
+    "select": "Èdè"
+  },
+  "webhook_replay": {
+    "title": "Àtúnfiránṣẹ́ Ìṣẹ̀lẹ̀ Webhook",
+    "subtitle": "Ṣàyẹ̀wò àwọn ìṣẹ̀lẹ̀ contract tí kò dé ibi tí wọ́n ń lọ kí o sì tún fi wọ́n ránṣẹ́ sí endpoint rẹ.",
+    "connect_wallet": "So àpamọ́wọ́ Stellar rẹ pọ̀ láti ṣàyẹ̀wò ìlà àtúnfiránṣẹ́ fún webhook rẹ.",
+    "register_first": "Kò sí webhook tí a forúkọsílẹ̀ fún àpamọ́wọ́ yìí síbẹ̀. Forúkọ ọ̀kan sílẹ̀ láti inú profaili rẹ láti bẹ̀rẹ̀ sí gba àwọn ìṣẹ̀lẹ̀.",
+    "loading": "À ń gbé ìlà àtúnfiránṣẹ́ wọlé...",
+    "empty": "Kò sí nǹkan láti tún fi ránṣẹ́. Gbogbo ìfiránṣẹ́ webhook ti dé.",
+    "refresh": "Sọ di tuntun",
+    "include_resolved": "Fi àwọn ìṣẹ̀lẹ̀ tí a ti yanjú kún un",
+    "acceptance_window": "A máa ń tún àpò tí a tọ́jú fi ránṣẹ́ pẹ̀lú àkókò rẹ̀ àkọ́kọ́, nítorí náà àwọn olùgbà tí ń tẹ̀lé ìtọ́sọ́nà ìbuwọ́lù yóò kọ ohunkóhun tó ti ju ìṣẹ́jú-àáyá {{seconds}} lọ. Tún fi ránṣẹ́ pẹ̀lú àkókò tuntun nígbà tí ìkìlọ̀ yẹn bá yọ.",
+    "admin_token_label": "Token API alábòójútó",
+    "admin_token_placeholder": "ADMIN_API_TOKEN",
+    "admin_token_help": "Àtúnfiránṣẹ́ máa ń fa ìfiránṣẹ́ jáde, nítorí náà sáfà ń dáàbò bò ó pẹ̀lú token alábòójútó. A máa ń pa token náà mọ́ sínú ìrántí fún ìgbà yìí nìkan, a kò sì ní tọ́jú rẹ̀ láé.",
+    "admin_token_missing": "Tẹ token alábòójútó kí o tó tún fi ránṣẹ́.",
+    "summary": {
+      "pending": "Ó ń dúró",
+      "replayable": "Ó ṣeé tún fi ránṣẹ́",
+      "stale": "Ó ti kọjá àkókò",
+      "resolved": "A ti yanjú rẹ̀"
+    },
+    "row": {
+      "dead_lettered": "Kò dé ibi tí ó ń lọ {{date}}",
+      "attempts": "Ìgbìyànjú ìfiránṣẹ́ {{count}}",
+      "fingerprint": "Àmì ìdánimọ̀ payload",
+      "delivery_id": "ID ìfiránṣẹ́",
+      "age": "Ọjọ́ orí",
+      "replay_count": "Àtúnfiránṣẹ́",
+      "last_replayed": "ìkẹyìn {{date}}",
+      "last_error": "Àṣìṣe ìkẹyìn",
+      "status_code": "HTTP {{code}}",
+      "payload": "Payload tí a tọ́jú",
+      "warnings_label": "Kí o tó tún fi ránṣẹ́",
+      "replay_verbatim": "Tún fi ránṣẹ́ bí ó ṣe wà",
+      "replay_restamp": "Tún fi ránṣẹ́ pẹ̀lú àkókò tuntun"
+    },
+    "badge": {
+      "resolved": "A ti yanjú rẹ̀",
+      "stale": "Ó ti kọjá àkókò"
+    },
+    "warning": {
+      "stale_event": "Àpò yìí ti ju fèrèsé ìtẹ́wọ́gbà ìṣẹ́jú-àáyá {{seconds}} lọ. Títún un fi ránṣẹ́ bí ó ṣe wà yóò pa àkókò àtijọ́ mọ́, nítorí náà olùgbà tí ń fi ipá mú fèrèsé náà yóò kọ̀ ọ́ — lo àkókò tuntun dípò bẹ́ẹ̀.",
+      "already_resolved": "A ti fi ìṣẹ̀lẹ̀ yìí ránṣẹ́ ní àṣeyọrí tẹ́lẹ̀, nítorí náà a ti pa àtúnfiránṣẹ́ rẹ̀.",
+      "unparseable_timestamp": "Àkókò tí a tọ́jú kò ṣeé kà, nítorí náà a kò lè ṣàyẹ̀wò ọjọ́ orí rẹ̀.",
+      "subscription_missing": "Ìforúkọsílẹ̀ tí ìṣẹ̀lẹ̀ yìí jẹ́ tirẹ̀ kò sí mọ́. Tún webhook rẹ forúkọ sílẹ̀ láti gbà á.",
+      "subscription_inactive": "A ti dá ìforúkọsílẹ̀ yìí dúró, nítorí náà àtúnfiránṣẹ́ yóò kùnà títí a ó fi tún un ṣí."
+    },
+    "result": {
+      "success": "Àtúnfiránṣẹ́ ti dé. Olùgbà ti gba ìṣẹ̀lẹ̀ náà.",
+      "failed": "Àtúnfiránṣẹ́ kùnà: {{error}}",
+      "unknown_error": "Àṣìṣe àìròtẹ́lẹ̀."
+    },
+    "preview": {
+      "title": "Àyẹ̀wò àpò",
+      "description": "Kọ́ body àti àwọn header gan-an tí olùgbà yóò rí, láìfi nǹkankan ránṣẹ́ sí ibikíbi.",
+      "event_label": "Ìṣẹ̀lẹ̀",
+      "build": "Kọ́ àyẹ̀wò",
+      "body": "Body ìbéèrè",
+      "headers": "Àwọn header",
+      "copy": "Ṣe àdàkọ body",
+      "copied": "A ti ṣe àdàkọ",
+      "note": "Àyẹ̀wò máa ń ní ID ìfiránṣẹ́ àti àkókò tuntun nígbà gbogbo. Títún lẹ́tà tí kò dé fi ránṣẹ́ máa ń fi àpò tí a tọ́jú ránṣẹ́ dípò bẹ́ẹ̀, ìdí nìyẹn tí ìlà tó wà lókè fi ń fi ọjọ́ orí hàn fún ìṣẹ̀lẹ̀ kọ̀ọ̀kan."
+    },
+    "catalog": {
+      "title": "Àkójọ ìṣẹ̀lẹ̀",
+      "description": "Àwọn ìṣẹ̀lẹ̀ tí webhook lè forúkọ sílẹ̀ fún. Èyí ni àkójọ kan náà tí API ìforúkọsílẹ̀ ń fi ipá mú, nítorí náà àwọn méjèèjì kò lè yàtọ̀ síra.",
+      "dispatched": "A ń fi ránṣẹ́",
+      "undispatched": "A kò tíì fi ránṣẹ́"
+    }
+  },
+  "number_format": {
+    "xlm_unit": "XLM",
+    "stroop_unit": "stroop",
+    "stroop_unit_plural": "stroops",
+    "stroops_per_xlm": "1 XLM = 10,000,000 stroops",
+    "price_label": "{{amount}} XLM",
+    "price_label_usd": "{{amount}} USD"
+  }
+}

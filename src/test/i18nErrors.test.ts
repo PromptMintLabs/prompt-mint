@@ -154,7 +154,7 @@ describe("i18n Error Localization", () => {
     });
 
     it("all locales have all required keys", () => {
-      const locales = ["en", "es", "fr", "zh", "ja"];
+      const locales = ["en", "es", "fr", "zh", "ja", "de", "yo"];
       const requiredKeys = [
         "errors.validation.required",
         "errors.validation.min_length",
