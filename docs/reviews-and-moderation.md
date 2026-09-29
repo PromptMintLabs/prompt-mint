@@ -18,6 +18,11 @@ Review listings include `helpfulVoteAlert`, which becomes `true` after at least 
 
 Moderation deliberately has no API action for hiding or featuring prompts: those are marketplace/contract state changes and must continue through the contract's authorized owner/creator flow. An unset `MODERATOR_ADDRESSES` denies moderation access rather than granting it.
 
+## Reported listing snapshots
+
+When a listing is reported, the report stores an immutable snapshot of the listing's public fields as they were at report time (title, category, creator, price, image, tags, and capture time). Listings can be edited, archived, or deleted before a moderator reviews the report, so the snapshot preserves the evidence that was actually reported. Gated prompt content is never copied.
+
+`POST /api/moderation/report` accepts an optional `listingSnapshot` object; it is normalized and length-bounded before storage, and ignored for `review` and `user` targets. The captured snapshot is returned with the report in `GET /api/moderation/queue` and in the Express `GET /api/user/reports` response, and is rendered in the moderation queue.
 ## Prompt abuse reports
 
 Submitting a report matches an existing active report when the prompt, normalized reporter wallet, and reason are the same and the existing status is `pending` or `investigating`. A match returns the existing report ID with `duplicate: true` and does not create another record. Different reporters remain separate reports for corroboration; a resolved or dismissed report does not block a later submission.

@@ -2,6 +2,10 @@ import {
   buildModeratorAuthMessage,
   verifyChallengeSignature,
 } from "../../src/lib/auth/challenge";
+import {
+  cloneListingSnapshot,
+  type ReportedListingSnapshot,
+} from "../../src/lib/moderation/listingSnapshot";
 
 export type ModerationAction =
   | "review_removed"
@@ -65,6 +69,12 @@ export interface AbuseReport {
   updatedAt: number;
   resolvedBy?: string;
   resolution?: string;
+  /**
+   * Frozen copy of the reported listing's public fields, captured when the
+   * report was filed (#737). Listings can be edited or deleted before a
+   * moderator reviews the report, so the snapshot preserves what was reported.
+   */
+  listingSnapshot?: ReportedListingSnapshot;
 }
 
 const reports: AbuseReport[] = [];
@@ -92,6 +102,11 @@ export function addReport(
     status: "pending",
     createdAt: now,
     updatedAt: now,
+    // Persist an independent deep copy so later listing edits never mutate the
+    // evidence a moderator will review.
+    ...(entry.listingSnapshot
+      ? { listingSnapshot: cloneListingSnapshot(entry.listingSnapshot) }
+      : {}),
   };
   reports.push(stored);
   return stored;

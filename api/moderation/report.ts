@@ -2,6 +2,7 @@ import { withBodySizeLimit } from "../../src/lib/api/bodySizeLimit";
 import { negotiateVersion } from "../../src/lib/api/versionGuard";
 import { withVersion } from "../../src/lib/api/payloadVersion";
 import { apiError, ErrorCode } from "../../src/lib/api/errorCodes";
+import { buildListingSnapshot } from "../../src/lib/moderation/listingSnapshot";
 import {
   addReport,
   hasOpenReport,
@@ -22,6 +23,11 @@ interface ReportSubmission {
   targetId?: string;
   reason?: ReportReason;
   details?: string;
+  /**
+   * Client-supplied copy of the reported listing's public fields. It is
+   * normalized and frozen before storage, and only kept for listing targets.
+   */
+  listingSnapshot?: unknown;
 }
 
 function isReportTargetType(value: unknown): value is ReportTargetType {
@@ -108,6 +114,12 @@ async function handler(req: any, res: any) {
     return;
   }
 
+  // Snapshot only makes sense for listings; reviews and users have no listing
+  // state to preserve. A malformed snapshot is ignored so it cannot block a
+  // legitimate report.
+  const listingSnapshot =
+    targetType === "prompt" ? buildListingSnapshot(body.listingSnapshot) : undefined;
+
   try {
     const report = addReport({
       reporterAddress: reporterAddress.trim(),
@@ -115,6 +127,7 @@ async function handler(req: any, res: any) {
       targetId: targetId.trim(),
       reason,
       details: normalizedDetails,
+      listingSnapshot,
     });
 
     console.log(

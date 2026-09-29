@@ -21,6 +21,29 @@ const reportSchema = new mongoose.Schema(
       type: String,
       maxlength: 500,
     },
+    /**
+     * Immutable public state of the reported listing at the time the report was
+     * filed (#737). Preserves what was reported even if the listing is later
+     * edited, archived, or deleted. Gated prompt content is never captured.
+     */
+    listingSnapshot: {
+      type: new mongoose.Schema(
+        {
+          promptId: { type: String, required: true },
+          capturedAt: { type: Date, required: true },
+          title: { type: String },
+          category: { type: String },
+          image: { type: String },
+          price: { type: Number },
+          tags: { type: [String], default: [] },
+          onChainId: { type: String },
+          salesCount: { type: Number },
+          listingStatus: { type: String },
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
     status: {
       type: String,
       enum: ["pending", "investigating", "resolved", "dismissed"],

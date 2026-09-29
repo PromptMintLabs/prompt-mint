@@ -73,6 +73,36 @@ describe("GetPromptReports admin authentication", () => {
 
     expect(res.statusCode).toBe(200);
   });
+
+  it("returns the captured listing snapshot to investigators", async () => {
+    const listingSnapshot = {
+      promptId: "prompt_1",
+      capturedAt: new Date("2026-09-28T12:00:00.000Z"),
+      title: "Reported listing",
+      category: "Programming",
+      price: 5,
+      tags: ["arch"],
+    };
+    (Report.find as jest.Mock).mockReturnValue({
+      sort: jest.fn().mockResolvedValue([
+        { _id: "rep_1", promptId: "prompt_1", reason: "plagiarism", listingSnapshot },
+      ]),
+    });
+
+    const req = httpMocks.createRequest({
+      method: "GET",
+      url: "http://localhost/api/user/reports",
+      headers: { authorization: "Bearer the-real-admin-token" },
+    });
+    const res = httpMocks.createResponse();
+
+    await GetPromptReports(req, res);
+
+    expect(res.statusCode).toBe(200);
+    const body = res._getJSONData() as Array<{ listingSnapshot?: { title?: string } }>;
+    expect(body).toHaveLength(1);
+    expect(body[0].listingSnapshot).toMatchObject({ promptId: "prompt_1", title: "Reported listing" });
+  });
 });
 
 describe("SubmitPromptReport deduplication", () => {

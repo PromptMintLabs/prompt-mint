@@ -149,6 +149,19 @@ export default function PromptDetailPage() {
 
   const shareUrl = buildPromptShareUrl(parsed.promptId);
 
+  // Freeze the public listing fields now so a moderator can review exactly what
+  // was reported, even if the listing is edited or removed afterwards (#737).
+  const listingSnapshot = {
+    promptId: parsed.promptId,
+    title: promptQuery.data.title,
+    category: promptQuery.data.category,
+    creator: promptQuery.data.creator,
+    imageUrl: promptQuery.data.imageUrl,
+    previewText: promptQuery.data.previewText,
+    price: promptQuery.data.priceStroops.toString(),
+    tags: promptQuery.data.tags,
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <SEOHead promptId={parsed.promptId} listingMetadata={listingMetadata} />
@@ -215,6 +228,7 @@ export default function PromptDetailPage() {
         signMessage={signMessage}
         targetType="prompt"
         targetId={parsed.promptId}
+        listingSnapshot={listingSnapshot}
       />
 
       <PromptModal

@@ -7,6 +7,7 @@ import {
   buildReportAuthMessage,
 } from "../../src/lib/auth/challenge";
 import { ErrorCode } from "../../src/lib/api/errorCodes";
+import { getReportById } from "./data";
 
 const reporter = Keypair.random();
 const moderator = Keypair.random();
@@ -105,6 +106,74 @@ describe("abuse report endpoint", () => {
     expect((responseData as any).success).toBe(true);
     expect((responseData as any).report.targetId).toBe("42");
     expect((responseData as any).report.status).toBe("pending");
+  });
+
+  it("captures an immutable listing snapshot for a reported listing", async () => {
+    const timestamp = Date.now();
+    const targetId = "888";
+    const listingSnapshot = {
+      promptId: targetId,
+      title: "Original listing title",
+      category: "Software Development",
+      creator: reporter.publicKey(),
+      price: "50000000",
+      previewText: "public teaser",
+      tags: ["arch", "review"],
+      content: "gated prompt body",
+    };
+
+    const { statusCode, responseData } = await invoke({
+      reporterAddress: reporter.publicKey(),
+      reporterTimestamp: timestamp,
+      reporterSignature: sign(
+        reporter.publicKey(),
+        buildReportAuthMessage(reporter.publicKey(), "prompt", targetId, timestamp),
+        reporter,
+      ),
+      targetType: "prompt",
+      targetId,
+      reason: "scam",
+      listingSnapshot,
+    });
+
+    expect(statusCode).toBe(201);
+    const report = (responseData as any).report;
+    expect(report.listingSnapshot.promptId).toBe(targetId);
+    expect(report.listingSnapshot.title).toBe("Original listing title");
+    expect(report.listingSnapshot.price).toBe("50000000");
+    expect(report.listingSnapshot.tags).toEqual(["arch", "review"]);
+    expect(typeof report.listingSnapshot.capturedAt).toBe("number");
+    // Gated prompt content is never copied into a moderation record.
+    expect(report.listingSnapshot).not.toHaveProperty("content");
+
+    // The stored snapshot must survive later edits to the reported listing.
+    listingSnapshot.title = "Edited after reporting";
+    listingSnapshot.tags.push("added-later");
+
+    const stored = getReportById(report.id);
+    expect(stored?.listingSnapshot?.title).toBe("Original listing title");
+    expect(stored?.listingSnapshot?.tags).toEqual(["arch", "review"]);
+  });
+
+  it("does not attach a listing snapshot to non-listing reports", async () => {
+    const timestamp = Date.now();
+    const targetId = "review-1";
+    const { statusCode, responseData } = await invoke({
+      reporterAddress: reporter.publicKey(),
+      reporterTimestamp: timestamp,
+      reporterSignature: sign(
+        reporter.publicKey(),
+        buildReportAuthMessage(reporter.publicKey(), "review", targetId, timestamp),
+        reporter,
+      ),
+      targetType: "review",
+      targetId,
+      reason: "spam",
+      listingSnapshot: { promptId: "42", title: "sneaky snapshot" },
+    });
+
+    expect(statusCode).toBe(201);
+    expect((responseData as any).report.listingSnapshot).toBeUndefined();
   });
 
   it("rejects a report when the signature does not match the address", async () => {

@@ -3,7 +3,13 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { AlertTriangle, Flag, Loader2, Shield } from "lucide-react";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
-import { REPORT_REASONS, submitReport, type ReportReason, type ReportTargetType } from "@/lib/moderation";
+import {
+  REPORT_REASONS,
+  submitReport,
+  type ReportListingInput,
+  type ReportReason,
+  type ReportTargetType,
+} from "@/lib/moderation";
 import type { SignMessageFn } from "@/lib/auth/moderatorAuth";
 
 interface ReportListingDialogProps {
@@ -13,6 +19,11 @@ interface ReportListingDialogProps {
   signMessage?: SignMessageFn;
   targetType: ReportTargetType;
   targetId: string;
+  /**
+   * Public listing fields captured at report time. Sent with the report so
+   * moderators can review what was reported even if the listing changes later.
+   */
+  listingSnapshot?: ReportListingInput;
   onReported?: () => void;
 }
 
@@ -29,6 +40,7 @@ export function ReportListingDialog({
   signMessage,
   targetType,
   targetId,
+  listingSnapshot,
   onReported,
 }: ReportListingDialogProps) {
   const [reason, setReason] = useState<ReportReason | "">("");
@@ -69,6 +81,7 @@ export function ReportListingDialog({
         targetId,
         reason: reason as ReportReason,
         details: details.trim() || undefined,
+        listingSnapshot,
       });
       setSubmitted(true);
       onReported?.();

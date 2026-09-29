@@ -307,6 +307,49 @@ export const ModerationQueue = ({
                     <p className="text-sm text-slate-400 mb-3 rounded-xl bg-white/5 p-3">{report.details}</p>
                   )}
 
+                  {report.listingSnapshot && (
+                    <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Listing snapshot at report time
+                      </p>
+                      <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                        {report.listingSnapshot.title && (
+                          <div>
+                            <dt className="text-slate-500">Title</dt>
+                            <dd className="text-slate-300">{report.listingSnapshot.title}</dd>
+                          </div>
+                        )}
+                        {report.listingSnapshot.category && (
+                          <div>
+                            <dt className="text-slate-500">Category</dt>
+                            <dd className="text-slate-300">{report.listingSnapshot.category}</dd>
+                          </div>
+                        )}
+                        {report.listingSnapshot.creator && (
+                          <div>
+                            <dt className="text-slate-500">Creator</dt>
+                            <dd className="font-mono text-slate-300">
+                              {formatAddress(report.listingSnapshot.creator)}
+                            </dd>
+                          </div>
+                        )}
+                        {report.listingSnapshot.price && (
+                          <div>
+                            <dt className="text-slate-500">Price (stroops)</dt>
+                            <dd className="text-slate-300">{report.listingSnapshot.price}</dd>
+                          </div>
+                        )}
+                        <div>
+                          <dt className="text-slate-500">Captured</dt>
+                          <dd className="text-slate-300">{formatDate(report.listingSnapshot.capturedAt)}</dd>
+                        </div>
+                      </dl>
+                      {report.listingSnapshot.previewText && (
+                        <p className="mt-2 text-xs text-slate-400">{report.listingSnapshot.previewText}</p>
+                      )}
+                    </div>
+                  )}
+
                   <Textarea
                     value={notes[report.id] ?? ""}
                     onChange={(e) => setNotes((prev) => ({ ...prev, [report.id]: e.target.value }))}

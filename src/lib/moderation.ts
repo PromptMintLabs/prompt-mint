@@ -1,5 +1,11 @@
 import { buildReportAuthMessage } from "./auth/challenge";
 import type { SignMessageFn } from "./auth/moderatorAuth";
+import type {
+  ReportListingInput,
+  ReportedListingSnapshot,
+} from "./moderation/listingSnapshot";
+
+export type { ReportListingInput, ReportedListingSnapshot } from "./moderation/listingSnapshot";
 
 export type ReportTargetType = "prompt" | "review" | "user";
 export type ReportStatus = "pending" | "under_review" | "resolved" | "dismissed";
@@ -32,6 +38,12 @@ export interface AbuseReport {
   updatedAt: number;
   resolvedBy?: string;
   resolution?: string;
+  /**
+   * Frozen copy of the reported listing's public fields, captured when the
+   * report was filed (#737) so moderators can review what was reported even if
+   * the listing is later edited or deleted.
+   */
+  listingSnapshot?: ReportedListingSnapshot;
 }
 
 export interface ReportPagination {
@@ -93,6 +105,11 @@ export async function submitReport(params: {
   targetId: string;
   reason: ReportReason;
   details?: string;
+  /**
+   * Public listing fields as they are at report time. The server normalizes and
+   * freezes them; it is ignored for non-listing targets.
+   */
+  listingSnapshot?: ReportListingInput;
   apiBase?: string;
 }): Promise<AbuseReport> {
   const {
@@ -102,6 +119,7 @@ export async function submitReport(params: {
     targetId,
     reason,
     details,
+    listingSnapshot,
     apiBase = "/api/moderation/report",
   } = params;
 
@@ -123,6 +141,7 @@ export async function submitReport(params: {
       targetId,
       reason,
       details,
+      ...(listingSnapshot !== undefined && { listingSnapshot }),
     }),
   });
 

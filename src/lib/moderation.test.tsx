@@ -67,6 +67,34 @@ describe("moderation API client", () => {
     const body = JSON.parse(opts.body);
     expect(body.targetId).toBe(targetId);
     expect(body.reporterSignature).toBeTruthy();
+    expect(body.listingSnapshot).toBeUndefined();
+  });
+
+  it("forwards the listing snapshot when reporting a listing", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ report: { id: "rep_snap", listingSnapshot: {} } }),
+    });
+
+    const listingSnapshot = {
+      promptId: targetId,
+      title: "Snapshot title",
+      price: "50000000",
+      tags: ["arch"],
+    };
+
+    await submitReport({
+      reporterAddress,
+      signMessage: makeSign(),
+      targetType,
+      targetId,
+      reason: "scam",
+      listingSnapshot,
+    });
+
+    const [, opts] = mockFetch.mock.calls[0];
+    const body = JSON.parse(opts.body);
+    expect(body.listingSnapshot).toEqual(listingSnapshot);
   });
 
   it("throws on a non-OK report response", async () => {
