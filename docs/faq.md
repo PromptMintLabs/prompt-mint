@@ -12,7 +12,7 @@ PromptHash is a decentralized marketplace for buying and selling reusable AI pro
 
 **Key features:**
 - Creators publish encrypted prompt assets with preview metadata
-- Buyers purchase permanent access rights in XLM (Stellar's native asset)
+- Buyers purchase permanent access rights using the asset offered by a listing (XLM or USDC where supported)
 - Access is wallet-verified, not tied to an account or email
 - The platform charges a small fee; the rest goes directly to creators
 
@@ -22,7 +22,7 @@ PromptHash is a decentralized marketplace for buying and selling reusable AI pro
 |---------|-----------|--------------------------|
 | **Blockchain** | Soroban (Stellar) | Centralized database |
 | **Ownership** | Buyer owns encrypted copy | License tied to account |
-| **Payments** | Direct XLM to creator | Stripe/PayPal cut |
+| **Payments** | XLM or another Stellar asset accepted by the listing | Stripe/PayPal cut |
 | **Verification** | On-chain via contract | Centralized API |
 | **Licensing Model** | Unlimited reuse | Limited to personal use |
 
@@ -50,10 +50,18 @@ PromptHash is a decentralized marketplace for buying and selling reusable AI pro
 
 1. **Browse**: Visit the marketplace and explore prompts
 2. **Preview**: Read the preview text and see the prompt's image/category
-3. **Check Balance**: Ensure your Stellar wallet has enough XLM
+3. **Check Balance**: Ensure your wallet has the listing's payment asset and enough XLM for fees and reserve
 4. **Purchase**: Click "Buy License" and approve the transaction
 5. **Unlock**: Sign a wallet challenge to verify ownership
 6. **Access**: View the full prompt content in plaintext
+
+### Why does my wallet ask me to add a trustline for a USDC purchase?
+
+Stellar wallets need a trustline for the exact issued asset before an account
+can hold it. Verify the USDC issuer and network before adding it, and keep
+enough XLM for the network fee and account reserve. Follow the
+[USDC Trustline Setup Guide](./usdc-trustline-guide.md) for the safety checks
+and steps.
 
 ### What do I get when I buy a prompt?
 
