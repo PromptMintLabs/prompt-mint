@@ -88,3 +88,6 @@ load-results/
 # Generated security / gas reports (committed baselines stay tracked)
 reports/
 contracts/prompt-hash/gas-report.json
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
