@@ -26,6 +26,7 @@ import { metricsRouter } from "./routes/metricsRoutes";
 import { metricsMiddleware } from "./middleware/metricsMiddleware";
 import { idempotency } from "./middleware/idempotency";
 import { sendWeeklyCreatorMetricsDigests } from "./services/creatorMetricsDigest";
+import { runReviewRetentionCleanup } from "./services/reviewRetentionService";
 
 const app = express();
 
@@ -129,6 +130,19 @@ export const server = app.listen(port, () => {
     { timezone: "UTC" },
   );
   console.log(`[creatorMetricsDigest] Weekly schedule started (${creatorDigestSchedule} UTC).`);
+
+  // REVIEW RETENTION AND CLEANUP JOB — Issue #725
+  const reviewRetentionSchedule = process.env.REVIEW_RETENTION_CRON || "0 2 * * *";
+  cron.schedule(
+    reviewRetentionSchedule,
+    () => {
+      runReviewRetentionCleanup().catch((err) => {
+        console.error("[reviewRetention] Scheduled cleanup failed:", err?.message ?? err);
+      });
+    },
+    { timezone: "UTC" },
+  );
+  console.log(`[reviewRetention] Daily review retention cleanup schedule started (${reviewRetentionSchedule} UTC).`);
 
   // STARTS THE INDEXER HERE
   // startIndexer().catch((err: any) => {
