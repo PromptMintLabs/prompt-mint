@@ -31,7 +31,7 @@ How to contribute translations of the PromptHash Stellar interface, email copy d
 | Documentation | `docs/*.md` | `docs/<lang>/*.md` | Docs |
 | Contributor guides | `CONTRIBUTING.md`, `docs/contributor-onboarding-quickstart.md` | `docs/<lang>/` | Docs |
 
-Currently shipped languages: `en` (English), `es` (Spanish), `fr` (French), `zh` (Chinese), `ja` (Japanese), `de` (German), `yo` (Yoruba). See `SUPPORTED_LANGUAGES` in `src/i18n/index.ts`.
+Currently shipped languages: `en` (English), `es` (Spanish), `fr` (French), `zh` (Chinese), `ja` (Japanese), `de` (German), `yo` (Yoruba), `ar` (Arabic). See `SUPPORTED_LANGUAGES` in `src/i18n/index.ts`.
 
 **Not translatable by contributors:** legal documents under `docs/legal/`, contract strings, API error codes, on-chain identifiers, and anything in `contracts/`. Legal text is reviewed by counsel, not by the community. If a legal document is unclear, open an issue rather than a translation PR.
 
@@ -60,6 +60,7 @@ src/i18n/
     ja.json
     de.json
     yo.json
+    ar.json
 docs/
   buyer-onboarding-email-copy-deck.md
   creator-onboarding-email-copy-deck.md
@@ -67,7 +68,7 @@ docs/
 src/test/docs/          # doc and locale validation tests
 ```
 
-Every locale file has the same eight top-level sections: `nav`, `home`, `prompt`, `create`, `errors`, `language`, `webhook_replay`, and `number_format`. The seven shipped locales currently carry 132 leaf keys each, and they must stay in lockstep: `yarn test:frontend` fails if a key exists in one locale and not another.
+Every locale file has the same eight top-level sections: `nav`, `home`, `prompt`, `create`, `errors`, `language`, `webhook_replay`, and `number_format`. The eight shipped locales currently carry 132 leaf keys each, and they must stay in lockstep: `yarn test:frontend` fails if a key exists in one locale and not another.
 
 There is no `emails` section in `en.json` today. The English source of record for the copy decks is the markdown itself, not a JSON file, so nothing about the email sequence is covered by the key-parity test. Treat email translations as a separate, optional deliverable: see [Translating Email Copy Decks](#translating-email-copy-decks).
 
@@ -168,6 +169,7 @@ Use the email ID (`BUY-01`, `CRE-07`) as the key, never the subject line. Subjec
 ## Style Rules
 
 - **Address the reader the way the target language normally addresses customers.** Formal in `fr` and `ja`, neutral and direct in `zh`. Do not import the English informal register.
+- **Right-to-left languages.** `ar` is rendered right-to-left. Do not reorder or mirror interpolation placeholders, punctuation, or tokens to fake RTL in the string; the layout direction is handled by the app via the `dir` attribute driven by `SUPPORTED_LANGUAGES`. Keep Latin product names, wallet addresses, transaction hashes, and URLs in their original left-to-right form.
 - **Keep sentences short.** A translation that needs two clauses to carry what the English does in one has usually lost a concrete noun. Go back to the source word.
 - **Prefer the plainest correct word.** This is a payments product used by independent operators. "Buy" beats "acquire", "price" beats "monetary consideration".
 - **Do not invent UI that does not exist.** If a string refers to a button, the button is a real button in the app. Check it before you translate it.
@@ -250,13 +252,14 @@ Adding a language is a code change, not just a translation. Per [CONTRIBUTING.md
 1. Add `src/i18n/locales/<lang>.json` with the complete key set from `en.json`.
 2. Import it in `src/i18n/index.ts` and add it to the `resources` map.
 3. Add `{ code: "<lang>", label: "<endonym>" }` to `SUPPORTED_LANGUAGES`. Use the language's own name for the label, not the English name.
+3a. If the language is right-to-left (for example `ar`), set its `dir` to `"rtl"` in the `SUPPORTED_LANGUAGES` entry so the app flips layout direction. Left-to-right languages keep the default `"ltr"`.
 4. No changes to the formatting helpers are required. `formatXlmLocale` and the formatter hooks already accept a locale string.
 5. Translate the email copy decks, or leave the `emails` section out entirely. If it is absent, sends fall back to the English source, which is a valid state.
 6. Extend `src/test/i18nErrors.test.ts` and any other test that enumerates locales, so the new locale is covered rather than skipped.
 7. Run `yarn test:frontend`, `yarn lint`, and `yarn typecheck`.
 8. Document the addition in the locale list above and in `docs/faq.md` if the FAQ names the supported languages.
 
-Open an issue before starting. Steps 1 through 3 are small, but the review board is committing to maintaining the locale indefinitely, and that commitment should be explicit.
+Open an issue before starting. Steps 1 through 3a are small, but the review board is committing to maintaining the locale indefinitely, and that commitment should be explicit.
 
 ---
 
@@ -282,6 +285,7 @@ Keep these consistent across every surface. Where the English product uses a fix
 | appeal | The creator's path to contest a delisting. Not "dispute", not "complaint". |
 | review | A rating plus comment on a listing. |
 | reactivation | Returning a delisted listing to the marketplace after review. |
+| RTL | Right-to-left script direction, used by `ar`. Handled by the app, not by the translator. |
 
 ---
 
