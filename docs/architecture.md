@@ -81,10 +81,15 @@ Responsibilities:
 
 ### Buy listing
 
-1. Buyer approves native asset spend.
+1. Buyer approves native asset spend for 60 ledgers (about five minutes), with expiry calculated from the RPC's latest ledger.
 2. App submits `buy_prompt`.
 3. Contract moves seller and fee amounts in stroops.
 4. Contract records purchase rights for the buyer.
+
+If approval simulation, wallet signing, submission, or confirmation fails, the
+native asset client raises a `NativeAssetApprovalError` with a user-readable
+message. The tip flow displays that message inline; a wallet rejection is
+reported separately from other approval failures.
 
 ### Unlock purchased prompt
 
