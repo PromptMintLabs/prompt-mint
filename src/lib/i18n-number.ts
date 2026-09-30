@@ -29,6 +29,10 @@
  */
 
 import { useTranslation } from "react-i18next";
+import {
+  getHeadlineNumber,
+  type FormatHeadlineOptions,
+} from "@/lib/formatters";
 
 /** Stroops per XLM (Stellar network constant). */
 const STROOPS_PER_XLM = 10_000_000;
@@ -150,4 +154,21 @@ export function useUsdFormatter() {
   const { i18n } = useTranslation();
   const locale = i18n.language || undefined;
   return (amount: number | null | undefined) => formatUsdLocale(amount, locale);
+}
+
+/**
+ * Returns a headline number formatter bound to the current i18n language.
+ *
+ * @example
+ *   const fmt = useHeadlineNumberFormatter();
+ *   fmt(1_234_567)                  // { text: "1.2M", fullText: "1,234,567", isCompact: true }
+ *   fmt(8_420, { unit: "XLM" })     // { text: "8,420 XLM", ... }
+ */
+export function useHeadlineNumberFormatter() {
+  const { i18n } = useTranslation();
+  const locale = i18n.language || undefined;
+  return (
+    value: number | bigint | string | null | undefined,
+    options: Omit<FormatHeadlineOptions, "locale"> = {},
+  ) => getHeadlineNumber(value, { ...options, locale });
 }
