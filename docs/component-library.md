@@ -22,6 +22,7 @@ yarn build-storybook
 - **Card** (`src/components/ui/card.tsx`): Modular container primitives (`CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`).
 - **Avatar** (`src/components/ui/avatar.tsx`): Profile pictures with fallback initials.
 - **Badge** (`src/components/ui/badge.tsx`): Status and metadata pills.
+- **CompactNumber** (`src/components/ui/CompactNumber.tsx`): Locale-aware compact number formatter (e.g. `1.2K`, `3.4M`) for badges and metrics.
 - **Input** (`src/components/ui/input.tsx`): Text, password, number, and search fields.
 - **Textarea** (`src/components/ui/textarea.tsx`): Multiline text input for prompt contents.
 - **Select** (`src/components/ui/select.tsx`): Accessible dropdown selection.
@@ -38,6 +39,7 @@ yarn build-storybook
 - **MarketplaceFilters** (`src/components/MarketplaceFilters.tsx`): Multi-criteria filter sidebar (categories, price range, sorting).
 - **FreshnessBadge** (`src/components/FreshnessBadge.tsx`): Relative time indicator (New, Recently Updated).
 - **IntegrityBadge** (`src/components/IntegrityBadge.tsx`): On-chain SHA-256 cryptographic verification seal.
+- **BadgeCount** (`src/components/BadgeCount.tsx`): Badge wrapper that renders counts via `CompactNumber` with an accessible full-precision `title` / `aria-label`.
 - **PromotionalPrice** (`src/components/PromotionalPrice.tsx`): Discount badge with original price strikethrough.
 - **CurrencyPrice** (`src/components/CurrencyPrice.tsx`): Stroops to XLM / USD price renderer.
 - **CurrencyToggle** (`src/components/CurrencyToggle.tsx`): Toggle currency display mode between XLM and USD.
@@ -112,3 +114,4 @@ yarn build-storybook
 - **Keyboard Navigation**: All interactive elements support focus rings (`focus-visible:ring-1 focus-visible:ring-ring`) and `Enter` / `Space` keyboard actuation.
 - **Reduced Motion**: Respects `prefers-reduced-motion` via `ReducedMotionProvider`.
 - **Screen Reader Support**: ARIA roles (`role="alert"`, `role="progressbar"`, `aria-expanded`, `aria-live`) on dynamic elements.
+- **Compact Numbers**: `CompactNumber` uses `Intl.NumberFormat` with `notation: "compact"` and always exposes the exact value via `title` and `aria-label` so abbreviated counts remain screen-reader friendly.
