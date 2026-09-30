@@ -65,3 +65,25 @@ native_balance ≥ cart_total + fee_buffer + minimum_reserve
 ## Backward compatibility
 
 No contract, API, or unlock permission changes. Buyers with adequate XLM see the same checkout flow; underfunded wallets are blocked earlier with explicit copy instead of a failed on-chain transaction.
+
+## Multi-item fee estimate
+
+Checkout shows a cost breakdown built by `estimateMultiItemPurchase` (`src/lib/checkout/feeEstimation.ts`):
+
+| Line | Meaning |
+| --- | --- |
+| **Subtotal** | Sum of item prices in stroops (bigint, no precision loss) |
+| **Network fee** | Estimated fee for the single bulk transaction |
+| **Fee saved by buying together** | Fee for buying each item in its own transaction minus the bulk fee (shown only when > 0) |
+| **Estimated total** | Subtotal + network fee |
+
+The bulk purchase is one Soroban transaction, so the fee is modelled as:
+
+```
+network_fee = base_fee + resource_overhead + resource_per_item × item_count
+            = 100      + 1_000             + 500 × item_count   (stroops)
+```
+
+A one-item cart matches `estimateSingleFee` (1_600 stroops). An empty cart has zero fee. All three constants can be overridden via `MultiItemFeeOptions`, e.g. once real `simulateTransaction` resource fees are wired in. Negative item prices throw a `RangeError`.
+
+This estimate is informational; the balance check above still reserves the fixed `CHECKOUT_FEE_BUFFER_STROOPS` buffer.
