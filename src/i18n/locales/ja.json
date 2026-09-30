@@ -170,5 +170,12 @@
     "stroops_per_xlm": "1 XLM = 10,000,000 ストループ",
     "price_label": "{{amount}} XLM",
     "price_label_usd": "{{amount}} USD"
+  },
+  "trustline": {
+    "title": "トラストラインが必要です",
+    "missing": "ウォレットに {{assets}} のトラストラインがまだありません。ウォレットで追加してから戻ってください。自動的に再確認します。",
+    "unauthorized": "発行者があなたの {{assets}} トラストラインを承認していません。発行者に連絡するか、XLM で支払ってください。",
+    "unfunded": "このネットワークではアカウントがまだ資金化されていません。先に XLM を入金してから、{{assets}} のトラストラインを追加してください。",
+    "recheck": "再確認"
   }
 }
