@@ -88,7 +88,41 @@
     },
     "moderation": {
       "unauthorized": "Nur autorisierte Moderatoren können Audit-Logs einsehen. Wenn du glaubst, dass dies ein Fehler ist, kontaktiere den Support, um Moderatorzugriff anzufordern.",
-      "address_required": "Gib eine Moderator-Wallet-Adresse ein, bevor du fortfährst."
+      "address_required": "Gib eine Moderator-Wallet-Adresse ein, bevor du fortfährst.",
+      "action_templates": {
+        "tab": "Aktionsvorlagen",
+        "title": "Vorlagen für Moderationsaktionen",
+        "description": "Speichere wiederverwendbare Begründungen für Moderationsaktionen. Vorlagen bleiben in diesem Browser und sind deiner Moderator-Wallet zugeordnet.",
+        "connect_required": "Verbinde deine Moderator-Wallet, um Vorlagen zu verwalten.",
+        "built_in": "Vorlagen",
+        "custom": "Deine Vorlagen",
+        "empty": "Noch keine eigenen Vorlagen gespeichert.",
+        "name_label": "Vorlagenname",
+        "name_placeholder": "Zum Beispiel: Spam-Meldung bestätigt",
+        "action_label": "Aktion",
+        "reason_label": "Begründungstext",
+        "create": "Vorlage speichern",
+        "delete": "Vorlage löschen",
+        "delete_aria": "{{name}} löschen",
+        "storage_error": "Die Vorlage konnte in diesem Browser nicht gespeichert werden.",
+        "choose": "Vorlage einfügen…",
+        "actions": {
+          "report_resolved": "Meldung bearbeiten",
+          "report_dismissed": "Meldung ablehnen",
+          "prompt_takedown": "Eintrag entfernen",
+          "prompt_reinstated": "Eintrag wiederherstellen"
+        },
+        "defaults": {
+          "report_resolved_name": "Meldung bestätigt",
+          "report_resolved_reason": "Die Meldung wurde geprüft und bestätigt. Die entsprechende Moderationsmaßnahme wurde ergriffen.",
+          "report_dismissed_name": "Meldung abgelehnt",
+          "report_dismissed_reason": "Die Meldung wurde geprüft. Es wurde kein Verstoß gegen die Marktplatzregeln festgestellt.",
+          "prompt_takedown_name": "Eintrag entfernt",
+          "prompt_takedown_reason": "Der Eintrag wurde nach Prüfung wegen eines Verstoßes gegen die Marktplatzregeln entfernt.",
+          "prompt_reinstated_name": "Eintrag wiederhergestellt",
+          "prompt_reinstated_reason": "Der Eintrag wurde geprüft und wiederhergestellt, da er den Marktplatzregeln entspricht."
+        }
+      }
     }
   },
   "language": {
