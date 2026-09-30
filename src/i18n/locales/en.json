@@ -170,5 +170,12 @@
     "stroops_per_xlm": "1 XLM = 10,000,000 stroops",
     "price_label": "{{amount}} XLM",
     "price_label_usd": "{{amount}} USD"
+  },
+  "trustline": {
+    "title": "Trustline needed",
+    "missing": "Your wallet has no trustline for {{assets}} yet. Add it in your wallet, then come back — we'll re-check automatically.",
+    "unauthorized": "The issuer has not authorized your trustline for {{assets}}. Contact the issuer, or pay with XLM instead.",
+    "unfunded": "Your account isn't funded on this network yet. Fund it with XLM first, then add a trustline for {{assets}}.",
+    "recheck": "Check again"
   }
 }

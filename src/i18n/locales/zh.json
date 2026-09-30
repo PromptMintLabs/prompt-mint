@@ -170,5 +170,12 @@
     "stroops_per_xlm": "1 XLM = 10,000,000 stroops",
     "price_label": "{{amount}} XLM",
     "price_label_usd": "{{amount}} USD"
+  },
+  "trustline": {
+    "title": "需要信任线",
+    "missing": "你的钱包尚未添加 {{assets}} 的信任线。请在钱包中添加后返回，我们会自动重新检查。",
+    "unauthorized": "发行方尚未授权你的 {{assets}} 信任线。请联系发行方，或改用 XLM 支付。",
+    "unfunded": "你的账户在此网络上尚未注资。请先用 XLM 注资，然后再添加 {{assets}} 的信任线。",
+    "recheck": "重新检查"
   }
 }

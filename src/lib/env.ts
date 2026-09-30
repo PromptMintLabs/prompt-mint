@@ -73,6 +73,9 @@ export const nativeAssetContractId = env.PUBLIC_STELLAR_NATIVE_ASSET_CONTRACT_ID
 export const simulationAccount = env.PUBLIC_STELLAR_SIMULATION_ACCOUNT;
 export const chatApiBase = env.PUBLIC_CHAT_API_BASE;
 export const unlockPublicKey = env.PUBLIC_UNLOCK_PUBLIC_KEY;
+/** Raw `CODE:ISSUER` list of non-native assets that need a trustline (optional). */
+export const trustlineAssetsRaw: string =
+  (import.meta.env.PUBLIC_STELLAR_TRUSTLINE_ASSETS as string | undefined) ?? "";
 export const allowHttp = new URL(rpcUrl).hostname === "localhost";
 
 export const stellarWalletNetwork =

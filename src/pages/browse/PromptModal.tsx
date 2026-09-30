@@ -41,6 +41,7 @@ import { ReviewClient, type ReviewSort } from "../../lib/reviews/reviewClient";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { browserStellarConfig } from "../../lib/stellar/browserConfig";
 import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBanner";
+import { TrustlineBanner } from "../../components/wallet/TrustlineBanner";
 import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
 import { CurrencyPrice } from "../../components/CurrencyPrice";
 import { AddressTooltip, ContractStateTooltip } from "@/components/ui/Tooltip";
@@ -629,6 +630,9 @@ export const PromptModal: React.FC<PromptModalProps> = ({
             <div className="space-y-6">
               {/* Network Mismatch Warning */}
               <NetworkMismatchBanner />
+
+              {/* Missing trustline warning (auto-detected on wallet connect) */}
+              <TrustlineBanner />
 
               {/* TRANSACTION STAGES */}
               {(status === "IDLE" || status === "ERROR") && (

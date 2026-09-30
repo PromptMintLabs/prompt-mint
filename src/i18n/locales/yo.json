@@ -170,5 +170,12 @@
     "stroops_per_xlm": "1 XLM = 10,000,000 stroops",
     "price_label": "{{amount}} XLM",
     "price_label_usd": "{{amount}} USD"
+  },
+  "trustline": {
+    "title": "A nílò trustline",
+    "missing": "Àpamọ́wọ́ rẹ kò tíì ní trustline fún {{assets}}. Fi kún un nínú àpamọ́wọ́ rẹ, lẹ́yìn náà padà wá — a ó tún ṣàyẹ̀wò fúnra wa.",
+    "unauthorized": "Olùtẹ̀jáde kò tíì fọwọ́ sí trustline rẹ fún {{assets}}. Kàn sí olùtẹ̀jáde, tàbí sanwó pẹ̀lú XLM dípò rẹ̀.",
+    "unfunded": "Àkọọ́lẹ̀ rẹ kò tíì ní owó lórí nẹ́tíwọ́ọ̀kì yìí. Kọ́kọ́ fi XLM sí i, lẹ́yìn náà fi trustline fún {{assets}} kún un.",
+    "recheck": "Ṣàyẹ̀wò lẹ́ẹ̀kan sí i"
   }
 }
