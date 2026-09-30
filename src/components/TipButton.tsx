@@ -46,8 +46,6 @@ export function TipButton({ creatorAddress, onTipSent }: TipButtonProps) {
         address,
         creatorAddress,
         stroops,
-        // Expiration ledger: ~5 minutes from now at ~5s per ledger
-        Math.floor(Date.now() / 5000) + 60,
       );
       setSuccess(true);
       onTipSent?.(amount.toString());
