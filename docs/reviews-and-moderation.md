@@ -37,3 +37,20 @@ When a moderator resolves or dismisses a report through `POST /api/moderation/ac
 - `abuse_report_responded_total` (counter) — volume of responded reports, labeled with `targetType` and `outcome`.
 
 Both metrics are exported via `GET /api/metrics` and documented in [`docs/operations/metrics.md`](./operations/metrics.md).
+
+## Review retention and automated cleanup (#725)
+
+To maintain database hygiene, protect storage budgets, and comply with the data retention policy (`docs/legal/data-retention-policy.md`), Prompt Mint runs an automated review retention and cleanup job:
+
+- **Removed reviews**: Reviews removed by moderators are retained for 90 days (`REMOVED_REVIEW_RETENTION_DAYS`, default 90 days) to allow review authors to appeal the moderation action. After this window passes without an open appeal, the removed review is permanently pruned. If an appeal is active (`open` or `under_review`), the review is strictly preserved until appeal resolution.
+- **Helpful vote activity**: The sliding-window vote activity tracking used for burst-manipulation alerts (`helpfulVoteActivity`) is pruned after 24 hours (`HELPFUL_VOTE_ACTIVITY_RETENTION_HOURS`, default 24 hours).
+- **Review edit audit logs**: `ReviewEditAuditLog` records tracking previous review and seller response text are retained for 12 months (`REVIEW_EDIT_AUDIT_RETENTION_DAYS`, default 365 days), matching operational audit log retention.
+- **Appeal evidence attachments**: Large binary attachments on resolved/closed appeals (`approved`, `rejected`, `withdrawn`) are cleaned up after 180 days (`RESOLVED_APPEAL_ATTACHMENT_RETENTION_DAYS`, default 180 days), freeing database storage while preserving decision records and history.
+
+### Execution
+
+- **Scheduled Job**: Runs daily at 02:00 UTC via cron in `server/src/server.ts` (configured via `REVIEW_RETENTION_CRON`).
+- **CLI Runner**: Can be triggered manually or in CI via `yarn review:cleanup` (with optional `--dry-run` flag) in `server/scripts/reviewRetentionCleanup.ts`.
+- **API Trigger**: `POST /api/review-analytics/retention/cleanup` accepts `{ dryRun?: boolean }` for operational inspection and auditing. Status is queryable via `GET /api/review-analytics/retention/status`.
+- **Serverless Endpoint**: `POST /api/reviews/cleanup` is available for Vercel Cron or authenticated administrative execution.
+
