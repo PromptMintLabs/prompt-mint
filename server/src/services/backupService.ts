@@ -1,7 +1,7 @@
 /**
  * Automated Backup Service for Indexer DB (Issue #135)
  *
- * Exports the Prompt, Purchase, PromptVersion, and IndexerState collections
+ * Exports marketplace data and audit collections
  * as NDJSON to S3-compatible storage, then records a BackupRun document so
  * operators can track backup health.
  *
@@ -61,7 +61,14 @@ export const BackupRun =
 // Collection list to back up
 // ---------------------------------------------------------------------------
 
-const BACKUP_COLLECTIONS = ["prompts", "purchases", "promptversions", "indexerstates", "auditlogs"];
+const BACKUP_COLLECTIONS = [
+  "prompts",
+  "purchases",
+  "promptversions",
+  "indexerstates",
+  "auditlogs",
+  "revieweditauditlogs",
+];
 
 // ---------------------------------------------------------------------------
 // Core export function

@@ -103,6 +103,17 @@ pub enum Error {
     /// The upgrade would break existing license holders; aborted before the
     /// new implementation is installed.
     UpgradeLicenseIntegrity = 54,
+    // #195 – emergency pause with owner override
+    /// Contract is already paused when attempting emergency pause.
+    EmergencyAlreadyActive = 55,
+    /// No unpause has been proposed.
+    UnpauseNotProposed = 56,
+    /// The timelock for the pending unpause has not elapsed.
+    UnpauseCooldownNotElapsed = 57,
+    /// The buyer's token balance is insufficient to cover the payment.
+    InsufficientBalance = 55,
+    /// set_fee_wallet was already called once; the fee wallet is immutable.
+    FeeWalletAlreadySet = 56,
 }
 
 #[contracttype]
@@ -132,6 +143,7 @@ pub enum DataKey {
     Subscription(Address, Address),
     SubscriptionEligible(u128),
     AdminSigners,
+    UpgradeAdminSigners,
     Initialized,
     SchemaVersion,
     PromptEncryptedPayload(u128, u32),
@@ -146,7 +158,10 @@ pub enum DataKey {
     UpgradeProposedAt,
     Discount(u128),
     // #192 – per-prompt price history log.
+    PromptExpiryWarning(u128),
     PriceHistory(u128),
+    // #195 – emergency pause timelock
+    PendingUnpauseAt,
 }
 
 /// #192 – A single recorded price change for a prompt.
@@ -166,7 +181,6 @@ pub struct PriceHistoryEntry {
     /// Monotonic per-prompt sequence number, starting at 1 for the initial
     /// listing price. Used to keep history entries ordered and de-duplicated.
     pub seq: u64,
-    PromptExpiryWarning(u128),
 }
 
 #[contracttype]
@@ -384,9 +398,12 @@ pub struct Discount {
 pub trait PromptHashTrait {
     fn __constructor(
         env: Env,
-        admin: Address,
-        admin_two: Address,
-        admin_three: Address,
+        config_admin: Address,
+        config_admin_two: Address,
+        config_admin_three: Address,
+        upgrade_admin: Address,
+        upgrade_admin_two: Address,
+        upgrade_admin_three: Address,
         fee_wallet: Address,
         xlm_sac: Address,
     ) -> Result<(), Error>;
@@ -489,8 +506,14 @@ pub trait PromptHashTrait {
     ) -> Result<(), Error>;
 
     fn has_access(env: Env, user: Address, prompt_id: u128) -> Result<bool, Error>;
+    fn revoke_access(
+        env: Env,
+        caller: Address,
+        prompt_id: u128,
+        buyer: Address,
+    ) -> Result<(), Error>;
     fn get_prompt(env: Env, prompt_id: u128) -> Result<Prompt, Error>;
-    fn get_all_prompts(env: Env) -> Result<Vec<Prompt>, Error>;
+    fn get_all_prompts(env: Env, start_index: u128, limit: u32) -> Result<(Vec<Prompt>, u128), Error>;
     fn get_prompts_by_creator(env: Env, creator: Address) -> Result<Vec<Prompt>, Error>;
     fn get_prompts_by_buyer(env: Env, buyer: Address) -> Result<Vec<Prompt>, Error>;
     fn get_prompts_by_category(env: Env, category: String) -> Result<Vec<Prompt>, Error>;
@@ -544,6 +567,8 @@ pub trait PromptHashTrait {
     fn get_fee_wallet(env: Env) -> Option<Address>;
     fn set_referral_percentage(env: Env, new_referral_percentage: u32) -> Result<(), Error>;
     fn get_referral_percentage(env: Env) -> u32;
+    fn set_price_bounds(env: Env, approver_a: Address, approver_b: Address, min_price: Option<i128>, max_price: Option<i128>) -> Result<(), Error>;
+    fn get_price_bounds(env: Env) -> (Option<i128>, Option<i128>);
     fn register_referral_code(
         env: Env,
         referrer: Address,
@@ -570,7 +595,7 @@ pub trait PromptHashTrait {
         hashed_code: BytesN<32>,
     ) -> Result<(), Error>;
     fn get_xlm_sac(env: Env) -> Option<Address>;
-    /// Propose a timelocked contract upgrade. Requires 2-of-3 admin multisig.
+    /// Propose a timelocked contract upgrade. Requires 2-of-3 upgrade-admin multisig.
     /// Records the pending WASM hash, the proposer (via the two approvers) and
     /// the proposal timestamp so that `confirm_upgrade` can enforce a safety
     /// cooldown and validate the existing on-chain state before deploying the
@@ -582,12 +607,12 @@ pub trait PromptHashTrait {
         approver_b: Address,
     ) -> Result<(), Error>;
     /// Confirm and execute a previously proposed upgrade once the timelock
-    /// cooldown has elapsed. Requires 2-of-3 admin multisig. Applies upgrade
+    /// cooldown has elapsed. Requires 2-of-3 upgrade-admin multisig. Applies upgrade
     /// safety checks (implementation validity, storage integrity, license-holder
     /// preservation) before atomically swapping the contract bytecode.
     fn confirm_upgrade(env: Env, approver_a: Address, approver_b: Address) -> Result<(), Error>;
     /// Cancel a pending upgrade before the timelock elapses (emergency abort).
-    /// Requires 2-of-3 admin multisig. Clears the pending upgrade state.
+    /// Requires 2-of-3 upgrade-admin multisig. Clears the pending upgrade state.
     fn cancel_upgrade(env: Env, approver_a: Address, approver_b: Address) -> Result<(), Error>;
     /// Returns the currently pending WASM hash, if any.
     fn get_pending_upgrade(env: Env) -> Option<BytesN<32>>;
@@ -762,6 +787,26 @@ pub trait PromptHashTrait {
 
     /// Read the current stake record for a prompt.
     fn get_stake(env: Env, prompt_id: u128) -> Result<Stake, Error>;
+
+    // ─── #195: Emergency pause with owner override ────────────────────────
+    /// Owner-only. Immediately pauses all purchases and transfers in case of
+    /// vulnerability discovery. Does not require multisig approval so the
+    /// owner can react quickly in emergencies.
+    fn emergency_pause(env: Env) -> Result<(), Error>;
+
+    /// Owner-only. Proposes an unpause with a timelock cooldown. The contract
+    /// remains paused until `confirm_unpause` is called after the cooldown.
+    fn propose_unpause(env: Env) -> Result<(), Error>;
+
+    /// Owner-only. Confirms and executes a previously proposed unpause once
+    /// the timelock cooldown has elapsed.
+    fn confirm_unpause(env: Env) -> Result<(), Error>;
+
+    /// Owner-only. Cancels a pending unpause proposal.
+    fn cancel_unpause(env: Env) -> Result<(), Error>;
+
+    /// Returns the timestamp when unpause was proposed, if any.
+    fn get_pending_unpause(env: Env) -> Option<u64>;
 }
 
 // ─── Bundle on-chain types ───────────────────────────────────────────────────

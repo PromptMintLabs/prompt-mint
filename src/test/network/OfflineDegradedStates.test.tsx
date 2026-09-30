@@ -1,12 +1,11 @@
 import React from "react";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NetworkStateProvider, useNetworkState } from "@/hooks/useNetworkState";
 import { FreshnessBadge, formatFreshnessTime } from "@/components/FreshnessBadge";
 import { StatusBanner } from "@/components/StatusBanner";
 import { TipButton } from "@/components/TipButton";
-import { CreatePromptForm } from "@/pages/sell/CreatePromptForm";
 
 // Dummy wrapper for testing
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {

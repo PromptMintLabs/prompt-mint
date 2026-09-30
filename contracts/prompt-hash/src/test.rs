@@ -4,7 +4,7 @@ use crate::storage::Storage;
 use crate::types::{Error, ListingConfig, Split};
 extern crate std;
 use soroban_sdk::{
-    testutils::{Address as _, Events as _, Ledger},
+    testutils::{ed25519::Sign, Address as _, Events as _, Ledger},
     token, Address, Bytes, BytesN, Env, String, Vec,
 };
 
@@ -13,6 +13,9 @@ struct PromptHashContext {
     admin: Address,
     admin_two: Address,
     admin_three: Address,
+    upgrade_admin: Address,
+    upgrade_admin_two: Address,
+    upgrade_admin_three: Address,
     fee_wallet: Address,
     xlm: Address,
     contract: Address,
@@ -24,6 +27,9 @@ fn setup(env: &Env) -> PromptHashContext {
     let admin = Address::generate(env);
     let admin_two = Address::generate(env);
     let admin_three = Address::generate(env);
+    let upgrade_admin = Address::generate(env);
+    let upgrade_admin_two = Address::generate(env);
+    let upgrade_admin_three = Address::generate(env);
     let fee_wallet = Address::generate(env);
     let xlm = env.register(FungibleTokenContract, (admin.clone(),));
     let contract = env.register(
@@ -32,6 +38,9 @@ fn setup(env: &Env) -> PromptHashContext {
             admin.clone(),
             admin_two.clone(),
             admin_three.clone(),
+            upgrade_admin.clone(),
+            upgrade_admin_two.clone(),
+            upgrade_admin_three.clone(),
             fee_wallet.clone(),
             xlm.clone(),
         ),
@@ -41,10 +50,35 @@ fn setup(env: &Env) -> PromptHashContext {
         admin,
         admin_two,
         admin_three,
+        upgrade_admin,
+        upgrade_admin_two,
+        upgrade_admin_three,
         fee_wallet,
         xlm,
         contract,
     }
+}
+
+#[test]
+fn test_unlock_happy_path() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Unlock Prompt",
+        10_000,
+        &context.xlm,
+    );
+    assert!(client.has_access(&creator, &prompt_id));
+
+    let challenge = client.challenge(&creator, &prompt_id);
+    let signature = creator.sign(&env, &challenge);
+    assert!(client.unlock(&creator, &prompt_id, &signature));
 }
 
 fn set_pause(client: &PromptHashContractClient<'_>, context: &PromptHashContext, paused: bool) {
@@ -164,7 +198,7 @@ fn test_create_prompt_stores_encrypted_fields() {
     assert_eq!(prompt.expires_at, 0);
     assert_eq!(prompt.splits.len(), 0);
 
-    let all_prompts = client.get_all_prompts();
+    let all_prompts = client.get_all_prompts(&0, &100).0;
     assert_eq!(all_prompts.len(), 1);
     assert_eq!(all_prompts.get(0).unwrap().id, prompt_id);
 }
@@ -188,6 +222,11 @@ fn test_constructor_rejects_repeated_initialization() {
         <PromptHashContract as crate::types::PromptHashTrait>::__constructor(
             env.clone(),
             attacker_admin.clone(),
+            Address::generate(&env),
+            Address::generate(&env),
+            Address::generate(&env),
+            Address::generate(&env),
+            Address::generate(&env),
             attacker_fee_wallet.clone(),
             context.xlm.clone(),
         )
@@ -198,6 +237,35 @@ fn test_constructor_rejects_repeated_initialization() {
     // Original setup state must remain untouched by the rejected call.
     let client = PromptHashContractClient::new(&env, &context.contract);
     assert_eq!(client.get_fee_percentage(), 500);
+}
+
+#[test]
+fn test_constructor_rejects_overlapping_config_and_upgrade_admins() {
+    let env: Env = Default::default();
+    let contract = Address::generate(&env);
+    let shared_admin = Address::generate(&env);
+    let config_admin_two = Address::generate(&env);
+    let config_admin_three = Address::generate(&env);
+    let upgrade_admin_two = Address::generate(&env);
+    let upgrade_admin_three = Address::generate(&env);
+    let fee_wallet = Address::generate(&env);
+    let xlm = env.register(FungibleTokenContract, (shared_admin.clone(),));
+
+    let result: Result<(), Error> = env.as_contract(&contract, || {
+        <PromptHashContract as crate::types::PromptHashTrait>::__constructor(
+            env.clone(),
+            shared_admin.clone(),
+            config_admin_two,
+            config_admin_three,
+            shared_admin,
+            upgrade_admin_two,
+            upgrade_admin_three,
+            fee_wallet,
+            xlm,
+        )
+    });
+
+    assert_eq!(result, Err(Error::Unauthorized));
 }
 
 #[test]
@@ -289,6 +357,69 @@ fn test_update_prompt_price_appends_history_and_emits_event() {
     assert_eq!(third.previous_price, 9_000);
     assert_eq!(third.new_price, 7_500);
     assert_eq!(third.seq, 3);
+}
+
+#[test]
+fn test_create_prompt_emits_prompt_created_event() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+    let before = env.events().all().len();
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Event Prompt",
+        7_500,
+        &context.xlm,
+    );
+    let after = env.events().all().len();
+
+    assert!(
+        after > before,
+        "expected PromptCreated event, got {} delta",
+        after - before
+    );
+
+    let last = env.events().all().get(after - 1).unwrap();
+    assert_eq!(last.topic, String::from_str(&env, "PromptCreated"));
+}
+
+#[test]
+fn test_buy_prompt_emits_prompt_purchased_event() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let price: i128 = 15_000;
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Purchase Event Prompt",
+        price,
+        &context.xlm,
+    );
+
+    fund_buyer(&xlm_client, &buyer, &context.contract, price);
+
+    let before = env.events().all().len();
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
+    let after = env.events().all().len();
+
+    assert!(
+        after > before,
+        "expected PromptPurchased event, got {} delta",
+        after - before
+    );
+
+    let last = env.events().all().get(after - 1).unwrap();
+    assert_eq!(last.topic, String::from_str(&env, "PromptPurchased"));
 }
 
 #[test]
@@ -1015,14 +1146,14 @@ fn test_set_fee_percentage_above_max_rejected() {
     let client = PromptHashContractClient::new(&env, &context.contract);
 
     // #41: 2,000 bps (20%) is a hard ceiling; anything above must be rejected.
-    let result = client.try_set_fee_percentage(&2_001);
+    let result = client.try_set_fee_percentage(&2_001, &context.admin, &context.admin_two);
     match result {
         Err(Ok(Error::FeeExceedsMaximum)) => {}
         other => panic!("expected FeeExceedsMaximum, got {:?}", other),
     }
 
     // The boundary itself must still be accepted.
-    client.set_fee_percentage(&2_000);
+    client.set_fee_percentage(&2_000, &context.admin, &context.admin_two);
     assert_eq!(client.get_fee_percentage(), 2_000);
 }
 
@@ -1068,6 +1199,52 @@ fn test_sensitive_admin_functions_reject_duplicate_or_unknown_approvers() {
         ),
     }
     assert_eq!(client.get_fee_percentage(), 500);
+}
+
+#[test]
+fn test_config_admins_cannot_authorize_contract_upgrade() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
+    let result = client.try_propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    match result {
+        Err(Ok(Error::Unauthorized)) => {}
+        other => panic!("expected Unauthorized for config-admin upgrade, got {:?}", other),
+    }
+    assert_eq!(client.get_pending_upgrade(), None);
+}
+
+#[test]
+fn test_upgrade_admins_cannot_change_fee_configuration() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let replacement_wallet = Address::generate(&env);
+
+    let fee_result = client.try_set_fee_percentage(
+        &1_000,
+        &context.upgrade_admin,
+        &context.upgrade_admin_two,
+    );
+    match fee_result {
+        Err(Ok(Error::Unauthorized)) => {}
+        other => panic!("expected Unauthorized for upgrade-admin fee change, got {:?}", other),
+    }
+
+    let wallet_result = client.try_set_fee_wallet(
+        &replacement_wallet,
+        &context.upgrade_admin,
+        &context.upgrade_admin_two,
+    );
+    match wallet_result {
+        Err(Ok(Error::Unauthorized)) => {}
+        other => panic!("expected Unauthorized for upgrade-admin wallet change, got {:?}", other),
+    }
+
+    assert_eq!(client.get_fee_percentage(), 500);
+    assert_eq!(client.get_fee_wallet(), Some(context.fee_wallet));
 }
 
 #[test]
@@ -1677,7 +1854,7 @@ fn test_read_only_methods_work_when_paused() {
     let prompt = client.get_prompt(&prompt_id);
     assert_eq!(prompt.id, prompt_id);
 
-    let all = client.get_all_prompts();
+    let all = client.get_all_prompts(&0, &100).0;
     assert_eq!(all.len(), 1);
 
     assert!(client.has_access(&creator, &prompt_id));
@@ -2388,12 +2565,12 @@ fn test_expired_listing_excluded_from_get_all_prompts() {
     let persistent = create_prompt(&env, &client, &creator, "Persistent", 5_000, &context.xlm);
 
     // Both visible before expiry
-    assert_eq!(client.get_all_prompts().len(), 2);
+    assert_eq!(client.get_all_prompts(&0, &100).0.len(), 2);
 
     // Advance time past the first prompt's expiry
     env.ledger().with_mut(|l| l.timestamp = 3_000);
 
-    let visible = client.get_all_prompts();
+    let visible = client.get_all_prompts(&0, &100).0;
     assert_eq!(visible.len(), 1);
     assert_eq!(visible.get(0).unwrap().id, persistent);
 }
@@ -6062,14 +6239,15 @@ fn test_upgrade_propose_requires_two_distinct_admins() {
 
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
     // Same admin used for both approver slots must be rejected.
-    let result = client.try_propose_upgrade(&wasm_hash, &context.admin, &context.admin);
+    let result =
+        client.try_propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin);
     match result {
         Err(Ok(Error::Unauthorized)) => {}
         other => panic!("expected Unauthorized for same-admin propose_upgrade, got {:?}", other),
     }
     // One admin + one stranger must be rejected too.
     let stranger = Address::generate(&env);
-    let result = client.try_propose_upgrade(&wasm_hash, &context.admin, &stranger);
+    let result = client.try_propose_upgrade(&wasm_hash, &context.upgrade_admin, &stranger);
     match result {
         Err(Ok(Error::Unauthorized)) => {}
         other => panic!("expected Unauthorized for mixed-admin propose_upgrade, got {:?}", other),
@@ -6084,7 +6262,11 @@ fn test_upgrade_rejects_invalid_implementation() {
 
     // A zero WASM hash is never a valid implementation.
     let zero_hash = BytesN::from_array(&env, &[0u8; 32]);
-    let result = client.try_propose_upgrade(&zero_hash, &context.admin, &context.admin_two);
+    let result = client.try_propose_upgrade(
+        &zero_hash,
+        &context.upgrade_admin,
+        &context.upgrade_admin_two,
+    );
     match result {
         Err(Ok(Error::InvalidImplementation)) => {}
         other => panic!("expected InvalidImplementation for zero wasm hash, got {:?}", other),
@@ -6098,12 +6280,16 @@ fn test_upgrade_propose_twice_rejected() {
     let client = PromptHashContractClient::new(&env, &context.contract);
 
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    client.propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin_two);
     assert_eq!(client.get_pending_upgrade(), Some(wasm_hash));
 
     // A second proposal while one is pending must be rejected.
     let other_hash = BytesN::from_array(&env, &[2u8; 32]);
-    let result = client.try_propose_upgrade(&other_hash, &context.admin, &context.admin_two);
+    let result = client.try_propose_upgrade(
+        &other_hash,
+        &context.upgrade_admin,
+        &context.upgrade_admin_two,
+    );
     match result {
         Err(Ok(Error::UpgradeAlreadyProposed)) => {}
         other => panic!("expected UpgradeAlreadyProposed for duplicate proposal, got {:?}", other),
@@ -6116,7 +6302,7 @@ fn test_upgrade_confirm_without_proposal_rejected() {
     let context = setup(&env);
     let client = PromptHashContractClient::new(&env, &context.contract);
 
-    let result = client.try_confirm_upgrade(&context.admin, &context.admin_two);
+    let result = client.try_confirm_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
     match result {
         Err(Ok(Error::UpgradeNotProposed)) => {}
         other => panic!("expected UpgradeNotProposed when nothing is proposed, got {:?}", other),
@@ -6131,11 +6317,11 @@ fn test_upgrade_confirm_before_cooldown_rejected() {
 
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000);
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    client.propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin_two);
 
     // Confirm too early, within the timelock window.
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000 + UPGRADE_COOLDOWN - 1);
-    let result = client.try_confirm_upgrade(&context.admin, &context.admin_two);
+    let result = client.try_confirm_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
     match result {
         Err(Ok(Error::UpgradeCooldownNotElapsed)) => {}
         other => panic!("expected UpgradeCooldownNotElapsed, got {:?}", other),
@@ -6149,14 +6335,14 @@ fn test_upgrade_cancel_clears_proposal() {
     let client = PromptHashContractClient::new(&env, &context.contract);
 
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    client.propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin_two);
     assert_eq!(client.get_pending_upgrade(), Some(wasm_hash));
 
-    client.cancel_upgrade(&context.admin, &context.admin_two);
+    client.cancel_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
     assert_eq!(client.get_pending_upgrade(), None);
 
     // After cancellation, confirming must fail.
-    let result = client.try_confirm_upgrade(&context.admin, &context.admin_two);
+    let result = client.try_confirm_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
     match result {
         Err(Ok(Error::UpgradeNotProposed)) => {}
         other => panic!("expected UpgradeNotProposed after cancel, got {:?}", other),
@@ -6171,12 +6357,12 @@ fn test_upgrade_propose_confirm_success() {
 
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000);
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    client.propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin_two);
     assert_eq!(client.get_pending_upgrade(), Some(wasm_hash));
 
     // Wait out the timelock, then confirm.
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000 + UPGRADE_COOLDOWN + 1);
-    client.confirm_upgrade(&context.admin, &context.admin_two);
+    client.confirm_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
     assert_eq!(client.get_pending_upgrade(), None);
 }
 
@@ -6199,9 +6385,9 @@ fn test_upgrade_preserves_license_holders() {
 
     // Propose and confirm an upgrade after the timelock.
     let wasm_hash = BytesN::from_array(&env, &[1u8; 32]);
-    client.propose_upgrade(&wasm_hash, &context.admin, &context.admin_two);
+    client.propose_upgrade(&wasm_hash, &context.upgrade_admin, &context.upgrade_admin_two);
     env.ledger().with_mut(|ledger| ledger.timestamp = 1_000 + UPGRADE_COOLDOWN + 1);
-    client.confirm_upgrade(&context.admin, &context.admin_two);
+    client.confirm_upgrade(&context.upgrade_admin, &context.upgrade_admin_two);
 
     // The license holder keeps access and the listing data is intact.
     assert!(client.has_access(&buyer, &prompt_id));
@@ -6628,3 +6814,593 @@ fn test_repeated_operations_preserve_idempotency() {
     assert!(!client.get_prompt(&prompt_id).active);
 }
 
+// ─── #195: Emergency Pause Tests ─────────────────────────────────────────
+
+#[test]
+fn test_emergency_pause_owner_can_pause() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    assert!(!client.is_paused());
+    client.emergency_pause(&context.admin);
+    assert!(client.is_paused());
+}
+
+#[test]
+fn test_emergency_pause_rejects_already_paused() {
+#[test]
+fn test_buy_returns_insufficient_balance_when_wallet_unfunded() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    client.emergency_pause(&context.admin);
+    assert!(client.is_paused());
+
+    let result = client.try_emergency_pause(&context.admin);
+    match result {
+        Err(Ok(Error::EmergencyAlreadyActive)) => {}
+        other => panic!("expected EmergencyAlreadyActive, got {:?}", other),
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Expensive", 10_000, &context.xlm);
+
+    // Buyer has zero balance — should get InsufficientBalance, not a raw token error.
+    let result = client.try_buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &10_000i128, &None::<Bytes>());
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_emergency_pause_blocks_operations() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    let creator = Address::generate(&env);
+
+    client.emergency_pause(&context.admin);
+    assert!(client.is_paused());
+
+    // create_prompt should fail when paused
+    let result = client.try_create_prompt(
+        &creator,
+        &String::from_str(&env, "https://example.com/img.png"),
+        &String::from_str(&env, "Test"),
+        &String::from_str(&env, "Software"),
+        &String::from_str(&env, "Preview"),
+        &String::from_str(&env, "cipher"),
+        &String::from_str(&env, "iv"),
+        &String::from_str(&env, "key"),
+        &hash(&env, 1),
+        &ListingConfig {
+            price: 1_000,
+            asset: context.xlm.clone(),
+            expires_at: 0,
+            splits: Vec::new(&env),
+        },
+    );
+    match result {
+        Err(Ok(Error::ContractIsPaused)) => {}
+        other => panic!("expected ContractIsPaused, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_emergency_pause_clears_pending_unpause() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    client.emergency_pause(&context.admin);
+    client.propose_unpause(&context.admin);
+    assert!(client.get_pending_unpause().is_some());
+
+    // Re-emergency-pause should clear any pending unpause
+    // (Need to unpause first so we can pause again)
+    env.ledger().set_timestamp(100_000_000);
+    client.confirm_unpause(&context.admin);
+    assert!(!client.is_paused());
+
+    client.emergency_pause(&context.admin);
+    client.propose_unpause(&context.admin);
+    assert!(client.get_pending_unpause().is_some());
+
+    // Now re-pause with emergency - should clear pending unpause
+    // But we need to unpause first...
+    // Actually the test above already verified propose_unpause works.
+    // Let's test that emergency_pause clears pending unpause
+    // by first pausing, proposing, then checking.
+    // We need to be paused AND have a pending unpause, then re-pause.
+    // But emergency_pause rejects if already paused, so this path
+    // is about the flow: pause -> propose unpause -> confirm -> re-pause.
+    // The clearing logic in emergency_pause is for future-proofing.
+}
+
+#[test]
+fn test_propose_unpause_requires_paused_state() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    // Contract starts unpaused
+    let result = client.try_propose_unpause(&context.admin);
+    match result {
+        Err(Ok(Error::ContractIsPaused)) => {}
+        other => panic!("expected ContractIsPaused (not paused), got {:?}", other),
+fn test_buy_supply_enforcement_is_atomic() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Supply Two", 1_000, &context.xlm);
+    client.set_prompt_max_supply(&creator, &prompt_id, &2u64);
+
+    fund_buyer(&xlm_client, &buyer, &context.contract, 100_000);
+
+    // Buy 1 of 2
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &1_000i128, &None::<Bytes>());
+    assert_eq!(client.get_prompt(&prompt_id).sales_count, 1);
+
+    // Buy 2 of 2
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &1_000i128, &None::<Bytes>());
+    assert_eq!(client.get_prompt(&prompt_id).sales_count, 2);
+
+    // Buy 3 — should fail with MaxSupplyReached
+    let result = client.try_buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &1_000i128, &None::<Bytes>());
+    match result {
+        Err(Ok(Error::MaxSupplyReached)) => {}
+        other => panic!("expected MaxSupplyReached, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_propose_and_confirm_unpause_with_cooldown() {
+fn test_buy_bundle_returns_insufficient_balance_when_wallet_unfunded() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    client.emergency_pause(&context.admin);
+    assert!(client.is_paused());
+
+    // Propose unpause
+    let propose_result = client.try_propose_unpause(&context.admin);
+    assert!(propose_result.is_ok());
+    assert!(client.get_pending_unpause().is_some());
+
+    // Try to confirm immediately - should fail (cooldown not elapsed)
+    let result = client.try_confirm_unpause(&context.admin);
+    match result {
+        Err(Ok(Error::UnpauseCooldownNotElapsed)) => {}
+        other => panic!("expected UnpauseCooldownNotElapsed, got {:?}", other),
+    }
+    assert!(client.is_paused());
+
+    // Advance time past the cooldown (24 hours = 86400 seconds)
+    env.ledger().set_timestamp(100_000_000 + 86_400);
+
+    // Now confirm should succeed
+    let confirm_result = client.try_confirm_unpause(&context.admin);
+    assert!(confirm_result.is_ok());
+    assert!(!client.is_paused());
+    assert!(client.get_pending_unpause().is_none());
+}
+
+#[test]
+fn test_confirm_unpause_requires_proposal() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    client.emergency_pause(&context.admin);
+
+    let result = client.try_confirm_unpause(&context.admin);
+    match result {
+        Err(Ok(Error::UnpauseNotProposed)) => {}
+        other => panic!("expected UnpauseNotProposed, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_cancel_unpause() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    client.emergency_pause(&context.admin);
+    client.propose_unpause(&context.admin);
+    assert!(client.get_pending_unpause().is_some());
+
+    client.cancel_unpause(&context.admin);
+    assert!(client.get_pending_unpause().is_none());
+    assert!(client.is_paused()); // Still paused
+
+    // Confirm should now fail since proposal was cancelled
+    let result = client.try_confirm_unpause(&context.admin);
+    match result {
+        Err(Ok(Error::UnpauseNotProposed)) => {}
+        other => panic!("expected UnpauseNotProposed, got {:?}", other),
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+
+    let pid = create_prompt(&env, &client, &creator, "Bundle P", 3_000, &context.xlm);
+    let mut ids = Vec::new(&env);
+    ids.push_back(pid);
+
+    let bundle_id = client.create_bundle(
+        &creator,
+        &String::from_str(&env, "Test Bundle"),
+        &String::from_str(&env, "desc"),
+        &String::from_str(&env, "https://img.example.com/test.png"),
+        &ids,
+        &10_000,
+        &context.xlm,
+    );
+
+    // Buyer has zero balance — should get InsufficientBalance
+    let result = client.try_buy_bundle(&buyer, &bundle_id, &10_000i128, &None::<Address>());
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance for bundle, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_buy_bundle_supply_enforcement_blocks_when_full() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let buyer_a = Address::generate(&env);
+    let buyer_b = Address::generate(&env);
+
+    let pid = create_prompt(&env, &client, &creator, "Supply Bundle", 3_000, &context.xlm);
+    client.set_prompt_max_supply(&creator, &pid, &1u64);
+
+    let mut ids = Vec::new(&env);
+    ids.push_back(pid);
+
+    let bundle_id = client.create_bundle(
+        &creator,
+        &String::from_str(&env, "Supply Bundle"),
+        &String::from_str(&env, "desc"),
+        &String::from_str(&env, "https://img.example.com/test.png"),
+        &ids,
+        &10_000,
+        &context.xlm,
+    );
+
+    fund_buyer(&xlm_client, &buyer_a, &context.contract, 100_000);
+    fund_buyer(&xlm_client, &buyer_b, &context.contract, 100_000);
+
+    // First buyer succeeds
+    client.buy_bundle(&buyer_a, &bundle_id, &10_000i128, &None::<Address>());
+    assert!(client.has_access(&buyer_a, &pid));
+
+    // Second buyer should hit MaxSupplyReached
+    let result = client.try_buy_bundle(&buyer_b, &bundle_id, &10_000i128, &None::<Address>());
+    match result {
+        Err(Ok(Error::MaxSupplyReached)) => {}
+        other => panic!("expected MaxSupplyReached for bundle second purchase, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_cancel_unpause_requires_proposal() {
+fn test_lease_returns_insufficient_balance_when_wallet_unfunded() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    client.emergency_pause(&context.admin);
+
+    let result = client.try_cancel_unpause(&context.admin);
+    match result {
+        Err(Ok(Error::UnpauseNotProposed)) => {}
+        other => panic!("expected UnpauseNotProposed, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_emergency_pause_multisig_still_works() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    // Original multisig pause should still work
+    set_pause(&client, &context, true);
+    assert!(client.is_paused());
+
+    // And unpause via multisig
+    set_pause(&client, &context, false);
+    assert!(!client.is_paused());
+}
+
+#[test]
+fn test_emergency_pause_get_pending_unpause_none_when_no_proposal() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+
+    assert!(client.get_pending_unpause().is_none());
+
+    client.emergency_pause(&context.admin);
+    assert!(client.get_pending_unpause().is_none());
+}
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let prompt_id = create_prompt(&env, &client, &creator, "Lease Prompt", 10_000, &context.xlm);
+
+    // Buyer has zero balance — should get InsufficientBalance
+    let result = client.try_lease_prompt(&buyer, &prompt_id, &3600u64);
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance for lease, got {:?}", other),
+    }
+}
+
+
+#[test]
+fn test_price_bounds() {
+    let env = Env::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    
+    let creator = Address::generate(&env);
+    
+    // Test setting price bounds
+    let min_price = Some(10_000);
+    let max_price = Some(500_000);
+    client.set_price_bounds(&context.admin, &context.admin_two, &min_price, &max_price);
+    
+    let bounds = client.get_price_bounds();
+    assert_eq!(bounds, (min_price, max_price));
+    
+    // Try to create prompt below min price - should fail
+    let title = String::from_str(&env, "Title");
+    let category = String::from_str(&env, "Category");
+    let preview = String::from_str(&env, "Preview");
+    let enc_prompt = String::from_str(&env, "Encrypted");
+    let iv = String::from_str(&env, "IV");
+    let wrapped_key = String::from_str(&env, "WrappedKey");
+    let image_url = String::from_str(&env, "https://example.com/image.png");
+    
+    let mut config = ListingConfig {
+        price: 5_000,
+        asset: context.xlm.clone(),
+        splits: Vec::new(&env),
+        expires_at: 0,
+    };
+    
+    let result = client.try_create_prompt(
+        &creator,
+        &image_url,
+        &title,
+        &category,
+        &preview,
+        &enc_prompt,
+        &iv,
+        &wrapped_key,
+        &BytesN::from_array(&env, &[0; 32]),
+        &config,
+    );
+    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    
+    // Try to create prompt above max price - should fail
+    config.price = 600_000;
+    let result = client.try_create_prompt(
+        &creator,
+        &image_url,
+        &title,
+        &category,
+        &preview,
+        &enc_prompt,
+        &iv,
+        &wrapped_key,
+        &BytesN::from_array(&env, &[0; 32]),
+        &config,
+    );
+    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    
+    // Try to create prompt within bounds - should succeed
+    config.price = 100_000;
+    let prompt_id = client.create_prompt(
+        &creator,
+        &image_url,
+        &title,
+        &category,
+        &preview,
+        &enc_prompt,
+        &iv,
+        &wrapped_key,
+        &BytesN::from_array(&env, &[0; 32]),
+        &config,
+    );
+    
+    // Try to update prompt above max price - should fail
+    let result = client.try_update_prompt_price(&creator, &prompt_id, &600_000);
+    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    
+    // Try to update prompt below min price - should fail
+    let result = client.try_update_prompt_price(&creator, &prompt_id, &5_000);
+    assert_eq!(result, Err(Ok(Error::InvalidPrice)));
+    
+    // Try to update prompt within bounds - should succeed
+    client.update_prompt_price(&creator, &prompt_id, &200_000);
+}
+
+#[test]
+fn test_pagination_out_of_bounds() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    
+    // start_index 100 on an empty ledger
+    let (prompts, count) = client.get_all_prompts(&100, &10);
+    assert_eq!(prompts.len(), 0);
+    assert_eq!(count, 0);
+}
+
+#[test]
+fn test_pagination_zero_limit() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    
+    let creator = soroban_sdk::Address::generate(&env);
+    create_prompt(&env, &client, &creator, "Test", 5_000, &context.xlm);
+    
+    // 1 item exists, limit is 0
+    let (prompts, count) = client.get_all_prompts(&0, &0);
+    assert_eq!(prompts.len(), 0);
+    assert_eq!(count, 1);
+}
+
+// ─── #404: fee routing edge cases in buy_prompt ────────────────────────────
+
+#[test]
+fn test_buy_prompt_zero_fee_wallet_routes_full_amount_to_seller() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    set_fee_percentage(&client, &context, 0);
+
+    let creator = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let price: i128 = 10_000;
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Zero Fee Wallet Prompt",
+        price,
+        &context.xlm,
+    );
+
+    fund_buyer(&xlm_client, &buyer, &context.contract, price);
+
+    let seller_start = xlm_client.balance(&creator);
+    let fee_start = xlm_client.balance(&context.fee_wallet);
+
+    client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
+
+    // With a zero fee, the seller receives the full payment and the fee
+    // wallet balance is untouched.
+    assert_eq!(xlm_client.balance(&creator), seller_start + price);
+    assert_eq!(xlm_client.balance(&context.fee_wallet), fee_start);
+    assert!(client.has_access(&buyer, &prompt_id));
+    assert_eq!(client.get_prompt(&prompt_id).sales_count, 1);
+}
+
+#[test]
+fn test_buy_prompt_fee_rounding_remainder_preserves_total() {
+    for price in [1i128, 19i128, 101i128] {
+        let env: Env = Default::default();
+        let context = setup(&env);
+        let client = PromptHashContractClient::new(&env, &context.contract);
+        let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+        let creator = Address::generate(&env);
+        let buyer = Address::generate(&env);
+        let prompt_id = create_prompt(
+            &env,
+            &client,
+            &creator,
+            "Rounding Prompt",
+            price,
+            &context.xlm,
+        );
+
+        fund_buyer(&xlm_client, &buyer, &context.contract, price);
+
+        let seller_start = xlm_client.balance(&creator);
+        let fee_start = xlm_client.balance(&context.fee_wallet);
+
+        client.buy_prompt(&buyer, &prompt_id, &None::<Bytes>, &price, &None::<Bytes>);
+
+        // Default fee is 500 bps; integer division truncates and the seller
+        // keeps the remainder so no stroops are created or destroyed.
+        let expected_fee = price * 500 / 10_000;
+        let expected_seller = price - expected_fee;
+        let seller_delta = xlm_client.balance(&creator) - seller_start;
+        let fee_delta = xlm_client.balance(&context.fee_wallet) - fee_start;
+
+        assert_eq!(fee_delta, expected_fee);
+        assert_eq!(seller_delta, expected_seller);
+        assert_eq!(seller_delta + fee_delta, price);
+        assert!(client.has_access(&buyer, &prompt_id));
+    }
+}
+
+#[test]
+fn test_buy_prompt_insufficient_balance_leaves_state_unchanged() {
+    let env: Env = Default::default();
+    let context = setup(&env);
+    let client = PromptHashContractClient::new(&env, &context.contract);
+    let xlm_client = token::StellarAssetClient::new(&env, &context.xlm);
+
+    let creator = Address::generate(&env);
+    let price: i128 = 10_000;
+    let prompt_id = create_prompt(
+        &env,
+        &client,
+        &creator,
+        "Insufficient Balance Prompt",
+        price,
+        &context.xlm,
+    );
+
+    // Partially funded buyer: balance is one stroop short of the payment.
+    let short_buyer = Address::generate(&env);
+    fund_buyer(&xlm_client, &short_buyer, &context.contract, price - 1);
+    let seller_start = xlm_client.balance(&creator);
+    let fee_start = xlm_client.balance(&context.fee_wallet);
+
+    let result = client.try_buy_prompt(
+        &short_buyer,
+        &prompt_id,
+        &None::<Bytes>,
+        &price,
+        &None::<Bytes>,
+    );
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance, got {:?}", other),
+    }
+
+    assert!(!client.has_access(&short_buyer, &prompt_id));
+    assert_eq!(client.get_prompt(&prompt_id).sales_count, 0);
+    assert_eq!(xlm_client.balance(&creator), seller_start);
+    assert_eq!(xlm_client.balance(&context.fee_wallet), fee_start);
+
+    // Unfunded buyer: zero balance must fail the same way without side effects.
+    let empty_buyer = Address::generate(&env);
+    let result = client.try_buy_prompt(
+        &empty_buyer,
+        &prompt_id,
+        &None::<Bytes>,
+        &price,
+        &None::<Bytes>,
+    );
+    match result {
+        Err(Ok(Error::InsufficientBalance)) => {}
+        other => panic!("expected InsufficientBalance, got {:?}", other),
+    }
+
+    assert!(!client.has_access(&empty_buyer, &prompt_id));
+    assert_eq!(client.get_prompt(&prompt_id).sales_count, 0);
+    assert_eq!(xlm_client.balance(&creator), seller_start);
+    assert_eq!(xlm_client.balance(&context.fee_wallet), fee_start);
+}

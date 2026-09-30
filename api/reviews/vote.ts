@@ -1,4 +1,9 @@
-import { findReview, updateReview } from "./data";
+import {
+  findReview,
+  HELPFUL_VOTE_ACTIVITY_RETENTION_MS,
+  hasHelpfulVoteManipulationAlert,
+  updateReview,
+} from "./data";
 import { negotiateVersion } from "../../src/lib/api/versionGuard";
 import { withVersion } from "../../src/lib/api/payloadVersion";
 import { apiError, ErrorCode } from "../../src/lib/api/errorCodes";
@@ -52,21 +57,36 @@ async function handler(req: any, res: any) {
       });
 
       res.status(200).json(
-        withVersion({ voted: false, helpfulVotes: updatedReview?.helpfulVotes ?? 0, message: "Vote removed" }, version),
+        withVersion({
+          voted: false,
+          helpfulVotes: updatedReview?.helpfulVotes ?? 0,
+          helpfulVoteAlert: updatedReview ? hasHelpfulVoteManipulationAlert(updatedReview) : false,
+          message: "Vote removed",
+        }, version),
       );
       return;
     }
 
+    const now = Date.now();
+    const helpfulVoteActivity = (review.helpfulVoteActivity ?? [])
+      .filter((activity) => now - activity.votedAt <= HELPFUL_VOTE_ACTIVITY_RETENTION_MS);
+    helpfulVoteActivity.push({ voterAddress: normalizedVoter, votedAt: now });
     const updatedVoters = [...review.voters, userAddress];
     const updatedReview = updateReview(promptId, reviewId, {
       voters: updatedVoters,
       helpfulVotes: updatedVoters.length,
+      helpfulVoteActivity,
     });
 
     console.log(`✓ Vote recorded for review ${reviewId} by ${userAddress.slice(0, 8)}...`);
 
     res.status(200).json(
-      withVersion({ voted: true, helpfulVotes: updatedReview?.helpfulVotes ?? 0, message: "Vote recorded" }, version),
+      withVersion({
+        voted: true,
+        helpfulVotes: updatedReview?.helpfulVotes ?? 0,
+        helpfulVoteAlert: updatedReview ? hasHelpfulVoteManipulationAlert(updatedReview, now) : false,
+        message: "Vote recorded",
+      }, version),
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to record vote";

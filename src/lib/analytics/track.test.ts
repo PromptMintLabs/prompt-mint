@@ -82,7 +82,6 @@ describe("trackEvent", () => {
   });
 
   it("never sends a raw wallet address in the payload", () => {
-    // @ts-expect-error intentionally passing a malformed payload to prove it is dropped
     trackEvent("wallet_connected", { walletHash: "GRAWADDRESS1234567890ABCDEFGH1234567890ABCDEFGH1234567890" });
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -95,7 +94,6 @@ describe("trackEvent", () => {
   });
 
   it("drops an invalid payload instead of sending it", () => {
-    // @ts-expect-error intentionally invalid payload for prompt_purchase_failed
     trackEvent("prompt_purchase_failed", { reasonCode: "this is definitely not a short code" });
     expect(fetchMock).not.toHaveBeenCalled();
   });

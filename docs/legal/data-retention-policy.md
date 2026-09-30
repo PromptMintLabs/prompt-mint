@@ -19,6 +19,9 @@ controlled entirely by the contract and is out of scope for this policy.
 | Audit logs | MongoDB `AuditLog` | Off-chain, operational | actor, action, timestamp |
 | Analytics events / rollups | MongoDB `AnalyticsEvent`, `AnalyticsRollup` | Off-chain, aggregated/operational | event type, wallet (where applicable), timestamp |
 | API keys | MongoDB `ApiKey` | Off-chain, credential | hashed key, owner wallet, scopes |
+| Reviews & seller responses | Storage / `StoredReview` | Off-chain, feedback | prompt id, author wallet, rating, text, seller response |
+| Review edit audit records | MongoDB `ReviewEditAuditLog` | Off-chain, audit trail | prompt id, review id, editor wallet, prior text |
+| Moderation appeals & evidence | MongoDB `Appeal` | Off-chain, governance/dispute | review id, appellant wallet, statement, attachments |
 | Client-side history (transaction history, recently viewed, search history, favorites, bookmarks, cart, theme, currency) | Browser `localStorage`, scoped per wallet address | Local-only, never transmitted to the server | see `src/lib/history/*`, `src/lib/search/searchHistory.ts`, `src/lib/favorites/*`, `src/lib/bookmarks/*` |
 
 Prompt Mint does not collect names, emails, physical addresses, or payment
@@ -31,13 +34,17 @@ system.
 | --- | --- | --- |
 | On-chain marketplace state | Indefinite | Owned by the Soroban contract; required for `has_access` checks and is outside any centralized deletion mechanism. |
 | Purchase / order / marketplace-transaction records | Indefinite, unless the account is deleted (see §3) | Mirrors on-chain events; needed for buyer/creator transaction history, dispute resolution, and to avoid breaking access-entitlement lookups. |
-| User profile & notification preferences | Until the user requests deletion, or 24 months of inactivity | Personal, off-chain, safe to remove without affecting marketplace access. |
-| Notifications | Until the user requests deletion, or 90 days after creation (auto-pruned) | Transient, purely informational. |
+| User profile, digest email & notification preferences | Until the user requests deletion, or 24 months of inactivity | Personal, off-chain, safe to remove without affecting marketplace access. |
+| Notifications and creator digest delivery records | Until the user requests deletion, or 90 days after creation (notifications auto-pruned) | Transient, informational; delivery records prevent duplicate weekly emails. |
 | Webhook subscriptions | Until removed by the owner or account deletion | Integration configuration; no purpose once the account is gone. |
 | Moderation reports & votes | Indefinite | Governance/audit trail; needed to prevent abuse of the reporting and voting systems even after an account is deleted. |
 | Audit logs | 12 months, then archived/rotated | Operational security requirement; see `docs/security/`. |
 | Analytics events | 12 months raw, rollups retained longer in aggregate | Rollups are aggregated and not personally identifying once summarized. |
 | API keys | Until revoked or account deletion | Credential; revoked keys are retained in hashed/inactive form for audit purposes only. |
+| Reviews & seller responses | Indefinite while active; removed reviews retained 90 days after moderation action for appeals, then auto-pruned | Review feedback informs buyers; removed reviews kept for appeal window then cleaned up (#725). Reviews with active appeals are preserved. |
+| Review edit audit logs (`ReviewEditAuditLog`) | 12 months, then auto-pruned | Mirrors operational audit log retention window (#725). |
+| Helpful vote burst activity | 24 hours, then auto-pruned | Transient sliding-window tracking for vote burst manipulation alerts (#728, #725). |
+| Resolved appeal attachments | 180 days, then attachments pruned | Reclaims storage from uploaded evidence while preserving appeal resolution records and history (#725). |
 | Client-side (`localStorage`) history | Until the user clears their browser storage or uses the in-app "Clear history" controls | Never sent to the server; entirely under the user's control. |
 | Data export bundles (`/api/users/export`) | 1 hour (cached, then auto-expires) | Export downloads are single-use and short-lived by design (see `exportController.ts`). |
 
@@ -54,9 +61,9 @@ A wallet owner can request deletion of their off-chain profile data:
    calls `POST /api/users/delete` with `{ address, token, signature }`.
 3. On a valid signature, the server deletes:
    - the `User` profile document (`username`, `rating`,
-     `notificationPreferences`),
+     `email`, `notificationPreferences`),
    - the wallet's `WebhookSubscription` documents,
-   - the wallet's `Notification` documents.
+   - the wallet's `Notification` and `CreatorDigestDelivery` documents.
 
 See `server/src/controllers/exportController.ts`
 (`GenerateDeletionChallenge`, `RequestAccountDeletion`) and

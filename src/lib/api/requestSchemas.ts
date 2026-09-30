@@ -21,12 +21,34 @@ const CATEGORY_ALIASES: Record<string, string> = {
   other: "Other",
 };
 
+/**
+ * Off-chain listing field caps, measured in **UTF-8 bytes** so they match the
+ * on-chain PromptHash contract's `MAX_*_LEN` checks in
+ * `contracts/prompt-hash/src/contract.rs` (#410):
+ *
+ * - `image`    -> `MAX_IMAGE_URL_LEN` (512)
+ * - `title`    -> `MAX_TITLE_LEN` (120)
+ * - `category` -> `MAX_CATEGORY_LEN` (40)
+ *
+ * `content` is the pre-encryption prompt text, so it is intentionally larger
+ * than the contract's `MAX_ENCRYPTED_PROMPT_LEN` (4096); it stays bounded so
+ * the per-creator storage quota (Issue #198) remains meaningful.
+ */
 export const LISTING_FIELD_LIMITS = {
   image: 512,
-  title: 100,
+  title: 120,
   content: 50_000,
   category: 40,
 } as const;
+
+const textEncoder = new TextEncoder();
+
+/**
+ * UTF-8 byte length, matching `soroban_sdk::String::len()` on-chain.
+ * `String.prototype.length` counts UTF-16 code units, so emoji-heavy input
+ * used to pass this validator and then be rejected by `create_prompt` (#410).
+ */
+const utf8Length = (value: string) => textEncoder.encode(value).length;
 
 function isStellarPublicKey(value: string): boolean {
   if (value.length !== 56 || !value.startsWith("G")) {
@@ -61,6 +83,7 @@ export const ChallengeRequestBody = z
   .object({
     address: stellarPublicKeySchema,
     promptId: promptIdSchema,
+    captchaToken: z.string().trim().optional(),
   })
   .strict();
 
@@ -72,6 +95,7 @@ export const UnlockRequestBody = z
     promptId: promptIdSchema,
     address: stellarPublicKeySchema,
     signedMessage: z.string().trim().min(1, "signedMessage is required."),
+    captchaToken: z.string().trim().optional(),
   })
   .strict();
 
@@ -157,8 +181,8 @@ export function validateListingMetadata(input: unknown): {
 
   if (!normalized.image) {
     errors.image = "Image URL is required.";
-  } else if (normalized.image.length > LISTING_FIELD_LIMITS.image) {
-    errors.image = `Image URL must be ${LISTING_FIELD_LIMITS.image} characters or fewer.`;
+  } else if (utf8Length(normalized.image) > LISTING_FIELD_LIMITS.image) {
+    errors.image = `Image URL must be ${LISTING_FIELD_LIMITS.image} bytes or fewer.`;
   } else if (!/^https?:\/\/.+/i.test(normalized.image)) {
     errors.image = "Image URL must start with http:// or https://.";
   }
@@ -167,22 +191,22 @@ export function validateListingMetadata(input: unknown): {
     errors.title = "Title is required.";
   } else if (normalized.title.length < 3) {
     errors.title = "Title must be at least 3 characters long.";
-  } else if (normalized.title.length > LISTING_FIELD_LIMITS.title) {
-    errors.title = `Title must be ${LISTING_FIELD_LIMITS.title} characters or fewer.`;
+  } else if (utf8Length(normalized.title) > LISTING_FIELD_LIMITS.title) {
+    errors.title = `Title must be ${LISTING_FIELD_LIMITS.title} bytes or fewer.`;
   }
 
   if (!normalized.content) {
     errors.content = "Content is required.";
   } else if (normalized.content.length < 10) {
     errors.content = "Content must be at least 10 characters long.";
-  } else if (normalized.content.length > LISTING_FIELD_LIMITS.content) {
-    errors.content = `Content must be ${LISTING_FIELD_LIMITS.content} characters or fewer.`;
+  } else if (utf8Length(normalized.content) > LISTING_FIELD_LIMITS.content) {
+    errors.content = `Content must be ${LISTING_FIELD_LIMITS.content} bytes or fewer.`;
   }
 
   if (!normalized.category) {
     errors.category = "Category is required.";
-  } else if (normalized.category.length > LISTING_FIELD_LIMITS.category) {
-    errors.category = `Category must be ${LISTING_FIELD_LIMITS.category} characters or fewer.`;
+  } else if (utf8Length(normalized.category) > LISTING_FIELD_LIMITS.category) {
+    errors.category = `Category must be ${LISTING_FIELD_LIMITS.category} bytes or fewer.`;
   }
 
   if (!Number.isFinite(normalized.price)) {

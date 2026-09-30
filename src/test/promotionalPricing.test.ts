@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { usePromotionalPrice } from '../hooks/usePromotionalPrice';
 import { PromptHashClient } from '../lib/stellar/promptHashClient';
@@ -145,7 +145,6 @@ describe('Promotional Pricing', () => {
     it('validates start time is in the future', () => {
       const now = Math.floor(Date.now() / 1000);
       const startTime = now - 3600; // In the past
-      const endTime = now + 3600;
 
       expect(startTime > now).toBe(false);
     });
@@ -218,7 +217,7 @@ describe('Promotional Pricing', () => {
       const creator = 'GCREATOR123';
       const caller = 'GOTHER1234567890ABC';
 
-      expect(creator === caller).toBe(false);
+      expect((creator as string) === (caller as string)).toBe(false);
     });
 
     it('requires creator to cancel promotion', () => {
@@ -234,7 +233,7 @@ describe('Promotional Pricing', () => {
       const initialPrice = 10000000n;
       const currentPrice = 12000000n;
 
-      expect(initialPrice !== currentPrice).toBe(true);
+      expect((initialPrice as bigint) !== (currentPrice as bigint)).toBe(true);
     });
 
     it('allows checkout when price matches', () => {

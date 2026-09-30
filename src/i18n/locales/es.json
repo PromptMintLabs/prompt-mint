@@ -48,7 +48,18 @@
       "invalid_address": "Dirección de billetera inválida.",
       "review_text_short": "La reseña debe tener al menos 10 caracteres.",
       "review_text_long": "La reseña no debe exceder 500 caracteres.",
-      "response_text_long": "La respuesta no debe exceder 1000 caracteres."
+      "response_text_long": "La respuesta no debe exceder 1000 caracteres.",
+      "title_required": "El título es obligatorio.",
+      "title_min_length": "El título debe tener al menos 3 caracteres.",
+      "price_must_be_positive": "El precio debe ser mayor que 0.",
+      "price_required": "El precio es requerido.",
+      "image_url_invalid": "La URL de la imagen debe comenzar con http:// o https://.",
+      "image_url_required": "La URL de la imagen es requerida.",
+      "category_required": "La categoría es obligatoria.",
+      "preview_required": "El texto de vista previa es obligatorio.",
+      "preview_min_length": "El texto de vista previa debe tener al menos 10 caracteres.",
+      "prompt_required": "El contenido del prompt es obligatorio.",
+      "prompt_min_length": "El prompt debe tener al menos 10 caracteres."
     },
     "transaction": {
       "user_rejected": "Transacción rechazada por el usuario.",
@@ -82,5 +93,82 @@
   },
   "language": {
     "select": "Idioma"
+  },
+  "webhook_replay": {
+    "title": "Reproducción de eventos de webhook",
+    "subtitle": "Inspecciona los eventos de contrato que fallaron y vuelve a entregarlos a tu endpoint.",
+    "connect_wallet": "Conecta tu cartera Stellar para inspeccionar la cola de reproducción de tu webhook.",
+    "register_first": "Todavía no hay un webhook registrado para esta cartera. Registra uno desde tu perfil para empezar a recibir eventos.",
+    "loading": "Cargando la cola de reproducción...",
+    "empty": "Nada que reproducir. Todas las entregas de webhook han llegado.",
+    "refresh": "Actualizar",
+    "include_resolved": "Incluir eventos ya resueltos",
+    "acceptance_window": "Un envelope almacenado se reproduce con su marca de tiempo original, por lo que los receptores que siguen la guía de firmas rechazan todo lo que sea más antiguo que {{seconds}} segundos. Reproduce con una marca de tiempo nueva cuando aparezca esa advertencia.",
+    "admin_token_label": "Token de API de administrador",
+    "admin_token_placeholder": "ADMIN_API_TOKEN",
+    "admin_token_help": "Reproducir dispara una entrega saliente, así que el servidor lo protege con el token de administrador. El token se mantiene solo en memoria durante esta sesión y nunca se almacena.",
+    "admin_token_missing": "Introduce un token de administrador antes de reproducir.",
+    "summary": {
+      "pending": "Pendientes",
+      "replayable": "Reproducibles",
+      "stale": "Fuera de ventana",
+      "resolved": "Resueltos"
+    },
+    "row": {
+      "dead_lettered": "Entrega fallida el {{date}}",
+      "attempts": "{{count}} intentos de entrega",
+      "fingerprint": "Huella del payload",
+      "delivery_id": "ID de entrega",
+      "age": "Antigüedad",
+      "replay_count": "Reproducciones",
+      "last_replayed": "última el {{date}}",
+      "last_error": "Último error",
+      "status_code": "HTTP {{code}}",
+      "payload": "Payload almacenado",
+      "warnings_label": "Antes de reproducir",
+      "replay_verbatim": "Reproducir tal cual",
+      "replay_restamp": "Reproducir con marca de tiempo nueva"
+    },
+    "badge": {
+      "resolved": "Resuelto",
+      "stale": "Fuera de ventana"
+    },
+    "warning": {
+      "stale_event": "Este envelope es más antiguo que la ventana de aceptación de {{seconds}} segundos. Reproducirlo tal cual conserva la marca de tiempo antigua, así que un receptor que la aplique lo rechazará: usa una marca de tiempo nueva.",
+      "already_resolved": "Este evento ya se entregó correctamente, por lo que la reproducción está desactivada.",
+      "unparseable_timestamp": "La marca de tiempo almacenada es ilegible, así que no se puede comprobar su antigüedad.",
+      "subscription_missing": "La suscripción a la que pertenece este evento ya no existe. Vuelve a registrar tu webhook para recibirlo.",
+      "subscription_inactive": "Esta suscripción está en pausa, así que la reproducción fallará hasta que se reactive."
+    },
+    "result": {
+      "success": "Reproducción entregada. El receptor aceptó el evento.",
+      "failed": "La reproducción falló: {{error}}",
+      "unknown_error": "Error inesperado."
+    },
+    "preview": {
+      "title": "Vista previa del envelope",
+      "description": "Construye el cuerpo y las cabeceras exactas que vería un receptor, sin entregar nada a ninguna parte.",
+      "event_label": "Evento",
+      "build": "Generar vista previa",
+      "body": "Cuerpo de la petición",
+      "headers": "Cabeceras",
+      "copy": "Copiar cuerpo",
+      "copied": "Copiado",
+      "note": "Una vista previa siempre lleva un ID de entrega y una marca de tiempo nuevos. Reproducir una carta muerta reenvía el envelope almacenado, que es la razón por la que la cola informa de la antigüedad de cada evento."
+    },
+    "catalog": {
+      "title": "Catálogo de eventos",
+      "description": "Eventos a los que puede suscribirse un webhook. Es el mismo catálogo que aplica la API de registro, así que ambos no pueden divergir.",
+      "dispatched": "Enviado",
+      "undispatched": "Aún no se envía"
+    }
+  },
+  "number_format": {
+    "xlm_unit": "XLM",
+    "stroop_unit": "stroop",
+    "stroop_unit_plural": "stroops",
+    "stroops_per_xlm": "1 XLM = 10.000.000 stroops",
+    "price_label": "{{amount}} XLM",
+    "price_label_usd": "{{amount}} USD"
   }
 }

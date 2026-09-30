@@ -13,10 +13,10 @@ export function asyncRoute(fn: AsyncHandler) {
           const status = (error && (error as any).httpStatus) || 500;
           const code = (error && (error as any).code) || "INTERNAL_ERROR";
           const message = (error && (error as any).message) || String(error);
-          (res as Response).status(status).json({ message, code });
+          (res as Response).status(status).json({ error: message, code });
           return Promise.resolve();
         }
-      } catch (e) {
+      } catch {
         // fallthrough to rethrow
       }
       return Promise.reject(error);

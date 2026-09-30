@@ -5,6 +5,7 @@ All notable changes to PromptHash Stellar are documented in this file. This proj
 ## [Unreleased]
 
 ### Added
+- German (`de`) and Yoruba (`yo`) UI locales, plus a key-parity test covering every locale file
 - Security model and threat analysis documentation
 - Third-party integration guide with SDK examples
 - User-facing FAQ and knowledge base

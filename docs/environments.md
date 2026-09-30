@@ -39,6 +39,7 @@ yarn check:setup
 | `CHALLENGE_TOKEN_SECRET` | long random string | platform secret | Vercel env secret |
 | `UNLOCK_*` keys | base64 NaCl keypair | production unlock keys | preview keys |
 | `MONGODB_URI` | local MongoDB | Atlas / hosted URI | preview DA URI |
+| `MONGODB_URI` | local MongoDB | Atlas / hosted URI | preview DB URI |
 | `MODERATOR_ADDRESSES` | comma-separated moderator wallets | configured moderators | configured moderators |
 | `STELLAR_SCAFFOLD_ENV` | `development` | `staging` or `testing` | `staging` |
 

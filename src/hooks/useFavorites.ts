@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   listFavorites,
-  isFavorite as isFavStore,
   addFavorite as addStore,
   removeFavorite as removeStore,
   toggleFavorite as toggleStore,
   clearFavorites as clearStore,
-  favoriteCount,
   getFavoritesStorageKey,
 } from "@/lib/favorites/favorites";
 

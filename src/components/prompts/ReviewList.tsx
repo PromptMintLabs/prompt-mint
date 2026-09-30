@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { StarRating } from "./StarRating";
-import { User, ThumbsUp, MessageSquare, Pencil } from "lucide-react";
+import { User, ThumbsUp, MessageSquare, Pencil, AlertTriangle } from "lucide-react";
 import { ReviewClient, type Review } from "../../lib/reviews/reviewClient";
 import { Button } from "../ui/button";
 import { SkeletonAvatar, SkeletonText } from "../Skeleton";
+import { ReviewModerationBanner } from "./ReviewModerationBanner";
 
 const formatDistanceToNow = (date: Date, options?: { addSuffix?: boolean }) => {
   const now = Date.now();
@@ -152,7 +153,11 @@ export const ReviewList = ({
           {voteError}
         </div>
       )}
-      {reviews.map((review) => (
+      {reviews.map((review) => review.moderation?.status === "removed" ? (
+        <div key={review.id} className="rounded-xl border border-amber-300/20 bg-amber-300/[0.03] p-4">
+          <ReviewModerationBanner decision={review.moderation} reviewId={review.id} />
+        </div>
+      ) : (
         <div
           key={review.id}
           className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors"
@@ -184,9 +189,21 @@ export const ReviewList = ({
             <StarRating rating={review.rating} readonly size="sm" />
           </div>
 
+          {review.moderation && (
+            <ReviewModerationBanner decision={review.moderation} reviewId={review.id} />
+          )}
+
           <p className="text-sm text-slate-300 leading-relaxed mb-3">
             {review.text}
           </p>
+
+          {review.helpfulVoteAlert && currentUserAddress &&
+            (currentUserAddress.toLowerCase() === review.userAddress.toLowerCase() || isSeller(currentUserAddress)) && (
+              <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200" role="status">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Unusual helpful-vote activity detected. This count may be unreliable while it is reviewed.</span>
+              </div>
+            )}
 
           <div className="flex items-center gap-4">
             {currentUserAddress && currentUserAddress.toLowerCase() !== review.userAddress.toLowerCase() && promptId && (

@@ -16,7 +16,9 @@ export type AuditAction =
   | "auth_failure"
   | "admin_action"
   | "large_transaction"
-  | "webhook_delivery_failure";
+  | "webhook_delivery_failure"
+  | "secrets_rotated"
+  | "secrets_rotation_failed";
 
 export type AuditResult = "success" | "failure" | "blocked";
 
@@ -42,6 +44,8 @@ const auditLogSchema = new mongoose.Schema(
         "admin_action",
         "large_transaction",
         "webhook_delivery_failure",
+        "secrets_rotated",
+        "secrets_rotation_failed",
       ] as AuditAction[],
       index: true,
     },

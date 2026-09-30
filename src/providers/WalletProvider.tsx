@@ -70,12 +70,10 @@ const boundSignMessage = wallet.signMessage.bind(wallet);
 export const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
-  const [state, setState] = useState<Omit<WalletContextType, "connect" | "disconnect" | "reconnect" | "signTransaction" | "signMessage">>(initialState);
+  const [state, setState] = useState<Omit<WalletContextType, "connect" | "disconnect" | "reconnect" | "signTransaction" | "signMessage" | "autoLockSecondsLeft" | "extendSession">>(initialState);
   const isConnectingRef = useRef(false);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 3;
-  const queryClient = useQueryClient();
-  const previousAddressRef = useRef<string | undefined>(undefined);
 
   const [autoLockSecondsLeft, setAutoLockSecondsLeft] = useState<number | null>(
     null,

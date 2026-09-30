@@ -19,6 +19,7 @@ import {
   type NotificationVariant,
 } from "@/lib/notifications/store";
 import type { NotificationTransport } from "@/lib/notifications/transport";
+import { deliverPushOrFallback } from "@/lib/notifications/push";
 
 // Backwards-compatible aliases (existing imports depend on these names).
 export type NotificationType = NotificationVariant;
@@ -30,6 +31,10 @@ export interface NotifyEventInput {
   title?: string;
   /** Idempotency key so repeated transport deliveries do not duplicate. */
   dedupeKey?: string;
+  /** Optional click-through action URL (#749). */
+  link?: string;
+  /** Optional custom action link text (#749). */
+  linkText?: string;
 }
 
 export interface NotificationContextType {
@@ -39,12 +44,16 @@ export interface NotificationContextType {
     message: string,
     type?: NotificationType,
     title?: string,
+    link?: string,
+    linkText?: string,
   ) => void;
   /** Category-typed helper for product events (purchase/expiry/price/follower). */
   notifyEvent: (input: NotifyEventInput) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearNotifications: () => void;
+  /** Tracks click interaction on a notification record (#749). */
+  trackClick: (id: string, link?: string) => void;
 }
 
 const STORAGE_KEY = "prompt_mint_notifications_center_v1";
@@ -117,6 +126,10 @@ export const NotificationProvider: React.FC<{
     dispatch({ type: "CLEAR" });
   }, []);
 
+  const trackClick = useCallback((id: string, link?: string) => {
+    dispatch({ type: "TRACK_CLICK", id, link });
+  }, []);
+
   const pushToast = useCallback((item: NotificationRecord) => {
     setToasts((prev) => [...prev, item]);
     setTimeout(() => {
@@ -138,7 +151,13 @@ export const NotificationProvider: React.FC<{
   );
 
   const addNotification = useCallback(
-    (message: string, type: NotificationType = "primary", title?: string) => {
+    (
+      message: string,
+      type: NotificationType = "primary",
+      title?: string,
+      link?: string,
+      linkText?: string,
+    ) => {
       addRecord(
         {
           id: newId(),
@@ -148,6 +167,8 @@ export const NotificationProvider: React.FC<{
           isRead: false,
           createdAt: Date.now(),
           isVisible: true,
+          link,
+          linkText,
         },
         true,
       );
@@ -156,7 +177,7 @@ export const NotificationProvider: React.FC<{
   );
 
   const notifyEvent = useCallback(
-    ({ category, message, title, dedupeKey }: NotifyEventInput) => {
+    ({ category, message, title, dedupeKey, link, linkText }: NotifyEventInput) => {
       addRecord(
         {
           id: newId(),
@@ -168,6 +189,8 @@ export const NotificationProvider: React.FC<{
           isVisible: true,
           category,
           dedupeKey,
+          link,
+          linkText,
         },
         true,
       );
@@ -181,14 +204,20 @@ export const NotificationProvider: React.FC<{
   useEffect(() => {
     if (!transport) return;
     return transport.subscribe((incoming) => {
-      addRecordRef.current(
-        {
-          ...incoming,
-          isRead: incoming.isRead ?? false,
-          isVisible: false,
+      const record: NotificationRecord = {
+        ...incoming,
+        isRead: incoming.isRead ?? false,
+        isVisible: false,
+      };
+      addRecordRef.current(record, false);
+      // Push is best-effort (#751): when the browser cannot show one, the
+      // record is surfaced in-app instead so the notification is never lost.
+      // The store dedupes by id, so this cannot create a second entry.
+      void deliverPushOrFallback(record, {
+        onInAppFallback: (fallbackRecord) => {
+          addRecordRef.current(fallbackRecord, true);
         },
-        false,
-      );
+      });
     });
   }, [transport]);
 
@@ -201,6 +230,7 @@ export const NotificationProvider: React.FC<{
       markAsRead,
       markAllAsRead,
       clearNotifications,
+      trackClick,
     }),
     [
       notifications,
@@ -210,6 +240,7 @@ export const NotificationProvider: React.FC<{
       markAsRead,
       markAllAsRead,
       clearNotifications,
+      trackClick,
     ],
   );
 

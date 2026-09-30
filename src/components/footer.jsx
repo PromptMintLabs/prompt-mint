@@ -85,6 +85,14 @@ export function Footer() {
                   Terms of Service
                 </Link>
               </li>
+              <li>
+                <Link
+                  to="/review-policy"
+                  className="text-sm text-gray-400 hover:text-white"
+                >
+                  Review Content Policy
+                </Link>
+              </li>
             </ul>
           </div>
           <div>

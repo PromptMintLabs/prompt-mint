@@ -15,6 +15,7 @@ const validForm = {
   previewText: "Public preview text for buyers browsing the marketplace.",
   fullPrompt: "Private prompt body with enough content for validation.",
   priceXlm: "2.5",
+  classification: "general",
 };
 
 describe("validateListingForm", () => {
@@ -24,7 +25,7 @@ describe("validateListingForm", () => {
 
   it("blocks zero and invalid XLM prices", () => {
     expect(validateListingForm({ ...validForm, priceXlm: "0" }).priceXlm).toMatch(
-      /greater than zero/i,
+      /greater than 0/i,
     );
     expect(validateListingForm({ ...validForm, priceXlm: "2e3" }).priceXlm).toMatch(
       /scientific notation/i,
@@ -75,6 +76,26 @@ describe("validateListingForm", () => {
     expect(
       validateListingForm({ ...validForm, fullPrompt: "tiny" }).fullPrompt,
     ).toMatch(/at least 10 characters/i);
+  });
+
+  it("returns field-specific required messages", () => {
+    const result = validateListingForm({ ...validForm, title: "" });
+    expect(result.title).toBe("Title is required.");
+    expect(validateListingForm({ ...validForm, imageUrl: "" }).imageUrl).toBe(
+      "Image URL is required.",
+    );
+    expect(
+      validateListingForm({ ...validForm, priceXlm: "" }).priceXlm,
+    ).toBe("Price is required.");
+  });
+
+  it("returns specific messages for common validation failures", () => {
+    expect(
+      validateListingForm({ ...validForm, priceXlm: "0" }).priceXlm,
+    ).toBe("Price must be greater than 0.");
+    expect(
+      validateListingForm({ ...validForm, imageUrl: "not-a-url" }).imageUrl,
+    ).toBe("Image URL must start with http:// or https://.");
   });
 
   // #61 – the encrypted+base64 ciphertext is what MAX_ENCRYPTED_PROMPT_LEN
@@ -161,5 +182,37 @@ describe("buildListingChecklistItems", () => {
     });
 
     expect(items.some((item) => item.status === "warn")).toBe(true);
+  });
+
+  it("provides inline hints for each checklist item", () => {
+    const items = buildListingChecklistItems({
+      ...validForm,
+      title: "",
+      priceXlm: "0",
+      imageUrl: "",
+    });
+
+    const titleItem = items.find((i) => i.id === "title");
+    expect(titleItem?.hint).toBe("Title is required.");
+
+    const priceItem = items.find((i) => i.id === "priceXlm");
+    expect(priceItem?.hint).toBe("Price must be greater than 0.");
+
+    const imageItem = items.find((i) => i.id === "imageUrl");
+    expect(imageItem?.hint).toBe("Image URL is required.");
+  });
+
+  it("classifies empty classification as required", () => {
+    const result = validateListingForm({ ...validForm, classification: "" });
+    expect(result.classification).toBe("Content classification is required.");
+  });
+
+  it("returns the specific field message from validateListingField", () => {
+    expect(
+      validateListingField("title", { ...validFieldInput, title: "" }),
+    ).toBe("Title is required.");
+    expect(
+      validateListingField("priceXlm", { ...validFieldInput, priceXlm: "0" }),
+    ).toBe("Price must be greater than 0.");
   });
 });

@@ -13,7 +13,7 @@ describe("social share intent URLs", () => {
     it("builds a twitter/x intent with encoded text and url", () => {
       const result = buildTwitterShareUrl({ url: URL, text: TEXT });
       expect(result.startsWith("https://twitter.com/intent/tweet?")).toBe(true);
-      const params = new URL(result).searchParams;
+      const params = new globalThis.URL(result).searchParams;
       expect(params.get("url")).toBe(URL);
       expect(params.get("text")).toBe(TEXT);
     });
@@ -37,7 +37,7 @@ describe("social share intent URLs", () => {
     it("builds a telegram share url with url first then text", () => {
       const result = buildTelegramShareUrl({ url: URL, text: TEXT });
       expect(result.startsWith("https://t.me/share/url?")).toBe(true);
-      const params = new URL(result).searchParams;
+      const params = new globalThis.URL(result).searchParams;
       expect(params.get("url")).toBe(URL);
       expect(params.get("text")).toBe(TEXT);
     });

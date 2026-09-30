@@ -28,19 +28,31 @@ export const ErrorCode = {
   /** The challenge token is invalid (bad signature, wrong address/promptId). */
   CHALLENGE_INVALID: "CHALLENGE_INVALID",
 
+  /** The unlock challenge nonce was already consumed (signature replay). */
+  CHALLENGE_REPLAY: "CHALLENGE_REPLAY",
+
   /** The wallet signature does not match the challenge message. */
   INVALID_SIGNATURE: "INVALID_SIGNATURE",
 
   /** The wallet has not purchased access to this prompt. */
   ACCESS_NOT_PURCHASED: "ACCESS_NOT_PURCHASED",
 
-  // ── Rate limiting (429) ───────────────────────────────────────────────────
+  // ── Rate limiting & abuse prevention (4xx/429) ───────────────────────────
 
   /** Too many requests from this IP address. */
   RATE_LIMIT_IP: "RATE_LIMIT_IP",
 
   /** Too many requests from this wallet address. */
   RATE_LIMIT_WALLET: "RATE_LIMIT_WALLET",
+
+  /** Account is temporarily locked due to too many failed authentication attempts. */
+  ACCOUNT_LOCKED: "ACCOUNT_LOCKED",
+
+  /** CAPTCHA verification is required to complete this request. */
+  CAPTCHA_REQUIRED: "CAPTCHA_REQUIRED",
+
+  /** The provided CAPTCHA token is invalid or expired. */
+  CAPTCHA_INVALID: "CAPTCHA_INVALID",
 
   // ── Analytics errors (4xx) ────────────────────────────────────────────────
 
@@ -63,6 +75,12 @@ export const ErrorCode = {
 
   /** The version requested via Accept-Version is not supported by this server. */
   UNSUPPORTED_VERSION: "UNSUPPORTED_VERSION",
+
+  /** The encrypted payload exceeds the on-chain storage limit. */
+  PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
+
+  /** The buyer's wallet has insufficient balance for this purchase. */
+  WALLET_NOT_FUNDED: "WALLET_NOT_FUNDED",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -85,6 +103,10 @@ export interface ApiErrorResponse {
   code: ErrorCode;
   /** Unix ms timestamp of when the rate limit resets (only present on 429). */
   reset?: number;
+  /** Flag indicating CAPTCHA verification is required. */
+  captchaRequired?: boolean;
+  /** Unix ms timestamp when the account lock expires. */
+  lockedUntil?: number;
 }
 
 /**
@@ -116,10 +138,16 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   INVALID_INPUT: "Some of the information you entered isn't valid. Please review your entries and try again.",
   CHALLENGE_EXPIRED: "Your unlock session has expired for your security. Please restart the unlock flow to get a new one.",
   CHALLENGE_INVALID: "This unlock request is no longer valid. Please restart the unlock flow from the prompt page.",
+  CHALLENGE_REPLAY:
+    "This unlock signature was already used. Request a fresh challenge from the prompt page and sign again.",
   INVALID_SIGNATURE: "We couldn't verify your wallet signature. Please try signing the request again in your wallet.",
   ACCESS_NOT_PURCHASED: "You haven't purchased access to this prompt yet. Purchase it from the prompt page to unlock the content.",
   RATE_LIMIT_IP: "Too many requests from your network. Please wait a minute before trying again.",
   RATE_LIMIT_WALLET: "Too many unlock attempts for this wallet. Please wait a few minutes before trying again.",
+  ACCOUNT_LOCKED:
+    "Account is temporarily locked due to 5 consecutive failed authentication attempts. Please wait before trying again.",
+  CAPTCHA_REQUIRED: "Additional verification is required. Please complete the CAPTCHA and try again.",
+  CAPTCHA_INVALID: "CAPTCHA verification failed. Please try completing the CAPTCHA again.",
   UNKNOWN_EVENT: "This action could not be recorded because it isn't recognized. Please refresh the page and try again.",
   INVALID_EVENT_PAYLOAD: "This action could not be recorded due to a data mismatch. Please refresh the page and try again.",
   CONFIGURATION_ERROR:
@@ -129,4 +157,8 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   TEMPORARY_FAILURE: "A temporary server error occurred. Please try again in a moment — your data has not been lost.",
   UNSUPPORTED_VERSION:
     "Your app version is out of date for this request. Please refresh or update the app and try again.",
+  PAYLOAD_TOO_LARGE:
+    "Your prompt content is too large to store on-chain. Please shorten it to under 4,000 characters and try again.",
+  WALLET_NOT_FUNDED:
+    "Your wallet doesn't have enough balance to complete this purchase. Please fund your wallet and try again.",
 };

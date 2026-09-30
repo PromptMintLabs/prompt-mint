@@ -88,4 +88,46 @@ describe("NotificationCenter Component", () => {
 
     expect(screen.getByText("Unread (0)")).toBeInTheDocument();
   });
+
+  it("renders click tracking link and tracks click when clicked (#749)", () => {
+    const LinkTrigger: React.FC = () => {
+      const { addNotification } = useNotification();
+      return (
+        <button
+          type="button"
+          onClick={() =>
+            addNotification(
+              "Your prompt was purchased",
+              "success",
+              "New Sale",
+              "https://promptmint.io/prompts/123",
+              "View Prompt",
+            )
+          }
+        >
+          Add With Link
+        </button>
+      );
+    };
+
+    render(
+      <TestWrapper>
+        <LinkTrigger />
+        <NotificationCenter />
+      </TestWrapper>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add With Link" }));
+    fireEvent.click(screen.getByRole("button", { name: "Notification Center" }));
+
+    const link = screen.getByRole("link", { name: "View Prompt" });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", "https://promptmint.io/prompts/123");
+
+    fireEvent.click(link);
+    // Welcome notification is still unread, so unread count decrements to 1
+    expect(screen.getByText("Unread (1)")).toBeInTheDocument();
+  });
 });
+
+

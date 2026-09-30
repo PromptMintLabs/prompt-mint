@@ -1,8 +1,24 @@
 import { Request, Response, NextFunction } from "express";
 
 /**
+ * Hardened Content Security Policy directives
+ */
+export const CSP_DIRECTIVES = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.stellar.org https://horizon.stellar.org https://horizon-testnet.stellar.org https://soroban-testnet.stellar.org https://soroban.stellar.org https://secret-ai-gateway.onrender.com",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join("; ");
+
+/**
  * Security headers middleware for Express server
- * Adds security headers to all HTTP responses
+ * Adds hardened security headers and CSP to all HTTP responses
  */
 export function securityHeaders(req: Request, res: Response, next: NextFunction): void {
   // Prevent MIME type sniffing
@@ -20,20 +36,26 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   // Restrict browser features
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 
-  // HSTS (only in production with HTTPS)
-  if (process.env.NODE_ENV === "production" && req.secure) {
+  // Site isolation headers
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-site");
+
+  // Strict-Transport-Security (HSTS)
+  const isHttps =
+    req.secure ||
+    req.headers["x-forwarded-proto"] === "https" ||
+    process.env.HSTS_FORCE === "true";
+
+  if ((process.env.NODE_ENV === "production" && isHttps) || process.env.HSTS_FORCE === "true") {
     res.setHeader(
       "Strict-Transport-Security",
-      "max-age=31536000; includeSubDomains; preload"
+      "max-age=31536000; includeSubDomains; preload",
     );
   }
 
-  // Content Security Policy (basic implementation)
-  // Note: This may need to be adjusted based on your specific CSP requirements
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.stellar.org https://horizon.stellar.org https://soroban-testnet.stellar.org https://soroban.stellar.org; frame-ancestors 'none';"
-  );
+  // Content Security Policy
+  res.setHeader("Content-Security-Policy", CSP_DIRECTIVES);
 
   next();
 }
+

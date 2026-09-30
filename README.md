@@ -1,5 +1,8 @@
 # PromptHash Stellar
 
+[![Deploy provenance](https://github.com/PromptMintLabs/prompt-mint/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/PromptMintLabs/prompt-mint/actions/workflows/deploy.yml)
+[![SLSA provenance: attested](https://img.shields.io/badge/provenance-SLSA%20attested%20%C2%B7%20cosign%20signed-2ea44f?logo=sigstore)](docs/artifact-verification.md#verified-deployment-provenance-badge)
+
 PromptHash Stellar is a Soroban-based marketplace for selling reusable AI prompt licenses with XLM payments and wallet-verified unlocks.
 
 ## Overview
@@ -13,6 +16,44 @@ This repository includes:
 - serverless unlock endpoints that verify wallet ownership and on-chain access before returning plaintext
 
 The product is intentionally designed around prompt licensing rather than NFT transfer. That matches the actual use case: creators want repeated sales, buyers want reliable access, and the platform needs transparent settlement on Stellar.
+
+## System Architecture
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Creator as Creator / Buyer Wallet
+    participant Frontend as Frontend (Vite + React)
+    participant Contract as Soroban Contract (Stellar)
+    participant Unlock as Unlock Service (Serverless API)
+
+    rect rgb(30, 41, 59)
+    note right of Creator: 1. Listing Creation
+    Creator->>Frontend: Encrypt prompt & wrap key
+    Frontend->>Contract: create_prompt(payload, wrappedKey, preview, price)
+    Contract-->>Frontend: Prompt ID created & listing stored
+    end
+
+    rect rgb(30, 58, 138)
+    note right of Creator: 2. Purchase Flow
+    Creator->>Frontend: Select prompt & approve XLM spend
+    Frontend->>Contract: buy_prompt(promptId)
+    Contract->>Contract: Transfer XLM fee split & record has_access
+    Contract-->>Frontend: Purchase recorded on-chain
+    end
+
+    rect rgb(20, 83, 45)
+    note right of Creator: 3. Unlock Flow
+    Frontend->>Unlock: Request challenge token (/api/auth/challenge)
+    Unlock-->>Frontend: Challenge token + message
+    Creator->>Frontend: Sign challenge with Stellar wallet
+    Frontend->>Unlock: Submit unlock request (/api/prompts/unlock)
+    Unlock->>Contract: Verify has_access(buyer, promptId)
+    Contract-->>Unlock: Access confirmed
+    Unlock->>Unlock: Verify signature, unwrap key & decrypt AES ciphertext
+    Unlock-->>Frontend: Return plaintext & integrity status
+    end
+```
 
 ## Problem Statement
 
@@ -228,6 +269,14 @@ The current contract data model includes:
 
 ### Install dependencies
 
+New contributors can do the whole setup with one command. It installs dependencies, creates `.env`, and validates the setup:
+
+```bash
+node scripts/bootstrap.mjs   # add --dry-run to preview, --skip-rust for frontend-only work
+```
+
+Or install manually:
+
 ```bash
 yarn install
 cd server && npm install && cd ..
@@ -279,6 +328,9 @@ yarn lint
 yarn test:frontend --run api/prompts/unlock.test.ts src/lib/auth/challenge.test.ts src/lib/crypto/promptCrypto.test.ts
 yarn build
 ```
+
+For a map of the repository and its ownership boundaries, see the
+[Monorepo Map](docs/monorepo-map.md).
 
 For a timed zero-to-working setup with a first Soroban contract interaction,
 see the [Developer Quickstart](docs/developer-quickstart.md).
@@ -354,6 +406,18 @@ Contributor notes:
 - Prefer integration coverage around real flow components such as `CreatePromptForm`, `FetchAllPrompts`, `PromptModal`, and `MyPrompts`.
 
 See `docs/frontend-testing.md` for the recommended pattern when adding new frontend coverage.
+
+## Running all tests
+
+To run the contract, frontend, and API test suites together:
+
+```bash
+yarn test:all
+```
+
+This executes frontend and API tests (Vitest), Soroban contract tests (Cargo), and server tests (Jest) sequentially, stopping at the first failure.
+
+> **Note:** E2E (Playwright) tests require a running dev server and installed browsers. Run them separately with `yarn test:e2e`.
 
 ## Roadmap
 

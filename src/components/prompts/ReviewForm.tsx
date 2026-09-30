@@ -4,6 +4,7 @@ import { StarRating } from "./StarRating";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { Loader2, Send } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface ReviewFormProps {
   promptId: string;
@@ -70,6 +71,12 @@ export const ReviewForm = ({ promptId, onSubmit, onCancel }: ReviewFormProps) =>
             <span className="text-xs text-emerald-400">✓ Minimum length met</span>
           )}
         </div>
+        <p className="text-xs text-slate-400">
+          By submitting, you agree to the{" "}
+          <Link to="/review-policy" className="text-emerald-300 underline underline-offset-2 hover:text-emerald-200">
+            Review Content Policy
+          </Link>.
+        </p>
       </div>
 
       {error && (

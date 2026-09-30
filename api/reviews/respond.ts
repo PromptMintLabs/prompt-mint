@@ -64,12 +64,33 @@ async function handler(req: any, res: any) {
 
     const now = Date.now();
     const existingResponse = review.sellerResponse;
+    const responseText = text.trim();
+    const isEdit = Boolean(existingResponse && existingResponse.text !== responseText);
+
+    if (isEdit) {
+      try {
+        const { default: connectDb } = await import("../../server/src/db/connectDb");
+        const { ReviewEditAuditLog } = await import("../../server/src/models/ReviewEditAuditLog");
+        await connectDb();
+        await ReviewEditAuditLog.create({
+          promptId,
+          reviewId,
+          editorAddress: sellerAddress,
+          previousText: existingResponse!.text,
+          updatedText: responseText,
+        });
+      } catch (error) {
+        console.error("Review edit audit write failed:", error);
+        res.status(503).json({ error: "Unable to record review edit; no changes were made" });
+        return;
+      }
+    }
 
     const updatedReview = updateReview(promptId, reviewId, {
       sellerResponse: {
-        text: text.trim(),
+        text: responseText,
         createdAt: existingResponse?.createdAt ?? now,
-        editedAt: existingResponse ? now : undefined,
+        editedAt: isEdit ? now : existingResponse?.editedAt,
       },
     });
 

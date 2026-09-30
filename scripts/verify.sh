@@ -79,7 +79,7 @@ XLM_SAC=$(invoke_contract get_xlm_sac)
 echo "🪙 XLM SAC ID: $XLM_SAC"
 
 # 5. Prompts Check
-PROMPTS=$(invoke_contract get_all_prompts)
+PROMPTS=$(invoke_contract get_all_prompts --start_index 0 --limit 100)
 echo "📝 Prompts: $PROMPTS"
 
 echo ""

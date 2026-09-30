@@ -6,7 +6,7 @@ _Issue #135 — Automated Backup and Recovery for Indexer DB_
 
 ## Overview
 
-The PromptHash indexer stores off-chain prompt metadata (titles, pricing, ownership, purchase counts, audit logs) in MongoDB. Because all on-chain state can be replayed from the Stellar ledger, the DB is reproducible from scratch. However, full re-indexing can take many minutes; regular backups reduce recovery time to seconds.
+The PromptHash indexer stores off-chain prompt metadata (titles, pricing, ownership, purchase counts, and audit logs) in MongoDB. Because all on-chain state can be replayed from the Stellar ledger, the DB is reproducible from scratch. However, full re-indexing can take many minutes; regular backups reduce recovery time to seconds.
 
 Two complementary recovery paths are provided:
 
@@ -75,6 +75,7 @@ s3://my-bucket/backups/2025-05-27T02-00-00-000Z/purchases.ndjson.gz
 s3://my-bucket/backups/2025-05-27T02-00-00-000Z/promptversions.ndjson.gz
 s3://my-bucket/backups/2025-05-27T02-00-00-000Z/indexerstates.ndjson.gz
 s3://my-bucket/backups/2025-05-27T02-00-00-000Z/auditlogs.ndjson.gz
+s3://my-bucket/backups/2025-05-27T02-00-00-000Z/revieweditauditlogs.ndjson.gz
 ```
 
 ### Schedule (cron)
@@ -147,7 +148,7 @@ BUCKET="my-bucket"
 PREFIX="backups"
 
 mkdir -p /tmp/prompthash-restore
-for col in prompts purchases promptversions indexerstates auditlogs; do
+for col in prompts purchases promptversions indexerstates auditlogs revieweditauditlogs; do
   aws s3 cp "s3://${BUCKET}/${PREFIX}/${TIMESTAMP}/${col}.ndjson.gz" /tmp/prompthash-restore/
   gunzip "/tmp/prompthash-restore/${col}.ndjson.gz"
 done
@@ -158,11 +159,11 @@ done
 ```bash
 # Drop existing collections first (destructive!)
 mongosh "$MONGODB_URI" --eval '
-  ["prompts","purchases","promptversions","indexerstates","auditlogs"].forEach(c => db[c].drop())
+  ["prompts","purchases","promptversions","indexerstates","auditlogs","revieweditauditlogs"].forEach(c => db[c].drop())
 '
 
 # Import each collection
-for col in prompts purchases promptversions indexerstates auditlogs; do
+for col in prompts purchases promptversions indexerstates auditlogs revieweditauditlogs; do
   mongoimport \
     --uri "$MONGODB_URI" \
     --collection "$col" \

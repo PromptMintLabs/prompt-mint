@@ -273,6 +273,9 @@ Expired challenge tokens surface as `400` with an `expired` message. The fronten
 | `docs/api-reference.md` | Challenge-response protocol details |
 | `docs/frontend-testing.md` | Frontend test patterns |
 | `docs/creator-onboarding.md` | Creator workflow guide |
+| `docs/buyer-onboarding-email-copy-deck.md` | Approved buyer onboarding email copy |
+| `docs/creator-onboarding-email-copy-deck.md` | Approved creator onboarding email copy |
+| `docs/translator-contribution-guide.md` | How to contribute UI, email, and doc translations |
 
 **Related issues:**
 

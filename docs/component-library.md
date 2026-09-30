@@ -94,6 +94,7 @@ yarn build-storybook
 - **NotificationCenter** (`src/components/NotificationCenter.tsx`): User alerts and notification popover.
 - **NotificationPreferences** (`src/components/NotificationPreferences.tsx`): Granular alert settings.
 - **WebhookSettings** (`src/components/WebhookSettings.tsx`): Webhook endpoint and HMAC secret configuration.
+- **WebhookSubscriptions** (`src/components/webhooks/WebhookSubscriptions.tsx`): Subscriptions console tab — wallet-scoped endpoint table with register / update / delete and a one-time signing-secret reveal.
 - **SEOHead** (`src/components/seo/SEOHead.tsx`): Meta tag and OpenGraph previewer.
 - **SEOControlsForm** (`src/components/seo/SEOControlsForm.tsx`): Metadata customization form.
 - **ReviewList** (`src/components/prompts/ReviewList.tsx`): Verified purchase user reviews list.

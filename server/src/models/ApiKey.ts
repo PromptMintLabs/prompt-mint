@@ -56,6 +56,23 @@ const apiKeySchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    /** When this key naturally expires (e.g. 90 days after creation). */
+    expiresAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    /** Overlapping grace period window when a rotated key remains temporarily valid. */
+    gracePeriodUntil: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    /** Flag indicating key was automatically rotated by the 90-day secrets rotation job. */
+    autoRotated: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );

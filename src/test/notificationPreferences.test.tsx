@@ -85,4 +85,39 @@ describe("NotificationPreferences Component", () => {
       );
     });
   });
+
+  it("requires and saves an email address when opting into the weekly creator digest", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+      if (init?.method === "PUT") {
+        return new Response(JSON.stringify({ message: "Preferences updated successfully" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ preferences: {}, emailAddress: "" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<NotificationPreferences walletAddress="GABC1234567890XYZ" />);
+    await waitFor(() => expect(screen.queryByText("Loading preferences...")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("switch", { name: "Weekly Creator Metrics Digest" }));
+    fireEvent.click(screen.getByRole("button", { name: /Save Preferences/i }));
+    expect(await screen.findByText("Add an email address to enable the weekly creator digest.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Creator digest email"), {
+      target: { value: "creator@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Save Preferences/i }));
+
+    await waitFor(() => {
+      const saveCall = fetchSpy.mock.calls.find(([, init]) => init?.method === "PUT");
+      expect(saveCall).toBeDefined();
+      const body = JSON.parse(String(saveCall?.[1]?.body));
+      expect(body.emailAddress).toBe("creator@example.com");
+      expect(body.preferences.weeklyCreatorDigest).toBe(true);
+    });
+  });
 });

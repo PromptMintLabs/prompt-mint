@@ -3,7 +3,7 @@ name: Performance Budgets
 on:
   pull_request:
     branches: ["main"]
-    paths:
+    paths: 
       - "src/**"
       - "package.json"
 
@@ -14,25 +14,26 @@ jobs:
   check-budgets:
     name: Evaluate performance budgets
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Enable Corepack
-        run: corepack enable
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: "22"
-          cache: "yarn"
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
         run: yarn install --immutable
 
       - name: Build production bundle
         run: yarn build
+
+      - name: Run accessibility audit
+        run: npx tsx scripts/check-a11y.ts mobile
 
       - name: Run budget evaluation
         id: budgets
@@ -44,6 +45,7 @@ jobs:
         with:
           name: budget-report
           path: budget-report.json
+          if-no-files-found: warn
 
       - name: Report violations
         if: steps.budgets.outcome == 'failure'

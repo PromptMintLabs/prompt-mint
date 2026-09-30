@@ -1,11 +1,26 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
-import { Bell, CheckCheck, Trash2, X, Info, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
+import { Bell, CheckCheck, Trash2, X, Info, CheckCircle2, AlertTriangle, AlertCircle, ExternalLink } from "lucide-react";
 import { NotificationContext, type NotificationItem, type NotificationType } from "../providers/NotificationProvider";
+import { trackNotificationClick } from "@/lib/notifications/store";
+import { EmptyState } from "@/components/ui/EmptyState";
+import {
+  groupNotificationsByPrompt,
+  isNotificationGroup,
+  type NotificationGroup,
+  type NotificationDisplayItem,
+} from "@/lib/notifications/grouping";
+import {
+  calculateImportanceScore,
+  sortNotificationsByImportance,
+} from "@/lib/notifications/importance";
+import { useNotificationExperiment } from "@/lib/notifications/experiments";
 
 export const NotificationCenter: React.FC = () => {
   const context = useContext(NotificationContext);
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "unread" | "important">("all");
+  const [enableGrouping, setEnableGrouping] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const notifications = context?.notifications ?? [];
@@ -13,11 +28,26 @@ export const NotificationCenter: React.FC = () => {
   const markAsRead = context?.markAsRead ?? (() => {});
   const markAllAsRead = context?.markAllAsRead ?? (() => {});
   const clearNotifications = context?.clearNotifications ?? (() => {});
+  const trackClick = context?.trackClick ?? (() => {});
+
+  // A/B Experiment assignment (#745)
+  const experiment = useNotificationExperiment<{ groupByType?: boolean }>(
+    "notification_grouping"
+  );
+
+  useEffect(() => {
+    if (experiment.config.groupByType !== undefined) {
+      setEnableGrouping(experiment.config.groupByType);
+    }
+  }, [experiment.config]);
 
   // Close on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -30,10 +60,57 @@ export const NotificationCenter: React.FC = () => {
     };
   }, [isOpen]);
 
-  const filteredNotifications = notifications.filter((item) => {
-    if (activeTab === "unread") return !item.isRead;
-    return true;
-  });
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }));
+  };
+
+  const markGroupAsRead = (group: NotificationGroup, e: React.MouseEvent) => {
+    e.stopPropagation();
+    for (const item of group.items) {
+      if (!item.isRead) {
+        markAsRead(item.id);
+      }
+    }
+  };
+
+  // Filter & Group notifications
+  const processedItems: NotificationDisplayItem[] = useMemo(() => {
+    let filtered = notifications;
+    if (activeTab === "unread") {
+      filtered = filtered.filter((n) => !n.isRead);
+    } else if (activeTab === "important") {
+      filtered = filtered.filter((n) => {
+        const evalScore = calculateImportanceScore(n);
+        return evalScore.tier === "critical" || evalScore.tier === "high";
+      });
+    }
+
+    if (enableGrouping) {
+      return groupNotificationsByPrompt(filtered);
+    }
+    return filtered;
+  }, [notifications, activeTab, enableGrouping]);
+
+  const importantCount = useMemo(() => {
+    return notifications.filter((n) => {
+      const evalScore = calculateImportanceScore(n);
+      return (
+        !n.isRead &&
+        (evalScore.tier === "critical" || evalScore.tier === "high")
+      );
+    }).length;
+  }, [notifications]);
+
+  const handleTrackClick = (item: NotificationItem, link?: string) => {
+    trackClick(item.id, link);
+    trackNotificationClick(item, link);
+    if (!item.isRead) {
+      markAsRead(item.id);
+    }
+  };
 
   return (
     <div className="relative inline-block" ref={dropdownRef}>
@@ -67,6 +144,19 @@ export const NotificationCenter: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setEnableGrouping((prev) => !prev)}
+                className={`p-1.5 rounded-lg transition-colors text-xs flex items-center gap-1 ${
+                  enableGrouping
+                    ? "bg-amber-400/10 text-amber-300 border border-amber-400/20"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+                title={enableGrouping ? "Disable prompt grouping" : "Group by prompt"}
+              >
+                <Layers className="h-3.5 w-3.5" />
+              </button>
+
               {unreadCount > 0 && (
                 <button
                   type="button"
@@ -90,11 +180,11 @@ export const NotificationCenter: React.FC = () => {
 
           {/* Filter Tabs */}
           <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setActiveTab("all")}
-                className={`text-xs font-semibold px-3 py-1 rounded-lg transition-colors ${
+                className={`text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors ${
                   activeTab === "all"
                     ? "bg-white/10 text-white"
                     : "text-slate-400 hover:text-slate-200"
@@ -105,13 +195,25 @@ export const NotificationCenter: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab("unread")}
-                className={`text-xs font-semibold px-3 py-1 rounded-lg transition-colors ${
+                className={`text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors ${
                   activeTab === "unread"
                     ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
               >
                 Unread ({unreadCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("important")}
+                className={`text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 ${
+                  activeTab === "important"
+                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <Flame className="h-3 w-3 text-rose-400" />
+                Important {importantCount > 0 ? `(${importantCount})` : ""}
               </button>
             </div>
 
@@ -129,16 +231,32 @@ export const NotificationCenter: React.FC = () => {
 
           {/* Notification List */}
           <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
-            {filteredNotifications.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400">
-                {activeTab === "unread" ? "No unread notifications" : "No notifications yet"}
-              </div>
+            {processedItems.length === 0 ? (
+              <EmptyState
+                variant="no-notifications"
+                title={
+                  activeTab === "unread"
+                    ? "No unread notifications"
+                    : activeTab === "important"
+                    ? "No important alerts"
+                    : "No notifications"
+                }
+                description={
+                  activeTab === "unread"
+                    ? "You're all caught up. New activity will appear here."
+                    : activeTab === "important"
+                    ? "No high-priority alerts at this time."
+                    : "You're all caught up. Alerts about your prompts and activity will show up here."
+                }
+                size="sm"
+              />
             ) : (
               filteredNotifications.map((item) => (
                 <NotificationCard
                   key={item.id}
                   item={item}
                   onMarkRead={() => markAsRead(item.id)}
+                  onTrackClick={(link) => handleTrackClick(item, link)}
                 />
               ))
             )}
@@ -152,9 +270,10 @@ export const NotificationCenter: React.FC = () => {
 interface NotificationCardProps {
   item: NotificationItem;
   onMarkRead: () => void;
+  onTrackClick?: (link?: string) => void;
 }
 
-const NotificationCard: React.FC<NotificationCardProps> = ({ item, onMarkRead }) => {
+const NotificationCard: React.FC<NotificationCardProps> = ({ item, onMarkRead, onTrackClick }) => {
   const getIcon = (type: NotificationType) => {
     switch (type) {
       case "success":
@@ -173,9 +292,16 @@ const NotificationCard: React.FC<NotificationCardProps> = ({ item, onMarkRead })
     minute: "2-digit",
   });
 
+  const handleClick = () => {
+    onMarkRead();
+    if (onTrackClick) {
+      onTrackClick(item.link);
+    }
+  };
+
   return (
     <div
-      onClick={onMarkRead}
+      onClick={handleClick}
       className={`group relative flex gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
         item.isRead
           ? "bg-white/[0.02] border-white/5 opacity-75 hover:opacity-100 hover:bg-white/[0.04]"
@@ -186,18 +312,50 @@ const NotificationCard: React.FC<NotificationCardProps> = ({ item, onMarkRead })
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2 mb-0.5">
-          <p
-            className={`text-xs font-semibold truncate ${
-              item.isRead ? "text-slate-300" : "text-white"
-            }`}
-          >
-            {item.title || "Notification"}
-          </p>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p
+              className={`text-xs font-semibold truncate ${
+                item.isRead ? "text-slate-300" : "text-white"
+              }`}
+            >
+              {item.title || "Notification"}
+            </p>
+            {importanceEval.tier === "critical" && (
+              <span className="rounded bg-rose-500/20 text-rose-300 px-1 py-0.2 text-[9px] font-bold uppercase tracking-wider">
+                Critical
+              </span>
+            )}
+            {importanceEval.tier === "high" && (
+              <span className="rounded bg-amber-500/20 text-amber-300 px-1 py-0.2 text-[9px] font-bold uppercase tracking-wider">
+                High
+              </span>
+            )}
+          </div>
           <span className="text-[10px] font-mono text-slate-500 shrink-0">
             {formattedTime}
           </span>
         </div>
         <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{item.message}</p>
+
+        {item.link && (
+          <div className="mt-2 flex items-center">
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onTrackClick) {
+                  onTrackClick(item.link);
+                }
+              }}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 hover:text-amber-300 hover:underline"
+            >
+              <span>{item.linkText || "View details"}</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        )}
       </div>
 
       {!item.isRead && (
@@ -206,3 +364,4 @@ const NotificationCard: React.FC<NotificationCardProps> = ({ item, onMarkRead })
     </div>
   );
 };
+

@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import connectDb from "../../server/src/db/connectDb;
+import connectDb from "../../server/src/db/connectDb";
 import WebhookSubscription from "../../server/src/models/WebhookSubscription";
 import { sendTestEvent } from "../../server/src/services/webhookDispatcher";
 import { withObservability } from "../../src/lib/observability/apiObservability";

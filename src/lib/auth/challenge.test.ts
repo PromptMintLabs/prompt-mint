@@ -6,8 +6,10 @@ import { Keypair } from "@stellar/stellar-sdk";
 import {
   buildChallengeMessage,
   createChallengeToken,
+  getChallengeTtlMs,
   verifyChallengeSignature,
   verifyChallengeToken,
+  DEFAULT_TTL_MS,
 } from "./challenge";
 
 describe("unlock challenge verification", () => {
@@ -18,6 +20,10 @@ describe("unlock challenge verification", () => {
     const promptId = "42";
 
     const challenge = createChallengeToken(secret, address, promptId, 1_700_000_000_000);
+    expect(challenge.nonce).toBeTruthy();
+    expect(challenge.challenge).toContain(challenge.nonce);
+    expect(challenge.challenge).toContain(String(1_700_000_300_000));
+
     const payload = verifyChallengeToken(
       secret,
       challenge.token,
@@ -28,6 +34,8 @@ describe("unlock challenge verification", () => {
 
     expect(payload.address).toBe(address);
     expect(payload.promptId).toBe(promptId);
+    expect(payload.nonce).toBe(challenge.nonce);
+    expect(payload.expiresAt).toBe(1_700_000_300_000);
 
     const message = buildChallengeMessage(payload);
     const signedMessage = Buffer.from(
@@ -47,5 +55,18 @@ describe("unlock challenge verification", () => {
     expect(() =>
       verifyChallengeToken(secret, challenge.token, address, "7", 1_700_000_010_500),
     ).toThrow("expired");
+  });
+
+  it("configures challenge token TTL via environment variable (#453)", () => {
+    const defaultTtl = getChallengeTtlMs();
+    expect(defaultTtl).toBe(DEFAULT_TTL_MS);
+
+    process.env.CHALLENGE_TTL_MS = "60000";
+    expect(getChallengeTtlMs()).toBe(60000);
+    delete process.env.CHALLENGE_TTL_MS;
+
+    process.env.CHALLENGE_TOKEN_TTL_MS = "120000";
+    expect(getChallengeTtlMs()).toBe(120000);
+    delete process.env.CHALLENGE_TOKEN_TTL_MS;
   });
 });

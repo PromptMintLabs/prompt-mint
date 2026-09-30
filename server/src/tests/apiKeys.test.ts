@@ -82,7 +82,7 @@ describe("scopes and tiers", () => {
 
 describe("InMemoryRateLimiter", () => {
   it("allows up to the limit then blocks within the window", () => {
-    let now = 1000;
+    const now = 1000;
     const limiter = new InMemoryRateLimiter(60_000, () => now);
     expect(limiter.check("k", 2).allowed).toBe(true);
     expect(limiter.check("k", 2).allowed).toBe(true);

@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { Request } from "express";
 import crypto from "crypto";
 import connectDb from "../db/connectDb";
 import Prompt from "../models/Prompt";
@@ -6,6 +6,7 @@ import PromptVersion from "../models/PromptVersion";
 import Purchase from "../models/Purchase";
 import LicenseTerm from "../models/LicenseTerm";
 import User from "../models/User";
+import LicenseTerm from "../models/LicenseTerm";
 import { AppError } from "../lib/AppError";
 import { asyncRoute } from "../lib/asyncRoute";
 import { recordMarketplaceTransaction } from "../services/transactionHistoryService";
@@ -247,6 +248,50 @@ export const GetPromptVersionDetail = asyncRoute(async (req, res) => {
   });
 });
 
+export const PostPromptUpdate = asyncRoute(async (req, res) => {
+  await connectDb();
+  const promptId = String(req.params.id);
+  const walletAddress = getWalletAddress(req);
+  const { changelog = "" } = req.body;
+
+  if (!walletAddress) {
+    throw new AppError("walletAddress is required.", 401, "UNAUTHENTICATED");
+  }
+
+  const user = await User.findOne({ walletAddress });
+  if (!user) throw new AppError("User not found.", 404, "NOT_FOUND");
+
+  const prompt = await Prompt.findById(promptId);
+  if (!prompt) throw new AppError("Prompt not found.", 404, "NOT_FOUND");
+
+  const isOwner = String(prompt.owner) === String(user._id) ||
+    String(prompt.owner).toLowerCase() === String(walletAddress).toLowerCase();
+  if (!isOwner) {
+    throw new AppError("Prompt not found or not owned by this wallet.", 403, "FORBIDDEN");
+  }
+
+  const latestVersion = await PromptVersion.findOne({ promptId }, undefined, { sort: { versionIndex: -1 } });
+  const nextVersion = (latestVersion?.versionIndex ?? 0) + 1;
+
+  const createdVersion = await PromptVersion.create({
+    promptId,
+    versionIndex: nextVersion,
+    contentHash: computeContentHash(`update-${Date.now()}`),
+    encryptedPayloadRef: "",
+    changelog,
+    createdBy: walletAddress,
+  });
+
+  await Prompt.findByIdAndUpdate(promptId, { currentVersionIndex: nextVersion });
+
+  res.status(201).json({
+    id: String(createdVersion._id),
+    versionNumber: createdVersion.versionIndex,
+    changelog: createdVersion.changelog,
+    createdAt: createdVersion.createdAt,
+  });
+});
+
 export const GetPromptVersions = asyncRoute(async (req, res) => {
   await connectDb();
   const promptId = String(req.params.promptId || req.params.id);
@@ -260,6 +305,8 @@ export const GetPromptVersions = asyncRoute(async (req, res) => {
 
   res.json(
     versions.map((version) => ({
+      ...version.toObject(),
+      versionNumber: version.versionIndex,
       versionNumber: version.versionIndex,
       changelog: version.changelog,
       createdAt: version.createdAt,
@@ -270,6 +317,10 @@ export const GetPromptVersions = asyncRoute(async (req, res) => {
 
 export const RecordPurchase = asyncRoute(async (req, res) => {
   await connectDb();
+  const { promptId, walletAddress, txHash = "" } = req.body;
+
+  if (!promptId || !walletAddress) {
+    throw new AppError("promptId and walletAddress are required.", 400, "MISSING_FIELDS");
   const { promptId, buyerWallet, txHash } = req.body;
 
   if (!promptId || !buyerWallet) {
@@ -284,6 +335,9 @@ export const RecordPurchase = asyncRoute(async (req, res) => {
 
   const purchase = await Purchase.create({
     promptId,
+    buyerWallet: walletAddress.toLowerCase(),
+    versionIndex: prompt.currentVersionIndex ?? 1,
+    txHash,
     buyerWallet: buyerWallet.toLowerCase(),
     versionIndex: prompt.currentVersionIndex ?? 1,
     txHash: txHash ?? "",
@@ -295,6 +349,9 @@ export const RecordPurchase = asyncRoute(async (req, res) => {
     },
   });
 
+  const ownerWallet = typeof prompt.owner === "object" && prompt.owner !== null && "walletAddress" in prompt.owner
+    ? String((prompt.owner as { walletAddress?: string }).walletAddress ?? "")
+    : "";
   const ownerWallet =
     prompt.owner && typeof prompt.owner === "object" && "walletAddress" in prompt.owner
       ? String((prompt.owner as { walletAddress?: string }).walletAddress ?? "")
@@ -305,10 +362,10 @@ export const RecordPurchase = asyncRoute(async (req, res) => {
       promptOnChainId: prompt.onChainId ?? String(prompt._id),
       promptMongoId: String(prompt._id),
       promptTitle: prompt.title,
-      buyerWallet: buyerWallet.toLowerCase(),
+      buyerWallet: walletAddress.toLowerCase(),
       creatorWallet: ownerWallet,
       priceStroops: Math.round(Number(prompt.price) * 10_000_000),
-      txHash: txHash ?? "",
+      txHash,
       occurredAt: purchase.createdAt ?? new Date(),
     });
     const threshold = Number(process.env.AUDIT_LARGE_TRANSACTION_STROOPS ?? 100_000_000);

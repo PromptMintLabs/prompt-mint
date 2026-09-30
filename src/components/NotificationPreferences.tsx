@@ -7,6 +7,7 @@ export interface UserNotificationPreferences {
   newReviews: boolean;
   priceAlerts: boolean;
   emailNotifications: boolean;
+  weeklyCreatorDigest: boolean;
 }
 
 const DEFAULT_PREFERENCES: UserNotificationPreferences = {
@@ -15,6 +16,7 @@ const DEFAULT_PREFERENCES: UserNotificationPreferences = {
   newReviews: true,
   priceAlerts: true,
   emailNotifications: true,
+  weeklyCreatorDigest: false,
 };
 
 const STORAGE_KEY_PREFIX = "prompt_mint_notification_prefs_";
@@ -30,6 +32,7 @@ export const NotificationPreferences: React.FC<NotificationPreferencesProps> = (
 }) => {
   const [preferences, setPreferences] =
     useState<UserNotificationPreferences>(DEFAULT_PREFERENCES);
+  const [digestEmail, setDigestEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -39,14 +42,17 @@ export const NotificationPreferences: React.FC<NotificationPreferencesProps> = (
   useEffect(() => {
     if (!walletAddress) {
       setPreferences(DEFAULT_PREFERENCES);
+      setDigestEmail("");
       return;
     }
+
+    setDigestEmail("");
 
     const localKey = `${STORAGE_KEY_PREFIX}${walletAddress.toLowerCase()}`;
     const cached = localStorage.getItem(localKey);
     if (cached) {
       try {
-        setPreferences(JSON.parse(cached));
+        setPreferences({ ...DEFAULT_PREFERENCES, ...JSON.parse(cached) });
       } catch {
         // Fallback to default
       }
@@ -60,6 +66,7 @@ export const NotificationPreferences: React.FC<NotificationPreferencesProps> = (
         if (data?.preferences) {
           const merged = { ...DEFAULT_PREFERENCES, ...data.preferences };
           setPreferences(merged);
+          setDigestEmail(data.emailAddress || "");
           localStorage.setItem(localKey, JSON.stringify(merged));
         }
       })
@@ -94,6 +101,18 @@ export const NotificationPreferences: React.FC<NotificationPreferencesProps> = (
     setErrorMessage(null);
     setSavedSuccess(false);
 
+    const normalizedEmail = digestEmail.trim().toLowerCase();
+    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setErrorMessage("Enter a valid email address.");
+      setIsSaving(false);
+      return;
+    }
+    if (preferences.weeklyCreatorDigest && !normalizedEmail) {
+      setErrorMessage("Add an email address to enable the weekly creator digest.");
+      setIsSaving(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/user/preferences", {
         method: "PUT",
@@ -101,6 +120,7 @@ export const NotificationPreferences: React.FC<NotificationPreferencesProps> = (
         body: JSON.stringify({
           walletAddress,
           preferences,
+          emailAddress: normalizedEmail,
         }),
       });
 
@@ -118,8 +138,12 @@ export const NotificationPreferences: React.FC<NotificationPreferencesProps> = (
         `${STORAGE_KEY_PREFIX}${walletAddress.toLowerCase()}`,
         JSON.stringify(preferences)
       );
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
+      if (preferences.weeklyCreatorDigest) {
+        setErrorMessage("Could not save the digest settings to your account. Please try again when connected.");
+      } else {
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 3000);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -173,6 +197,13 @@ export const NotificationPreferences: React.FC<NotificationPreferencesProps> = (
                 checked={preferences.newReviews}
                 onChange={() => handleToggle("newReviews")}
               />
+              <ToggleRow
+                id="pref-weekly-creator-digest"
+                title="Weekly Creator Metrics Digest"
+                description="Email weekly sales, revenue, buyer, and top-listing metrics"
+                checked={preferences.weeklyCreatorDigest}
+                onChange={() => handleToggle("weeklyCreatorDigest")}
+              />
             </div>
           </div>
 
@@ -212,6 +243,18 @@ export const NotificationPreferences: React.FC<NotificationPreferencesProps> = (
               onChange={() => handleToggle("emailNotifications")}
               icon={<Mail className="h-4 w-4 text-slate-400" />}
             />
+            <label className="block space-y-1.5 text-sm text-slate-200" htmlFor="weekly-digest-email">
+              <span>Creator digest email</span>
+              <input
+                id="weekly-digest-email"
+                type="email"
+                autoComplete="email"
+                value={digestEmail}
+                onChange={(event) => setDigestEmail(event.target.value)}
+                placeholder="name@example.com"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-amber-400/50 focus:outline-none"
+              />
+            </label>
           </div>
 
           {errorMessage && (

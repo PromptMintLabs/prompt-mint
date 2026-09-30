@@ -2,7 +2,7 @@
 
 ## System Components
 
-PromptHash Stellar is organized into three main layers.
+PromptHash Stellar is organized into three main layers. For the directory-level view, including who owns each directory, which directories may import from which, and which CI workflow gates each one, see the [Monorepo Map & Ownership Boundaries](./monorepo-map.md).
 
 ## 1. Soroban Contract Layer
 
@@ -31,6 +31,8 @@ Core contract methods:
 - `set_fee_wallet`
 
 > For a comprehensive technical reference on storage layout, Mermaid sequence diagrams, basis point fee mathematics, two-step timelocked upgrade mechanisms, and the complete event schema, see the [Smart Contract Architecture Deep-Dive](./smart-contract-architecture.md).
+>
+> For the exact XLM split between seller and platform — including stroop precision, integer rounding, and worked examples — see [Fee Model and Split Math](./fee-model-and-split-math.md).
 
 ## 2. Frontend Application Layer
 
@@ -79,10 +81,15 @@ Responsibilities:
 
 ### Buy listing
 
-1. Buyer approves native asset spend.
+1. Buyer approves native asset spend for 60 ledgers (about five minutes), with expiry calculated from the RPC's latest ledger.
 2. App submits `buy_prompt`.
 3. Contract moves seller and fee amounts in stroops.
 4. Contract records purchase rights for the buyer.
+
+If approval simulation, wallet signing, submission, or confirmation fails, the
+native asset client raises a `NativeAssetApprovalError` with a user-readable
+message. The tip flow displays that message inline; a wallet rejection is
+reported separately from other approval failures.
 
 ### Unlock purchased prompt
 
@@ -121,3 +128,17 @@ The current repository supports a lightweight deployment model:
 - frontend + serverless unlock endpoints on Vercel
 - contract deployed to Stellar testnet or future mainnet target
 - optional auxiliary Express server for external chat/proxy services
+
+## Appeal Status Timeline
+
+The moderation UI includes a controlled `AppealStatusTimeline` component at
+`src/components/moderation/AppealStatusTimeline.tsx` and an appeal submission
+flow at `/appeals`. Submissions are wallet-signed, tied to an owned moderated
+review, and stored with validated supporting files in MongoDB. The timeline
+shows the submitted state returned by the API; it remains transport-agnostic so
+moderation tooling can provide later decisions without coupling presentation to
+storage.
+
+Each event uses one of these statuses: `submitted`, `under_review`, `decision`,
+`resolved`, or `rejected`. Events may include an ISO timestamp and a moderator
+note; missing or malformed timestamps are displayed safely as unavailable.

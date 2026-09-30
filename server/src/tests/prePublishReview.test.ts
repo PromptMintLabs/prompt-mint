@@ -37,6 +37,8 @@ describe("Pre-Publish Review Workflow", () => {
 
     it("should reject empty content", () => {
       const content = "";
+      const isValid = Boolean(content) && content.length >= 10;
+      expect(isValid).toBe(false);
       const isValid = content && content.length >= 10;
       expect(isValid).toBeFalsy();
     });

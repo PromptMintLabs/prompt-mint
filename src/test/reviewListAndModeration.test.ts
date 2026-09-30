@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Keypair } from "@stellar/stellar-sdk";
 import listReviews from "../../api/reviews/list";
+import voteReview from "../../api/reviews/vote";
 import bulkModeration from "../../api/moderation/actions";
 import editReview from "../../api/reviews/edit";
 import { ReviewClient } from "../lib/reviews/reviewClient";
@@ -39,6 +40,22 @@ describe("review list contract", () => {
     const recorded = responseRecorder();
     await listReviews({ method: "GET", query: { promptId: "1", page: "0", sort: "random" } }, recorded.response);
     expect(recorded.status).toBe(400);
+  });
+
+  it("flags a burst of helpful votes from distinct wallets in review listings", async () => {
+    for (let index = 0; index < 5; index += 1) {
+      const vote = responseRecorder();
+      await voteReview(
+        { method: "POST", body: { promptId: "2", reviewId: "review_3", userAddress: `GVOTER${index}` } },
+        vote.response,
+      );
+      expect(vote.status).toBe(200);
+      expect(vote.body.helpfulVoteAlert).toBe(index === 4);
+    }
+
+    const listing = responseRecorder();
+    await listReviews({ method: "GET", query: { promptId: "2" } }, listing.response);
+    expect(listing.body.reviews[0].helpfulVoteAlert).toBe(true);
   });
 
   it("keeps the frontend client aligned with pagination and filter metadata", async () => {

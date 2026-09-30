@@ -1,18 +1,43 @@
 name: CI
-
 on:
   push:
     branches: ["main"]
   pull_request:
     branches: ["main"]
 
-jobs:
-  build-test-lint:
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
 
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "yarn"
+
+      - name: Install Yarn
+        run: npm install -g @yarnpkg/cli-dist@4.9.2
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Run Lint
+        run: yarn lint
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
       - name: Enable Corepack
         run: corepack enable
@@ -26,14 +51,66 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Typecheck
+      - name: Run Typecheck
         run: yarn typecheck
 
-      - name: Lint
-        run: yarn lint
+  test:
+    name: Unit & Component Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
 
-      - name: Build Frontend
-        run: yarn build
+      - name: Enable Corepack
+        run: corepack enable
 
-      - name: Run Tests
-        run: yarn test:frontend
+  a11y:
+    name: Accessibility Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Run Tests with Coverage
+        run: yarn test:frontend:coverage
+
+      - name: Check coverage thresholds
+        if: always()
+        run: |
+          echo "Coverage thresholds are enforced via vitest.config.mjs"
+          echo "Test failures above may mask coverage report; thresholds will still gate."
+
+  build:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "yarn"
+      - name: Install Yarn
+        run: npm install -g @yarnpkg/cli-dist@4.9.2
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Run Accessibility Audit
+        run: yarn a11y

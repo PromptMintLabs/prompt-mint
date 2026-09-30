@@ -4,6 +4,7 @@ import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { useWallet } from "@/hooks/useWallet";
 
@@ -58,18 +59,18 @@ export default function FavoritesPage() {
             </p>
           </div>
         ) : bookmarks.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/15 p-12 text-center">
-            <BookmarkCheck className="mx-auto mb-4 h-8 w-8 text-slate-500" />
-            <p className="text-slate-400">
-              No favorites yet. Browse prompts and save the ones you like.
-            </p>
-            <Button
-              asChild
-              className="mt-6 bg-emerald-500 font-bold text-slate-950 hover:bg-emerald-400"
-            >
-              <Link to="/browse">Browse prompts</Link>
-            </Button>
-          </div>
+          <EmptyState
+            variant="no-bookmarks"
+            action={
+              <Button
+                asChild
+                className="mt-6 bg-emerald-500 font-bold text-slate-950 hover:bg-emerald-400"
+              >
+                <Link to="/browse">Browse prompts</Link>
+              </Button>
+            }
+            size="lg"
+          />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {bookmarks.map((promptId) => (

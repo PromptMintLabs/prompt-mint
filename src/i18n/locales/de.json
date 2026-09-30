@@ -1,0 +1,174 @@
+{
+  "nav": {
+    "browse": "Durchsuchen",
+    "create": "Erstellen",
+    "dashboard": "Dashboard",
+    "connect": "Wallet verbinden",
+    "disconnect": "Trennen"
+  },
+  "home": {
+    "hero_title": "KI-Prompts entdecken & handeln",
+    "hero_subtitle": "Kaufe, verkaufe und lizenziere Premium-KI-Prompts auf der Stellar-Blockchain.",
+    "browse_prompts": "Prompts durchsuchen",
+    "create_prompt": "Prompt erstellen"
+  },
+  "prompt": {
+    "buy": "Prompt kaufen",
+    "lease": "Prompt leasen",
+    "price": "Preis",
+    "creator": "Ersteller",
+    "category": "Kategorie",
+    "sales": "Verkäufe",
+    "purchase_success": "Prompt erfolgreich gekauft!",
+    "lease_success": "Prompt erfolgreich geleast!",
+    "already_owned": "Du besitzt diesen Prompt bereits.",
+    "max_supply_reached": "Die maximale Stückzahl für diesen Prompt ist erreicht."
+  },
+  "create": {
+    "title": "Prompt erstellen",
+    "prompt_title": "Titel",
+    "category": "Kategorie",
+    "preview": "Vorschautext",
+    "price": "Preis (Stroops)",
+    "max_supply": "Maximale Stückzahl (0 = unbegrenzt)",
+    "submit": "Prompt einstellen",
+    "success": "Prompt erfolgreich eingestellt!"
+  },
+  "errors": {
+    "not_found": "Dieser Prompt wurde nicht gefunden. Möglicherweise hat der Ersteller ihn entfernt oder der Link ist fehlerhaft – prüfe den Link oder durchsuche den Marktplatz nach ähnlichen Prompts.",
+    "unauthorized": "Dazu fehlt dir die Berechtigung. Stelle sicher, dass du mit der Wallet verbunden bist, der dieser Prompt oder Kauf gehört, und versuche es erneut.",
+    "paused": "Der Marktplatz ist wegen Wartungsarbeiten vorübergehend pausiert. Deine Guthaben und Angebote sind sicher – bitte versuche es in ein paar Minuten erneut.",
+    "validation": {
+      "required": "Dieses Feld ist erforderlich.",
+      "min_length": "Muss mindestens {{min}} Zeichen lang sein.",
+      "max_length": "Darf höchstens {{max}} Zeichen lang sein.",
+      "invalid_url": "Bitte gib eine gültige URL ein, die mit http:// oder https:// beginnt.",
+      "invalid_rating": "Die Bewertung muss zwischen 1 und 5 liegen.",
+      "invalid_price": "Bitte gib einen gültigen Preis größer als null ein.",
+      "invalid_address": "Ungültige Wallet-Adresse.",
+      "review_text_short": "Der Bewertungstext muss mindestens 10 Zeichen lang sein.",
+      "review_text_long": "Der Bewertungstext darf höchstens 500 Zeichen lang sein.",
+      "response_text_long": "Der Antworttext darf höchstens 1000 Zeichen lang sein.",
+      "title_required": "Titel ist erforderlich.",
+      "title_min_length": "Der Titel muss mindestens 3 Zeichen lang sein.",
+      "price_must_be_positive": "Der Preis muss größer als 0 sein.",
+      "price_required": "Preis ist erforderlich.",
+      "image_url_invalid": "Die Bild-URL muss mit http:// oder https:// beginnen.",
+      "image_url_required": "Bild-URL ist erforderlich.",
+      "category_required": "Kategorie ist erforderlich.",
+      "preview_required": "Vorschautext ist erforderlich.",
+      "preview_min_length": "Der Vorschautext muss mindestens 10 Zeichen lang sein.",
+      "prompt_required": "Der vollständige Prompt-Inhalt ist erforderlich.",
+      "prompt_min_length": "Der vollständige Prompt muss mindestens 10 Zeichen lang sein."
+    },
+    "transaction": {
+      "user_rejected": "Die Transaktion wurde vom Benutzer abgelehnt.",
+      "insufficient_funds": "Unzureichendes Guthaben für diese Transaktion. Lade deine Wallet auf und versuche es erneut.",
+      "insufficient_gas": "Unzureichendes Gas für diese Transaktion. Lade das XLM-Guthaben deiner Wallet auf, um die Netzwerkgebühren zu decken, und versuche es erneut.",
+      "invalid_signature": "Die Transaktionssignatur ist ungültig. Verbinde deine Wallet erneut und signiere die Transaktion noch einmal.",
+      "network_error": "Netzwerkfehler. Bitte prüfe deine Internetverbindung und versuche es erneut.",
+      "expired": "Die Transaktionsanfrage ist abgelaufen. Bitte starte die Transaktion erneut.",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut. Wenn das weiterhin passiert, kontaktiere den Support und nenne den Zeitpunkt des Fehlers.",
+      "pending": "Transaktion wird im Stellar-Netzwerk verarbeitet..."
+    },
+    "wallet": {
+      "connect_required": "Bitte verbinde zuerst deine Wallet.",
+      "network_mismatch": "Deine Wallet ist mit dem falschen Netzwerk verbunden. Wechsle in deiner Wallet zum richtigen Netzwerk und versuche es erneut.",
+      "disconnect_failed": "Die Wallet konnte nicht getrennt werden. Bitte versuche es erneut oder schließe die Wallet-Erweiterung und öffne sie neu."
+    },
+    "review": {
+      "self_vote": "Du kannst nicht über deine eigene Bewertung abstimmen.",
+      "duplicate_vote": "Du hast bereits über diese Bewertung abgestimmt.",
+      "not_eligible": "Nur verifizierte Käufer können Bewertungen abgeben. Kaufe diesen Prompt, um eine Bewertung zu hinterlassen.",
+      "already_reviewed": "Du hast für diesen Prompt bereits eine Bewertung abgegeben. Du kannst stattdessen deine bestehende Bewertung bearbeiten.",
+      "seller_only": "Nur der verifizierte Verkäufer kann auf Bewertungen antworten.",
+      "vote_success": "Stimme erfolgreich erfasst.",
+      "vote_removed": "Stimme erfolgreich entfernt.",
+      "response_submitted": "Antwort des Verkäufers erfolgreich übermittelt."
+    },
+    "moderation": {
+      "unauthorized": "Nur autorisierte Moderatoren können Audit-Logs einsehen. Wenn du glaubst, dass dies ein Fehler ist, kontaktiere den Support, um Moderatorzugriff anzufordern.",
+      "address_required": "Gib eine Moderator-Wallet-Adresse ein, bevor du fortfährst."
+    }
+  },
+  "language": {
+    "select": "Sprache"
+  },
+  "webhook_replay": {
+    "title": "Webhook-Ereignis erneut senden",
+    "subtitle": "Untersuche Contract-Ereignisse aus der Dead-Letter-Queue und stelle sie erneut an deinen Endpunkt zu.",
+    "connect_wallet": "Verbinde deine Stellar-Wallet, um die Replay-Warteschlange für deinen Webhook einzusehen.",
+    "register_first": "Für diese Wallet ist noch kein Webhook registriert. Registriere einen in deinem Profil, um Ereignisse zu empfangen.",
+    "loading": "Replay-Warteschlange wird geladen...",
+    "empty": "Nichts erneut zu senden. Jede Webhook-Zustellung ist angekommen.",
+    "refresh": "Aktualisieren",
+    "include_resolved": "Bereits erledigte Ereignisse einbeziehen",
+    "acceptance_window": "Ein gespeicherter Umschlag wird mit seinem ursprünglichen Zeitstempel erneut gesendet, daher lehnen Empfänger, die der Signaturanleitung folgen, alles ab, was älter als {{seconds}} Sekunden ist. Sende mit neuem Zeitstempel, wenn diese Warnung erscheint.",
+    "admin_token_label": "Admin-API-Token",
+    "admin_token_placeholder": "ADMIN_API_TOKEN",
+    "admin_token_help": "Erneutes Senden löst eine ausgehende Zustellung aus, daher schützt der Server es mit dem Admin-Token. Das Token wird nur für diese Sitzung im Speicher gehalten und nie gespeichert.",
+    "admin_token_missing": "Gib vor dem erneuten Senden ein Admin-Token ein.",
+    "summary": {
+      "pending": "Ausstehend",
+      "replayable": "Erneut sendbar",
+      "stale": "Außerhalb des Fensters",
+      "resolved": "Erledigt"
+    },
+    "row": {
+      "dead_lettered": "In Dead-Letter-Queue seit {{date}}",
+      "attempts": "{{count}} Zustellversuche",
+      "fingerprint": "Payload-Fingerabdruck",
+      "delivery_id": "Zustellungs-ID",
+      "age": "Alter",
+      "replay_count": "Wiederholungen",
+      "last_replayed": "zuletzt {{date}}",
+      "last_error": "Letzter Fehler",
+      "status_code": "HTTP {{code}}",
+      "payload": "Gespeicherte Payload",
+      "warnings_label": "Vor dem erneuten Senden",
+      "replay_verbatim": "Unverändert erneut senden",
+      "replay_restamp": "Mit neuem Zeitstempel erneut senden"
+    },
+    "badge": {
+      "resolved": "Erledigt",
+      "stale": "Außerhalb des Fensters"
+    },
+    "warning": {
+      "stale_event": "Dieser Umschlag ist älter als das Annahmefenster von {{seconds}} Sekunden. Beim unveränderten Senden bleibt der alte Zeitstempel erhalten, sodass ein Empfänger, der das Fenster durchsetzt, ihn ablehnt – verwende stattdessen einen neuen Zeitstempel.",
+      "already_resolved": "Dieses Ereignis wurde bereits erfolgreich zugestellt, daher ist das erneute Senden deaktiviert.",
+      "unparseable_timestamp": "Der gespeicherte Zeitstempel ist nicht lesbar, daher kann sein Alter nicht geprüft werden.",
+      "subscription_missing": "Das Abonnement, zu dem dieses Ereignis gehört, existiert nicht mehr. Registriere deinen Webhook erneut, um es zu empfangen.",
+      "subscription_inactive": "Dieses Abonnement ist pausiert, daher schlägt das erneute Senden fehl, bis es wieder aktiviert wird."
+    },
+    "result": {
+      "success": "Erneut zugestellt. Der Empfänger hat das Ereignis angenommen.",
+      "failed": "Erneutes Senden fehlgeschlagen: {{error}}",
+      "unknown_error": "Unerwarteter Fehler."
+    },
+    "preview": {
+      "title": "Umschlag-Vorschau",
+      "description": "Erzeuge genau den Body und die Header, die ein Empfänger sehen würde, ohne etwas zuzustellen.",
+      "event_label": "Ereignis",
+      "build": "Vorschau erzeugen",
+      "body": "Request-Body",
+      "headers": "Header",
+      "copy": "Body kopieren",
+      "copied": "Kopiert",
+      "note": "Eine Vorschau hat immer eine neue Zustellungs-ID und einen neuen Zeitstempel. Beim erneuten Senden eines Dead Letters wird stattdessen der gespeicherte Umschlag gesendet, deshalb zeigt die Warteschlange oben für jedes Ereignis ein Alter an."
+    },
+    "catalog": {
+      "title": "Ereigniskatalog",
+      "description": "Ereignisse, die ein Webhook abonnieren kann. Dies ist derselbe Katalog, den die Registrierungs-API erzwingt, daher können die beiden nicht auseinanderlaufen.",
+      "dispatched": "Wird versendet",
+      "undispatched": "Noch nicht versendet"
+    }
+  },
+  "number_format": {
+    "xlm_unit": "XLM",
+    "stroop_unit": "Stroop",
+    "stroop_unit_plural": "Stroops",
+    "stroops_per_xlm": "1 XLM = 10.000.000 Stroops",
+    "price_label": "{{amount}} XLM",
+    "price_label_usd": "{{amount}} USD"
+  }
+}

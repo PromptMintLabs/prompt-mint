@@ -98,7 +98,50 @@ describe("validateListingMetadata", () => {
   });
 
   it("exports limits used by the Express listing validator", () => {
-    expect(LISTING_FIELD_LIMITS.title).toBe(100);
+    expect(LISTING_FIELD_LIMITS.title).toBe(120);
     expect(LISTING_FIELD_LIMITS.content).toBe(50_000);
+  });
+
+  it("caps image URLs at the on-chain 512-byte limit", () => {
+    const atLimit = validateListingMetadata({
+      image: `https://example.com/${"a".repeat(492)}`, // 512 UTF-8 bytes
+      title: "A valid title",
+      content: "A valid body of prompt content.",
+      price: 1,
+      category: "marketing",
+    });
+    expect(atLimit.errors.image).toBeUndefined();
+
+    const overLimit = validateListingMetadata({
+      image: `https://example.com/${"a".repeat(493)}`, // 513 UTF-8 bytes
+      title: "A valid title",
+      content: "A valid body of prompt content.",
+      price: 1,
+      category: "marketing",
+    });
+    expect(overLimit.errors.image).toMatch(/512 bytes/);
+  });
+
+  it("counts UTF-8 bytes so emoji-heavy titles respect the on-chain cap (#410)", () => {
+    // 30 emoji = 120 UTF-8 bytes == MAX_TITLE_LEN exactly.
+    const atLimit = validateListingMetadata({
+      image: "https://example.com/cover.png",
+      title: "😀".repeat(30),
+      content: "A valid body of prompt content.",
+      price: 1,
+      category: "marketing",
+    });
+    expect(atLimit.errors.title).toBeUndefined();
+
+    // 31 emoji = 62 UTF-16 units (under the old 100-char cap) but 124 UTF-8
+    // bytes, which create_prompt rejects.
+    const overLimit = validateListingMetadata({
+      image: "https://example.com/cover.png",
+      title: "😀".repeat(31),
+      content: "A valid body of prompt content.",
+      price: 1,
+      category: "marketing",
+    });
+    expect(overLimit.errors.title).toMatch(/120 bytes/);
   });
 });

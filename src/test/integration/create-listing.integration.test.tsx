@@ -194,7 +194,6 @@ describe("create listing integration coverage", () => {
   });
 
   it("clears the beforeunload warning after a successful submission", async () => {
-    const addSpy = vi.spyOn(window, "addEventListener");
     const removeSpy = vi.spyOn(window, "removeEventListener");
 
     encryptPromptPlaintextMock.mockResolvedValue({

@@ -58,6 +58,15 @@ compatible with older clients.
 - HTTP(S) image URLs with length caps from `LISTING_FIELD_LIMITS`
 - Minimum title/content lengths and strictly positive prices
 
+`LISTING_FIELD_LIMITS` caps are measured in **UTF-8 bytes** (not UTF-16 code
+units) and match the on-chain `create_prompt` limits in
+`contracts/prompt-hash/src/contract.rs`: `image` 512
+(`MAX_IMAGE_URL_LEN`), `title` 120 (`MAX_TITLE_LEN`) and `category` 40
+(`MAX_CATEGORY_LEN`). The Express validator in
+`server/src/services/listingValidation.ts` and the Mongoose model in
+`server/src/models/Prompt.js` use the same values, so HTTP clients cannot
+submit listing metadata that the contract will reject (#410).
+
 Failures return HTTP `422` with `{ error, fields }` as documented in
 [`docs/api-reference.md`](./api-reference.md).
 

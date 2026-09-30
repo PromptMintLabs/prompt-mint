@@ -422,6 +422,14 @@ Once you list prompts, you can track performance:
 - Track XLM earnings
 - Withdraw earnings to your wallet
 
+### Responding to Reviews
+
+From **My Prompts**, start the seller response tour for a guided walkthrough. Open one of your listings from Browse, scroll to its reviews, and choose **Respond as seller** on a review without a response. The connected wallet must be the verified seller. Replies can contain up to 1,000 characters; submitting again updates your existing reply.
+
+### Weekly Creator Metrics Digest
+
+In **Notification Preferences**, enter a creator digest email and opt in to **Weekly Creator Metrics Digest**. The digest includes sales, revenue, unique buyers, and your top listing for the previous complete UTC week. It is sent on Monday at 09:00 UTC when email notifications are enabled, SMTP is configured, and the week had sales. The digest is disabled by default; account export includes the email address, and account deletion removes it with the user profile.
+
 **You cannot:**
 - Change the sales history (immutable on-chain)
 - Recover a deleted prompt

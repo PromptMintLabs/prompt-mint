@@ -39,6 +39,9 @@ struct Context {
     admin: Address,
     admin_two: Address,
     admin_three: Address,
+    upgrade_admin: Address,
+    upgrade_admin_two: Address,
+    upgrade_admin_three: Address,
     fee_wallet: Address,
     xlm: Address,
     contract: Address,
@@ -49,6 +52,9 @@ fn setup(env: &Env) -> Context {
     let admin = Address::generate(env);
     let admin_two = Address::generate(env);
     let admin_three = Address::generate(env);
+    let upgrade_admin = Address::generate(env);
+    let upgrade_admin_two = Address::generate(env);
+    let upgrade_admin_three = Address::generate(env);
     let fee_wallet = Address::generate(env);
     let xlm = env.register(FungibleTokenContract, (admin.clone(),));
     let contract = env.register(
@@ -57,6 +63,9 @@ fn setup(env: &Env) -> Context {
             admin.clone(),
             admin_two.clone(),
             admin_three.clone(),
+            upgrade_admin.clone(),
+            upgrade_admin_two.clone(),
+            upgrade_admin_three.clone(),
             fee_wallet.clone(),
             xlm.clone(),
         ),
@@ -65,6 +74,9 @@ fn setup(env: &Env) -> Context {
         admin,
         admin_two,
         admin_three,
+        upgrade_admin,
+        upgrade_admin_two,
+        upgrade_admin_three,
         fee_wallet,
         xlm,
         contract,
@@ -202,11 +214,23 @@ fn gas_benchmarks_all_contract_operations() {
         let admin = Address::generate(&env);
         let admin_two = Address::generate(&env);
         let admin_three = Address::generate(&env);
+        let upgrade_admin = Address::generate(&env);
+        let upgrade_admin_two = Address::generate(&env);
+        let upgrade_admin_three = Address::generate(&env);
         let fee_wallet = Address::generate(&env);
         let xlm = env.register(FungibleTokenContract, (admin.clone(),));
         let _ = env.register(
             PromptHashContract,
-            (admin, admin_two, admin_three, fee_wallet, xlm),
+            (
+                admin,
+                admin_two,
+                admin_three,
+                upgrade_admin,
+                upgrade_admin_two,
+                upgrade_admin_three,
+                fee_wallet,
+                xlm,
+            ),
         );
     });
 
@@ -267,7 +291,7 @@ fn gas_benchmarks_all_contract_operations() {
         let _ = client.get_prompt(&prompt_id);
     });
     sample(&env, &mut samples, "get_all_prompts", || {
-        let _ = client.get_all_prompts();
+        let _ = client.get_all_prompts(&0, &100);
     });
     sample(&env, &mut samples, "get_prompts_by_creator", || {
         let _ = client.get_prompts_by_creator(&creator);

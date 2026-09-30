@@ -121,6 +121,25 @@ This document defines the core observability metrics emitted by the application,
 - **Type:** Gauge
 - **Alert:** Gauge `< 1` for 2 minutes pages PagerDuty.
 
+### 14. `abuse_report_response_duration_ms`
+- **Description:** Abuse report response SLA — elapsed time between an abuse report being filed and a moderator responding to it (resolving or dismissing it). Emitted by `POST /api/moderation/actions` when a `report_resolved` or `report_dismissed` action is applied.
+- **Unit:** Milliseconds (ms)
+- **Labels:**
+  - `targetType`: The reported target type (`prompt`, `review`, `user`).
+  - `outcome`: How the report was responded to (`resolved`, `dismissed`).
+- **Ownership:** Backend / Trust & Safety Team
+- **Type:** Gauge
+- **Note:** Alert on sustained p95 above the moderation response SLA target to page the on-call moderator.
+
+### 15. `abuse_report_responded_total`
+- **Description:** Volume of abuse reports that received a moderator response (resolution or dismissal).
+- **Unit:** Count
+- **Labels:**
+  - `targetType`: The reported target type (`prompt`, `review`, `user`).
+  - `outcome`: How the report was responded to (`resolved`, `dismissed`).
+- **Ownership:** Backend / Trust & Safety Team
+- **Type:** Counter
+
 ## Usage
 These metrics are structured to be parsed and aggregated by Prometheus/Datadog. Ensure that any newly added metrics follow the same convention.
 

@@ -302,15 +302,6 @@ function EmptyState() {
   );
 }
 
-function LoadingState() {
-  return (
-    <div className="flex min-h-40 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-8 text-sm text-slate-300">
-      <Loader2 className="mr-2 h-4 w-4 animate-spin text-cyan-200" />
-      Loading recently viewed...
-    </div>
-  );
-}
-
 function getTimeAgo(date: Date): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -334,7 +325,6 @@ export function RecentlyViewed({ walletAddress }: RecentlyViewedProps) {
     entries,
     config,
     isStorageOk,
-    addEntry,
     removeEntry,
     clearAll,
     enable,

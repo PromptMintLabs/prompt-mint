@@ -2,6 +2,8 @@ import "dotenv/config";
 import "./instrumentation";
 import express from "express";
 import cors from "cors";
+import { buildCorsOptions } from "./config/cors";
+import { securityHeaders } from "./middleware/securityHeaders";
 import { TestPromptProxy } from "./controllers/controllers";
 import { proxyrouter } from "./routes/proxyRoutes";
 import { promptRouter } from "./routes/promptRoutes";
@@ -10,25 +12,21 @@ import { chatRouter } from "./routes/chatRoutes";
 import { webhookRouter } from "./routes/webhookRoutes";
 import { versioningRouter } from "./routes/versioningRoutes";
 import { governanceRouter } from "./routes/governanceRoutes"; // Issue #113
-import { appealRouter } from "./routes/appealRoutes";
-import { robotsRouter } from "./routes/robotsRoutes";
-import { licenseTermsRouter } from "./routes/licenseTermsRoutes";
+import { moderationRouter } from "./routes/moderationRoutes";
 import { runBackup, getBackupHealth } from "./services/backupService";
 import { runRestoreDrill } from "./services/restoreService";
+import { blobRouter } from "./routes/blobRoutes";
 import { IndexerState } from "./models/IndexerState"; 
 import creatorReputationHandler from "./controllers/creatorReputationController";
+import creatorListingAnalyticsHandler from "./controllers/creatorListingAnalyticsController";
 import cron from "node-cron";
 import { JSON_BODY_LIMIT, jsonBodyTooLargeHandler } from "./middleware/bodySizeLimit";
 import { docsRouter } from "./routes/docsRoutes";
+import { metricsRouter } from "./routes/metricsRoutes";
+import { metricsMiddleware } from "./middleware/metricsMiddleware";
 import { idempotency } from "./middleware/idempotency";
-import { versionNegotiation } from "./middleware/versioning";
-import type { Server } from "node:http";
-import type { Socket } from "node:net";
-import { closeDb } from "./db/connectDb";
-import { closeRedis } from "./lib/redisConnection";
-import { flushPendingWebhooks } from "./services/webhookDispatcher";
-import { closeCache } from "./services/cacheService";
-import { shutdownTelemetry } from "./instrumentation";
+import { sendWeeklyCreatorMetricsDigests } from "./services/creatorMetricsDigest";
+import { runReviewRetentionCleanup } from "./services/reviewRetentionService";
 
 const app = express();
 
@@ -41,7 +39,20 @@ app.use((req, res, next) => {
 
 const port = 5000;
 
-app.use(cors());
+// Hardened CORS — only allowlisted origins receive CORS headers
+app.use(cors(buildCorsOptions()));
+
+// CORS error handler: return clean 403 JSON instead of Express default
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err && typeof err.message === "string" && err.message.startsWith("CORS:")) {
+    res.status(403).json({ error: "Forbidden", code: "CORS_FORBIDDEN" });
+    return;
+  }
+  next(err);
+});
+
+// Hardened security headers: CSP, HSTS, X-Frame-Options, etc.
+app.use(securityHeaders);
 
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
@@ -60,7 +71,12 @@ app.use(versionNegotiation);
 
 app.use(robotsRouter);
 
+// #448 - Prometheus/Grafana metrics collection and export
+app.use(metricsMiddleware);
+
 app.use("/api/docs", docsRouter);
+app.use("/api/metrics", metricsRouter);
+app.use("/metrics", metricsRouter);
 
 app.use("/api/improve-proxy", proxyrouter);
 
@@ -68,13 +84,22 @@ app.use("/api/prompts", promptRouter);
 
 app.use("/api/user", userRouter);
 
+// #752 - notification feed, read receipts, and history export.
+app.use("/api/notifications", notificationRouter);
+
 app.use("/api/chat", chatRouter);
 app.use("/api/webhooks", webhookRouter);
 app.use("/api/versions", versioningRouter);
 app.use("/api/governance", governanceRouter); // Issue #113
-app.get("/api/creators/reputation", creatorReputationHandler);
+app.use("/api/moderation", moderationRouter);
 
 app.post("/api/test-prompt", TestPromptProxy);
+
+// Email campaigns (Issues #721, #722)
+app.use("/api/campaigns", emailCampaignRouter);
+
+// Review analytics (Issues #723, #724)
+app.use("/api/review-analytics", reviewAnalyticsRouter);
 
 app.get("/health", async (req, res) => {
   const [state, backupHealth] = await Promise.all([
@@ -93,6 +118,31 @@ app.get("/health", async (req, res) => {
 
 export const server = app.listen(port, () => {
   console.log(`Listening on port ${port}`);
+
+  const creatorDigestSchedule = process.env.CREATOR_METRICS_DIGEST_CRON || "0 9 * * 1";
+  cron.schedule(
+    creatorDigestSchedule,
+    () => {
+      sendWeeklyCreatorMetricsDigests().catch((err) => {
+        console.error("[creatorMetricsDigest] Scheduled digest run failed:", err?.message ?? err);
+      });
+    },
+    { timezone: "UTC" },
+  );
+  console.log(`[creatorMetricsDigest] Weekly schedule started (${creatorDigestSchedule} UTC).`);
+
+  // REVIEW RETENTION AND CLEANUP JOB — Issue #725
+  const reviewRetentionSchedule = process.env.REVIEW_RETENTION_CRON || "0 2 * * *";
+  cron.schedule(
+    reviewRetentionSchedule,
+    () => {
+      runReviewRetentionCleanup().catch((err) => {
+        console.error("[reviewRetention] Scheduled cleanup failed:", err?.message ?? err);
+      });
+    },
+    { timezone: "UTC" },
+  );
+  console.log(`[reviewRetention] Daily review retention cleanup schedule started (${reviewRetentionSchedule} UTC).`);
 
   // STARTS THE INDEXER HERE
   // startIndexer().catch((err: any) => {

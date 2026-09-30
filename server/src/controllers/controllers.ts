@@ -1,16 +1,28 @@
 import { Request, Response } from "express";
+import { createHash } from "crypto";
 import connectDb from "../db/connectDb";
 import User from "../models/User";
 import Prompt from "../models/Prompt";
 import Report from "../models/Report";
+import {
+  compareModerationPriority,
+  getModerationPriority,
+} from "../services/moderationPriority";
+import { buildListingSnapshotFromPrompt } from "../services/listingSnapshot";
+import { buildReportAssignmentUpdate } from "../services/moderationAssignment";
+import { buildCollaborationNotesUpdate } from "../services/moderationNotes";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import {
   validateListingMetadata,
 } from "../services/listingValidation";
+import { cacheGet, cacheSet, cacheDel, cacheDelPattern, CACHE_KEYS } from "../services/cacheService";
+import { getCircuitBreaker, CircuitBreakerOpenError } from "../services/circuitBreaker";
 import { cacheGet, cacheSet, CACHE_KEYS, PROMPT_METADATA_TTL_SECONDS, invalidatePromptMetadata } from "../services/cacheService";
+import { searchMarketplace, parseMarketplaceQuery } from "../services/marketplaceIndexService";
 import { getCircuitBreaker } from "../services/circuitBreaker";
 import { isValidAdminToken } from "../services/adminAuth";
+import { IndexerState } from "../models/IndexerState";
 import { AppError } from "../lib/AppError";
 import { asyncRoute } from "../lib/asyncRoute";
 import { recordAuditEvent } from "../services/auditTrail";
@@ -29,6 +41,8 @@ export const ImproveProxy = asyncRoute(async (req, res) => {
 
   console.log("Improve prompt request: ", promptText);
 
+  try {
+    const response = await improveProxyBreaker.execute(() =>
   let response: Response;
   try {
     response = await improveProxyBreaker.execute(() =>
@@ -52,20 +66,48 @@ export const ImproveProxy = asyncRoute(async (req, res) => {
     throw err;
   }
 
-  const responseData = await response.json().catch(() => {});
-  const responseText = await response.text().catch(() => {});
+    const responseData = await response.json().catch(() => {});
+    const responseText = await response.text().catch(() => {});
 
-  console.log("Improve prompt response status:", response.status);
-  console.log("Improve prompt response data:", responseData || responseText);
+    console.log("Improve prompt response status:", response.status);
+    console.log("Improve prompt response data:", responseData || responseText);
 
-  if (!response.ok) {
-    throw new AppError("API Error", response.status);
+    if (!response.ok) {
+      throw new AppError("API Error", response.status);
+    }
+
+    res.json(responseData);
+  } catch (error) {
+    if (error instanceof CircuitBreakerOpenError) {
+      throw new AppError("Service Unavailable", 503, "CIRCUIT_OPEN");
+    }
+    if (error instanceof Error && (error.name === "AbortError" || error.message.includes("aborted"))) {
+      throw new AppError("Gateway Timeout", 504, "GATEWAY_TIMEOUT");
+    }
+    throw error;
   }
-
-  res.json(responseData);
 });
 
 /* PROMPTS CONTROLLERS */
+
+export function getStorageQuotaBytes(): number {
+  const configured = process.env.STORAGE_QUOTA_BYTES_PER_CREATOR;
+  if (configured && !isNaN(Number(configured))) {
+    return Number(configured);
+  }
+  return 50 * 1024 * 1024; // 50 MB default quota
+}
+
+export async function getUsedStorageBytes(userId: string | any): Promise<number> {
+  const prompts = await Prompt.find({ owner: userId }).select("content title image");
+  return prompts.reduce((total, p) => {
+    const contentBytes = Buffer.byteLength(p.content || "", "utf8");
+    const titleBytes = Buffer.byteLength(p.title || "", "utf8");
+    const imageBytes = Buffer.byteLength(p.image || "", "utf8");
+    return total + contentBytes + titleBytes + imageBytes;
+  }, 0);
+}
+
 
 export const CreatePrompt = asyncRoute(async (req, res) => {
   await connectDb();
@@ -107,6 +149,34 @@ export const CreatePrompt = asyncRoute(async (req, res) => {
     throw new AppError("User not found. Please connect your wallet first.", 404);
   }
 
+  const contentHash = createHash("sha256")
+    .update(normalized.content)
+    .digest("hex");
+
+  // Enforce storage quota per creator (Issue #198)
+  const incomingBytes =
+    Buffer.byteLength(normalized.content, "utf8") +
+    Buffer.byteLength(normalized.title, "utf8") +
+    Buffer.byteLength(normalized.image, "utf8");
+  const usedBytes = await getUsedStorageBytes(user._id);
+  const quotaBytes = getStorageQuotaBytes();
+  if (usedBytes + incomingBytes > quotaBytes) {
+    throw new AppError(
+      "Storage quota exceeded for this creator. Remove or upgrade older prompts to free space.",
+      413,
+      "STORAGE_QUOTA_EXCEEDED",
+    );
+  }
+
+  const duplicatePrompt = await Prompt.findOne({ contentHash });
+  if (duplicatePrompt) {
+    throw new AppError(
+      "A prompt with identical content already exists.",
+      409,
+      "DUPLICATE_CONTENT",
+    );
+  }
+
   const newPrompt = new Prompt({
     image: normalized.image,
     title: normalized.title,
@@ -114,6 +184,7 @@ export const CreatePrompt = asyncRoute(async (req, res) => {
     owner: user._id,
     price: normalized.price,
     category: normalized.category,
+    contentHash,
     rating: 3,
   });
 
@@ -138,36 +209,35 @@ export const GetPrompts = asyncRoute(async (req, res) => {
   await connectDb();
 
   const { searchParams } = new URL(req.url);
-  const category = searchParams.get("category");
-  const walletAddress = searchParams.get("walletAddress");
 
-  // Build a deterministic cache key from the query params
-  const cacheKey = CACHE_KEYS.promptList(`cat=${category ?? ""}&wallet=${walletAddress ?? ""}`);
-  const cached = await cacheGet(cacheKey);
-  if (cached) return res.json(JSON.parse(cached));
+  // Delegate browse/search/pagination to the indexer-backed read model, which
+  // serves the marketplace list from the event-indexed collection with
+  // cache-aside so high-volume traffic stays off the database.
+  const page = await searchMarketplace(parseMarketplaceQuery(searchParams));
 
-  const query: any = { listingStatus: 'published', isActive: true };
+  res.json(page);
+});
 
-  if (category) {
-    query.category = category;
-  }
+/**
+ * Surface the external indexer's progress and indexed collection size. Lets
+ * clients/operators see how fresh the search/pagination read model is without
+ * probing the chain directly.
+ */
+export const GetMarketplaceIndexStatus = asyncRoute(async (_req, res) => {
+  await connectDb();
 
-  if (walletAddress) {
-    const user = await User.findOne({
-      walletAddress: walletAddress.toLowerCase(),
-    });
-    if (user) {
-      query.owner = user._id;
-    }
-  }
+  const state = await IndexerState.findOne({ key: "prompt_hash_contract" }).lean();
+  const [indexed, published] = await Promise.all([
+    Prompt.countDocuments({ onChainId: { $ne: null } }),
+    Prompt.countDocuments({ listingStatus: "published", isActive: true }),
+  ]);
 
-  const prompts = await Prompt.find(query)
-    .populate("owner", "username walletAddress")
-    .sort({ createdAt: -1 });
-
-  await cacheSet(cacheKey, JSON.stringify(prompts), PROMPT_METADATA_TTL_SECONDS);
-
-  res.json(prompts);
+  res.json({
+    lastIndexedLedger: state?.lastIndexedLedger ?? 0,
+    indexedCount: indexed,
+    publishedCount: published,
+    updatedAt: state?.updatedAt ?? null,
+  });
 });
 
 export const GetPromptDetail = asyncRoute(async (req, res) => {
@@ -309,12 +379,35 @@ export const SubmitPromptReport = asyncRoute(async (req, res) => {
     throw new AppError("Prompt not found", 404);
   }
 
+  // Capture the listing's public state now so moderators can review what was
+  // reported even if the listing is later edited or removed (#737).
+  const listingSnapshot = buildListingSnapshotFromPrompt(prompt);
+  const normalizedReporterAddress = reporterAddress.toLowerCase();
+  const reportMatch = {
+    promptId: String(promptId),
+    reporterAddress: normalizedReporterAddress,
+    reason,
+    status: { $in: ["pending", "investigating"] },
+  };
+  const existingReport = await Report.findOne(reportMatch);
+
+  if (existingReport) {
+    res.status(200).json({
+      success: true,
+      duplicate: true,
+      message: "An active report matching this submission already exists",
+      reportId: existingReport._id,
+    });
+    return;
+  }
+
   // Create new report
   const newReport = new Report({
-    promptId,
-    reporterAddress: reporterAddress.toLowerCase(),
+    promptId: String(promptId),
+    reporterAddress: normalizedReporterAddress,
     reason,
     description: description || "",
+    ...(listingSnapshot ? { listingSnapshot } : {}),
   });
 
   await newReport.save();
@@ -361,27 +454,130 @@ export const RecordPreview = asyncRoute(async (req, res) => {
   // Increment preview count - avoid storing who viewed (privacy-safe)
   await Prompt.findByIdAndUpdate(promptId, { $inc: { previewCount: 1 } });
 
-  res.status(200).json({ success: true });
-});
+    const promptId = typeof req.query.promptId === "string" ? req.query.promptId : null;
+    const status = typeof req.query.status === "string" ? req.query.status : null;
+    const assignedReviewer = typeof req.query.assignedReviewer === "string"
+      ? req.query.assignedReviewer
+      : null;
 
-export const GetPreviewStats = asyncRoute(async (req, res) => {
-  await connectDb();
-  const { walletAddress } = req.query;
+    const query: any = {};
+    if (promptId) {
+      query.promptId = promptId;
+    }
+    if (status) {
+      query.status = status;
+    }
+    if (assignedReviewer) {
+      query.assignedReviewer = assignedReviewer === "unassigned"
+        ? null
+        : assignedReviewer.toLowerCase();
+    }
 
-  if (!walletAddress) {
-    throw new AppError("walletAddress is required.", 400, "MISSING_FIELDS");
+    const reports = await Report.find(query).lean();
+    const now = Date.now();
+    const prioritizedReports = reports
+      .map((report: any) => ({
+        ...report,
+        priority: getModerationPriority({
+          reason: report.reason,
+          createdAt: report.createdAt,
+          now,
+        }),
+      }))
+      .sort((a: any, b: any) =>
+        compareModerationPriority(
+          { reason: a.reason, createdAt: a.createdAt, now },
+          { reason: b.reason, createdAt: b.createdAt, now },
+        ),
+      );
+
+    return res.json(prioritizedReports);
+  } catch (err) {
+    console.error("Get reports error:", err);
+    return res.status(500).json({
+      error: (err as Error).message || "Failed to fetch reports",
+    });
   }
 
-  const user = await User.findOne({
-    walletAddress: String(walletAddress).toLowerCase(),
-  });
-  if (!user) {
-    throw new AppError("User not found.", 404);
-  }
+export const AssignPromptReport = async (
+  req: Request,
+  res: Response,
+): Promise<Response<any>> => {
+  try {
+    await connectDb();
 
-  const prompts = await Prompt.find({ owner: user._id })
-    .select("title previewCount salesCount price isActive")
-    .sort({ previewCount: -1 });
+    const adminToken = req.headers.authorization?.split(" ")[1];
+    if (!adminToken) {
+      return res.status(401).json({ error: "Unauthorized: Admin token required" });
+    }
+
+    const assignedBy = typeof req.headers["x-moderator-address"] === "string"
+      ? req.headers["x-moderator-address"]
+      : null;
+    const update = buildReportAssignmentUpdate({
+      reviewerAddress: req.body?.reviewerAddress,
+      assignedBy,
+    });
+    const report = await Report.findByIdAndUpdate(
+      req.params.reportId,
+      update,
+      { new: true, runValidators: true },
+    ).lean();
+
+    if (!report) {
+      return res.status(404).json({ error: "Report not found" });
+    }
+
+    return res.json(report);
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("reviewerAddress")) {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error("Assign report error:", err);
+    return res.status(500).json({ error: "Failed to assign report" });
+  }
+};
+
+export const UpdatePromptReportNotes = async (
+  req: Request,
+  res: Response,
+): Promise<Response<any>> => {
+  try {
+    await connectDb();
+
+    const adminToken = req.headers.authorization?.split(" ")[1];
+    if (!adminToken) {
+      return res.status(401).json({ error: "Unauthorized: Admin token required" });
+    }
+
+    const updatedBy = typeof req.headers["x-moderator-address"] === "string"
+      ? req.headers["x-moderator-address"]
+      : null;
+    const update = buildCollaborationNotesUpdate({
+      notes: req.body?.notes,
+      updatedBy,
+    });
+    const report = await Report.findByIdAndUpdate(
+      req.params.reportId,
+      update,
+      { new: true, runValidators: true },
+    ).lean();
+
+    if (!report) {
+      return res.status(404).json({ error: "Report not found" });
+    }
+
+    return res.json(report);
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("notes")) {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error("Update report notes error:", err);
+    return res.status(500).json({ error: "Failed to update collaboration notes" });
+  }
+};
+
+// --- Issue #257: Prompt Preview Analytics -------------------------------------
 
   const totalPreviews = prompts.reduce(
     (sum: number, p: any) => sum + (p.previewCount || 0),
@@ -675,13 +871,15 @@ export const GetUserPreferences = asyncRoute(async (req, res) => {
     newReviews: true,
     priceAlerts: true,
     emailNotifications: true,
+    weeklyCreatorDigest: false,
   };
 
   if (!user) {
-    return res.json({ preferences: defaultPrefs });
+    return res.json({ preferences: defaultPrefs, emailAddress: "" });
   }
 
   res.json({
+    emailAddress: user.email || "",
     preferences: {
       ...defaultPrefs,
       ...(user.notificationPreferences?.toObject?.() || user.notificationPreferences || {}),
@@ -692,7 +890,7 @@ export const GetUserPreferences = asyncRoute(async (req, res) => {
 export const UpdateUserPreferences = asyncRoute(async (req, res) => {
   await connectDb();
 
-  const { walletAddress, preferences } = req.body;
+  const { walletAddress, preferences, emailAddress } = req.body;
 
   if (!walletAddress) {
     throw new AppError("Wallet address is required", 400, "MISSING_FIELDS");
@@ -702,11 +900,24 @@ export const UpdateUserPreferences = asyncRoute(async (req, res) => {
     throw new AppError("Preferences object is required", 400, "MISSING_FIELDS");
   }
 
+  const normalizedEmail = typeof emailAddress === "string" ? emailAddress.trim().toLowerCase() : "";
+  if (emailAddress !== undefined && normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    throw new AppError("A valid email address is required", 400, "INVALID_INPUT");
+  }
+
   let user = await User.findOne({ walletAddress: walletAddress.toLowerCase() });
+  const resultingEmail = emailAddress === undefined ? user?.email : normalizedEmail;
+  const existingPreferences = user?.notificationPreferences?.toObject?.() || user?.notificationPreferences || {};
+  const resultingDigestPreference = preferences.weeklyCreatorDigest ?? existingPreferences.weeklyCreatorDigest ?? false;
+  if (resultingDigestPreference && !resultingEmail) {
+    throw new AppError("Add an email address to enable the weekly creator digest", 400, "INVALID_INPUT");
+  }
+
   if (!user) {
     user = new User({
       walletAddress: walletAddress.toLowerCase(),
       username: `user${Math.floor(100000 + Math.random() * 900000)}`,
+      email: normalizedEmail || undefined,
       notificationPreferences: preferences,
     });
   } else {
@@ -714,12 +925,43 @@ export const UpdateUserPreferences = asyncRoute(async (req, res) => {
       ...(user.notificationPreferences || {}),
       ...preferences,
     };
+    if (emailAddress !== undefined) user.email = normalizedEmail || undefined;
   }
 
   await user.save();
 
   res.status(200).json({
     message: "Preferences updated successfully",
+    emailAddress: user.email || "",
     preferences: user.notificationPreferences,
+  });
+});
+
+export const GetCreatorStorageQuota = asyncRoute(async (req, res) => {
+  await connectDb();
+  const { walletAddress } = req.params;
+  if (!walletAddress) {
+    throw new AppError("Wallet address is required", 400, "MISSING_WALLET");
+  }
+
+  const user = await User.findOne({
+    walletAddress: walletAddress.toLowerCase(),
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404, "USER_NOT_FOUND");
+  }
+
+  const usedBytes = await getUsedStorageBytes(user._id);
+  const quotaBytes = getStorageQuotaBytes();
+  const remainingBytes = Math.max(0, quotaBytes - usedBytes);
+  const usagePercentage = Math.min(100, Math.round((usedBytes / quotaBytes) * 100));
+
+  res.status(200).json({
+    walletAddress,
+    usedBytes,
+    quotaBytes,
+    remainingBytes,
+    usagePercentage,
   });
 });

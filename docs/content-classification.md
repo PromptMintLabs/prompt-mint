@@ -108,6 +108,31 @@ fn set_moderator_override(
 | Conflicting classification change | Latest creator-set value overwrites previous |
 | Intentionally false classification | Moderator can issue an override; on-chain audit trail exists |
 
+## Accuracy Review Sampling
+
+Moderators can pull a reproducible random subset of recent resolved/actioned
+outcomes for re-review via `GET /api/moderation/accuracy`. The endpoint requires
+a purpose-scoped moderator signature (`moderation-accuracy`) and returns
+`{ sample, meta }` where `meta` is
+`{ sampleSize, seed, totalEligible, generatedAt }`.
+
+Sampling methodology:
+
+- Eligible items are reports with status `resolved`/`dismissed` plus moderation
+  log entries, constrained to the last 90 days (`ACCURACY_SAMPLE_WINDOW_MS`) or
+  an explicit `since` timestamp.
+- An optional `action` filter (`takedown` | `dismiss` | `all`, default `all`)
+  narrows the pool so samples are not dominated by a single action type:
+  `takedown` keeps `prompt_takedown`/`review_removed` logs, `dismiss` keeps
+  dismissed reports and `report_dismissed` logs.
+- Selection uses a zero-dependency Mulberry32 PRNG seeded from the `seed` query
+  param (`hashSeedToUint32` for string seeds), with a stable id-sorted input
+  order and Fisher-Yates shuffle, so the same seed yields the same sample order.
+- `sampleSize` is clamped to 1–50 (default 10).
+- No `accuracySummary` percentage is emitted: reports and logs carry no
+  audited/appealed outcome field, so a percentage would be fictional. Add that
+  field first, then derive accuracy only over items with an explicit outcome.
+
 ## Testing
 
 The test suite covers:

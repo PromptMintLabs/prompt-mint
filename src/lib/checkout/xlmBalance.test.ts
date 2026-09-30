@@ -5,7 +5,7 @@ import {
   parseHorizonNativeBalanceToStroops,
   CHECKOUT_FEE_BUFFER_STROOPS,
   DEFAULT_BASE_RESERVE_STROOPS,
-} from "../xlmBalance";
+} from "./xlmBalance";
 
 describe("parseHorizonNativeBalanceToStroops", () => {
   it("parses whole and fractional native balances", () => {

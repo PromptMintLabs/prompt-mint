@@ -8,6 +8,7 @@ export interface StoredReview {
   verified: boolean;
   helpfulVotes: number;
   voters: string[];
+  helpfulVoteActivity?: Array<{ voterAddress: string; votedAt: number }>;
   editedAt?: number;
   editHistory: ReviewEditAuditEntry[];
   moderation?: {
@@ -21,6 +22,20 @@ export interface StoredReview {
     createdAt: number;
     editedAt?: number;
   };
+}
+
+export const HELPFUL_VOTE_ALERT_THRESHOLD = 5;
+export const HELPFUL_VOTE_ALERT_WINDOW_MS = 10 * 60 * 1000;
+export const HELPFUL_VOTE_ACTIVITY_RETENTION_MS = 24 * 60 * 60 * 1000;
+export const REMOVED_REVIEW_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // 90 days retention for removed reviews
+
+export function hasHelpfulVoteManipulationAlert(review: StoredReview, now = Date.now()): boolean {
+  const recentVoters = new Set(
+    (review.helpfulVoteActivity ?? [])
+      .filter((activity) => now - activity.votedAt <= HELPFUL_VOTE_ALERT_WINDOW_MS)
+      .map((activity) => activity.voterAddress.toLowerCase()),
+  );
+  return recentVoters.size >= HELPFUL_VOTE_ALERT_THRESHOLD;
 }
 
 /** Immutable snapshots retained whenever an author changes a review. */
@@ -58,6 +73,12 @@ function seedMockReviews() {
       helpfulVotes: 1,
       voters: [],
       editHistory: [],
+      moderation: {
+        status: "removed",
+        moderatorAddress: "gmoderator1",
+        reason: "Inappropriate content",
+        updatedAt: Date.now() - 86400000 * 3,
+      },
     },
     {
       id: "review_3",
@@ -127,3 +148,100 @@ export function findReviewById(reviewId: string): StoredReview | undefined {
   }
   return undefined;
 }
+
+export function deleteReviewById(reviewId: string): boolean {
+  for (const [promptId, reviews] of reviewStorage.entries()) {
+    const index = reviews.findIndex((r) => r.id === reviewId);
+    if (index !== -1) {
+      reviews.splice(index, 1);
+      reviewStorage.set(promptId, reviews);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Prunes helpfulVoteActivity older than HELPFUL_VOTE_ACTIVITY_RETENTION_MS across all stored reviews.
+ */
+export function pruneExpiredHelpfulVoteActivity(now = Date.now()): number {
+  let prunedCount = 0;
+  for (const reviews of reviewStorage.values()) {
+    for (const review of reviews) {
+      if (review.helpfulVoteActivity && review.helpfulVoteActivity.length > 0) {
+        const initialCount = review.helpfulVoteActivity.length;
+        review.helpfulVoteActivity = review.helpfulVoteActivity.filter(
+          (activity) => now - activity.votedAt <= HELPFUL_VOTE_ACTIVITY_RETENTION_MS,
+        );
+        prunedCount += initialCount - review.helpfulVoteActivity.length;
+      }
+    }
+  }
+  return prunedCount;
+}
+
+/**
+ * Prunes removed reviews whose removal time is older than the retention period.
+ * Excludes reviews with active/pending appeals if provided in excludedReviewIds.
+ */
+export function pruneRemovedReviews(
+  retentionMs = REMOVED_REVIEW_RETENTION_MS,
+  now = Date.now(),
+  excludedReviewIds: Set<string> | string[] = new Set(),
+): { removedCount: number; removedReviewIds: string[] } {
+  const excludedSet = excludedReviewIds instanceof Set ? excludedReviewIds : new Set(excludedReviewIds);
+  let removedCount = 0;
+  const removedReviewIds: string[] = [];
+
+  for (const [promptId, reviews] of reviewStorage.entries()) {
+    const retainedReviews: StoredReview[] = [];
+    for (const review of reviews) {
+      if (review.moderation?.status === "removed" && !excludedSet.has(review.id)) {
+        const removalTime = review.moderation.updatedAt || review.createdAt;
+        if (now - removalTime > retentionMs) {
+          removedCount++;
+          removedReviewIds.push(review.id);
+          continue;
+        }
+      }
+      retainedReviews.push(review);
+    }
+    reviewStorage.set(promptId, retainedReviews);
+  }
+
+  return { removedCount, removedReviewIds };
+}
+
+/**
+ * Comprehensive in-memory review retention cleanup.
+ */
+export function cleanupReviewData(options?: {
+  voteRetentionMs?: number;
+  removedRetentionMs?: number;
+  now?: number;
+  excludedReviewIds?: string[] | Set<string>;
+}): {
+  prunedVotes: number;
+  removedReviews: number;
+  removedReviewIds: string[];
+} {
+  const now = options?.now ?? Date.now();
+  const prunedVotes = pruneExpiredHelpfulVoteActivity(now);
+  const { removedCount, removedReviewIds } = pruneRemovedReviews(
+    options?.removedRetentionMs ?? REMOVED_REVIEW_RETENTION_MS,
+    now,
+    options?.excludedReviewIds ?? new Set(),
+  );
+
+  return {
+    prunedVotes,
+    removedReviews: removedCount,
+    removedReviewIds,
+  };
+}
+
+export function _resetReviewStorage(): void {
+  reviewStorage.clear();
+  seedMockReviews();
+}
+

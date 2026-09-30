@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   Activity,
+  Gavel,
   Menu,
   MessageCircle,
   ReceiptText,
@@ -10,7 +11,6 @@ import {
   Shield,
   User,
   ShoppingCart,
-  Wallet,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
@@ -18,6 +18,7 @@ import DisplayWallet from "./DisplayWallet";
 import { ThemeToggle } from "./ThemeToggle";
 import { CurrencyToggle } from "./CurrencyToggle";
 import { NotificationCenter } from "./NotificationCenter";
+import { InstallAppButton } from "./InstallAppButton";
 import { useCart } from "@/providers/CartProvider";
 import { Cart, CartIcon } from "./Cart";
 import { Checkout } from "./Checkout";
@@ -36,6 +37,7 @@ const navItems = [
   { to: "/history", label: "History", icon: ReceiptText },
   { to: "/status", label: "Status", icon: Activity },
   { to: "/moderation", label: "Moderation", icon: Shield },
+  { to: "/appeals", label: "Appeals", icon: Gavel },
 ];
 
 const mobileNavItems = [
@@ -157,6 +159,7 @@ export function Navigation() {
             </Button>
             <NotificationCenter />
             <ThemeToggle />
+            <InstallAppButton />
             <DisplayWallet />
           </div>
 
@@ -176,6 +179,7 @@ export function Navigation() {
               )}
             </Button>
             <DisplayWallet />
+            <InstallAppButton />
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -213,6 +217,7 @@ export function Navigation() {
                   <div className="flex items-center gap-2 border-t border-white/10 pt-4 mt-4">
                     <CurrencyToggle />
                     <ThemeToggle />
+                    <InstallAppButton variant="full" />
                   </div>
                 </div>
               </SheetContent>

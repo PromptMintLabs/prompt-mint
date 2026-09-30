@@ -10,6 +10,7 @@ import Vote from "../models/Vote";
 import Purchase from "../models/Purchase";
 import WebhookSubscription from "../models/WebhookSubscription";
 import Notification from "../models/Notification";
+import CreatorDigestDelivery from "../models/CreatorDigestDelivery";
 import { cacheSet, cacheGet, cacheDel } from "../services/cacheService";
 import connectDb from "../db/connectDb";
 
@@ -49,15 +50,37 @@ function createChallengeToken(secret: string, address: string, promptId: string)
   };
 }
 
-function verifyChallengeToken(secret: string, token: string, address: string, promptId: string) {
+function getActiveSecrets(): string[] {
+  const secrets: string[] = [];
+  const primary = process.env.CHALLENGE_TOKEN_SECRET;
+  if (primary) secrets.push(primary);
+  const previous = process.env.CHALLENGE_TOKEN_SECRET_PREVIOUS;
+  const rotationTimestamp = parseInt(process.env.CHALLENGE_TOKEN_ROTATION_TIMESTAMP || "0", 10);
+  const gracePeriodMs = parseInt(process.env.CHALLENGE_TOKEN_GRACE_PERIOD_MS || "604800000", 10);
+  if (previous && rotationTimestamp && Date.now() - rotationTimestamp < gracePeriodMs) {
+    secrets.push(previous);
+  }
+  return secrets;
+}
+
+function verifyChallengeToken(secret: string | string[], token: string, address: string, promptId: string) {
   const [encodedPayload, signature] = token.split(".");
   if (!encodedPayload || !signature) throw new AppError("Malformed challenge token.", 400, "CHALLENGE_MALFORMED");
   
-  const expectedSignature = signPayload(secret, encodedPayload);
+  const secrets = Array.isArray(secret) ? secret : [secret];
   const received = Buffer.from(signature, "utf8");
-  const expected = Buffer.from(expectedSignature, "utf8");
   
-  if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
+  let validSignature = false;
+  for (const s of secrets) {
+    const expectedSignature = signPayload(s, encodedPayload);
+    const expected = Buffer.from(expectedSignature, "utf8");
+    if (received.length === expected.length && timingSafeEqual(received, expected)) {
+      validSignature = true;
+      break;
+    }
+  }
+
+  if (!validSignature) {
     throw new AppError("Invalid challenge token signature.", 401, "CHALLENGE_INVALID_SIGNATURE");
   }
 
@@ -100,12 +123,12 @@ export const RequestExport = asyncRoute(async (req: Request, res: Response) => {
   if (!address || !signature || !token) {
     throw new AppError("address, signature, and token are required.", 400, "MISSING_FIELDS");
   }
-  const secret = process.env.CHALLENGE_TOKEN_SECRET;
-  if (!secret) {
+  const activeSecrets = getActiveSecrets();
+  if (activeSecrets.length === 0) {
     throw new AppError("Configuration error.", 500);
   }
 
-  const payload = verifyChallengeToken(secret, token, String(address), "export");
+  const payload = verifyChallengeToken(activeSecrets, token, String(address), "export");
   const message = buildChallengeMessage(payload);
   const isValid = verifyChallengeSignature(String(address), message, String(signature));
   
@@ -115,12 +138,13 @@ export const RequestExport = asyncRoute(async (req: Request, res: Response) => {
 
   await connectDb();
 
-  const [user, reports, votes, purchases, webhookSubscriptions] = await Promise.all([
+  const [user, reports, votes, purchases, webhookSubscriptions, creatorDigestDeliveries] = await Promise.all([
     User.findOne({ walletAddress: address.toLowerCase() }).lean(),
     Report.find({ reporterAddress: address.toLowerCase() }).lean(),
     Vote.find({ voterWallet: address.toLowerCase() }).lean(),
     Purchase.find({ buyerWallet: address.toLowerCase() }).lean(),
     WebhookSubscription.find({ walletAddress: address.toLowerCase() }).lean(),
+    CreatorDigestDelivery.find({ creatorWallet: address.toLowerCase() }).lean(),
   ]);
 
   const exportData = {
@@ -129,12 +153,13 @@ export const RequestExport = asyncRoute(async (req: Request, res: Response) => {
       excluded: ["auditLogs", "reviews"]
     },
     data: {
-      profile: user ? { username: user.username, rating: user.rating, createdAt: user.createdAt, updatedAt: user.updatedAt } : null,
+      profile: user ? { username: user.username, email: user.email, rating: user.rating, createdAt: user.createdAt, updatedAt: user.updatedAt } : null,
       preferences: user?.notificationPreferences || null,
       purchases,
       reports,
       votes,
-      webhookSubscriptions
+      webhookSubscriptions,
+      creatorDigestDeliveries,
     }
   };
 
@@ -153,8 +178,8 @@ export const RequestExport = asyncRoute(async (req: Request, res: Response) => {
 // ─── Account deletion (#91: data retention & deletion policies) ───────────────
 //
 // Mirrors the export challenge/signature flow above so only the wallet owner
-// can request deletion. Off-chain personal data (profile, notification
-// preferences, webhook subscriptions) is removed. Records that constitute
+// can request deletion. Off-chain personal data (profile, digest email,
+// notification preferences, webhook subscriptions, digest delivery records) is removed. Records that constitute
 // marketplace/on-chain history -- purchases, marketplace transactions,
 // votes, and moderation reports -- are intentionally retained so that
 // on-chain access authority and audit integrity are unaffected, per
@@ -180,12 +205,12 @@ export const RequestAccountDeletion = asyncRoute(async (req: Request, res: Respo
   if (!address || !signature || !token) {
     throw new AppError("address, signature, and token are required.", 400, "MISSING_FIELDS");
   }
-  const secret = process.env.CHALLENGE_TOKEN_SECRET;
-  if (!secret) {
+  const activeSecrets = getActiveSecrets();
+  if (activeSecrets.length === 0) {
     throw new AppError("Configuration error.", 500);
   }
 
-  const payload = verifyChallengeToken(secret, token, String(address), "delete-account");
+  const payload = verifyChallengeToken(activeSecrets, token, String(address), "delete-account");
   const message = buildChallengeMessage(payload);
   const isValid = verifyChallengeSignature(String(address), message, String(signature));
 
@@ -197,10 +222,11 @@ export const RequestAccountDeletion = asyncRoute(async (req: Request, res: Respo
 
   const walletAddress = String(address).toLowerCase();
 
-  const [userResult, webhookResult, notificationResult] = await Promise.all([
+  const [userResult, webhookResult, notificationResult, digestDeliveryResult] = await Promise.all([
     User.deleteOne({ walletAddress }),
     WebhookSubscription.deleteMany({ walletAddress }),
     Notification.deleteMany({ walletAddress }),
+    CreatorDigestDelivery.deleteMany({ creatorWallet: walletAddress }),
   ]);
 
   res.status(200).json({
@@ -209,6 +235,7 @@ export const RequestAccountDeletion = asyncRoute(async (req: Request, res: Respo
       profile: userResult.deletedCount > 0,
       webhookSubscriptions: webhookResult.deletedCount,
       notifications: notificationResult.deletedCount,
+      creatorDigestDeliveries: digestDeliveryResult.deletedCount,
     },
     retained: {
       collections: ["purchases", "marketplaceTransactions", "votes", "reports"],

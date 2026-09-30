@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import {
   lintListing,
-  hasBlockingFindings,
   getBlockingFindings,
   type LinterInput,
   type LinterFinding,

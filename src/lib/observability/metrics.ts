@@ -14,6 +14,27 @@ export const METRIC_NAMES = {
   activeUsers: "active_users_total",
   transactionVolume: "transaction_volume_total",
   endpointHealth: "api_endpoint_health",
+  /**
+   * Gauge: the quality score (0.0–1.0) of a moderation decision recorded
+   * during a spot-check.  Labels: targetType, outcome.
+   */
+  moderationQualityScore: "moderation_quality_score",
+  /**
+   * Counter: incremented each time a moderation outcome is recorded.
+   * Labels: targetType, outcome.
+   */
+  moderationOutcomeRecorded: "moderation_outcome_recorded_total",
+  /**
+   * Gauge: elapsed time in milliseconds between an abuse report being filed
+   * and a moderator responding to it (resolving or dismissing it).
+   * Labels: targetType, outcome.
+   */
+  abuseReportResponseDuration: "abuse_report_response_duration_ms",
+  /**
+   * Counter: incremented each time a moderator responds to an abuse report
+   * (resolving or dismissing it). Labels: targetType, outcome.
+   */
+  abuseReportResponded: "abuse_report_responded_total",
 } as const;
 
 type MetricLabels = Record<string, string | number>;
@@ -130,6 +151,46 @@ export const metrics = {
 
   trackEndpointHealth(path: string, healthy: boolean, latencyMs: number) {
     this.emit(METRIC_NAMES.endpointHealth, healthy ? 1 : 0, { path, latencyMs });
+  },
+
+  /**
+   * Records the quality outcome of a moderation decision captured during a
+   * spot-check review.
+   *
+   * Emits two metrics:
+   *  - `moderation_quality_score`            (gauge, 0.0–1.0)
+   *  - `moderation_outcome_recorded_total`   (counter)
+   *
+   * @param targetType  The type of moderated target ("prompt" | "review" | "user" | "report")
+   * @param outcome     The reviewer's verdict ("correct" | "incorrect" | "disputed")
+   * @param score       Quality score in [0.0, 1.0]
+   */
+  trackModerationQuality(
+    targetType: string,
+    outcome: "correct" | "incorrect" | "disputed",
+    score: number,
+  ) {
+    this.emit(METRIC_NAMES.moderationQualityScore, score, { targetType, outcome });
+    this.emit(METRIC_NAMES.moderationOutcomeRecorded, 1, { targetType, outcome });
+  },
+
+  /**
+   * Records a moderator's response to an abuse report (resolution or
+   * dismissal) for SLA tracking.
+   *
+   * Emits two metrics:
+   *  - `abuse_report_response_duration_ms` (gauge) – time in milliseconds
+   *    between the report being filed and the response being recorded.
+   *  - `abuse_report_responded_total` (counter)
+   *
+   * @param targetType  The type of reported target ("prompt" | "review" | "user")
+   * @param outcome     How the report was responded to ("resolved" | "dismissed")
+   * @param durationMs  Response time in milliseconds (>= 0)
+   */
+  trackAbuseReportResponse(targetType: string, outcome: "resolved" | "dismissed", durationMs: number) {
+    const safeDuration = Math.max(0, Math.round(durationMs));
+    this.emit(METRIC_NAMES.abuseReportResponseDuration, safeDuration, { targetType, outcome });
+    this.emit(METRIC_NAMES.abuseReportResponded, 1, { targetType, outcome });
   },
 
   _resetForTests() {

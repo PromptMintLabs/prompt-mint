@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCart } from '@/providers/CartProvider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,24 +10,27 @@ import {
   AlertTriangle,
   RefreshCw,
   Wallet,
-  ArrowRight,
 } from 'lucide-react';
 import {
   validateCheckout,
   type CheckoutSummary,
-  type CheckoutItemValidation,
 } from '@/lib/checkout/validation';
 import { PromptHashClient } from '@/lib/stellar/promptHashClient';
-import { browserStellarConfig } from '@/lib/stellar/browserConfig';
 import { useNetworkState } from '@/hooks/useNetworkState';
 import { detectNetworkMismatch } from '@/lib/wallet/networkDetection';
 import { useWallet } from '@/hooks/useWallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchActiveLicenseTerms, type LicenseTerm } from '@/lib/checkout/licenseTerms';
 import { translateError } from '@/lib/i18n-errors';
-import { estimateBulkFee, type FeeEstimate } from '@/lib/checkout/feeEstimation';
+import { estimateMultiItemPurchase } from '@/lib/checkout/feeEstimation';
 import { FeeEstimateBanner } from '@/components/FeeEstimateBanner';
 import { TransactionProgress } from '@/components/TransactionProgress';
+import { useContext } from 'react';
+import { NotificationContext } from '@/providers/NotificationProvider';
+import {
+  showPurchaseSuccessToast,
+  showPurchaseErrorToast,
+} from '@/lib/notifications/purchaseToast';
 import type { TransactionStepId } from '@/lib/checkout/transactionSteps';
 
 const promptImageFallback = '/images/codeguru.png';
@@ -51,6 +54,7 @@ interface CheckoutProps {
 }
 
 export function Checkout({ onClose }: CheckoutProps) {
+  const notificationContext = useContext(NotificationContext);
   const { state, removeItem, clearCart, setCheckingOut, totalStroops, itemCount } = useCart();
   const { address, signTransaction } = useWallet();
   const queryClient = useQueryClient();
@@ -62,8 +66,6 @@ export function Checkout({ onClose }: CheckoutProps) {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [licenseTerms, setLicenseTerms] = useState<LicenseTerm[]>([]);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [feeEstimate, setFeeEstimate] = useState<FeeEstimate | null>(null);
-  const [isEstimatingFees, setIsEstimatingFees] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [txStepId, setTxStepId] = useState<TransactionStepId | null>(null);
   const [txStepError, setTxStepError] = useState(false);
@@ -88,14 +90,10 @@ export function Checkout({ onClose }: CheckoutProps) {
     }
   }, [address, state.items.length, step, summary, validateItems]);
 
-  useEffect(() => {
-    if (state.items.length > 0 && step === 'review') {
-      setIsEstimatingFees(true);
-      estimateBulkFee(state.items.length)
-        .then(setFeeEstimate)
-        .finally(() => setIsEstimatingFees(false));
-    }
-  }, [state.items.length, step]);
+  const purchaseEstimate = useMemo(
+    () => estimateMultiItemPurchase(state.items),
+    [state.items],
+  );
 
   useEffect(() => {
     fetchActiveLicenseTerms().then(setLicenseTerms).catch(() => {});
@@ -162,21 +160,40 @@ export function Checkout({ onClose }: CheckoutProps) {
       if (allSuccess) {
         clearCart();
         queryClient.invalidateQueries({ queryKey: ['purchased-prompts'] });
+        showPurchaseSuccessToast(bulkResult.txHash, {
+          title: `Checkout Successful! (${items.length} ${items.length === 1 ? 'item' : 'items'})`,
+        });
+        notificationContext?.notifyEvent({
+          category: 'purchase',
+          title: 'Purchase Successful',
+          message: `Purchased ${items.length} item(s). Tx: ${bulkResult.txHash}`,
+        });
+      } else {
+        showPurchaseErrorToast('Some items in your cart failed to complete purchase.', {
+          title: 'Purchase Incomplete',
+        });
+        notificationContext?.notifyEvent({
+          category: 'purchase',
+          title: 'Purchase Incomplete',
+          message: 'Some items in your cart failed to complete purchase.',
+        });
       }
 
       setStep('complete');
     } catch (error) {
       setTxStepError(true);
-      setGlobalError(translateError(error instanceof Error ? error.message : 'Purchase failed'));
+      const translatedMsg = translateError(error instanceof Error ? error.message : 'Purchase failed');
+      setGlobalError(translatedMsg);
+      showPurchaseErrorToast(translatedMsg);
+      notificationContext?.notifyEvent({
+        category: 'purchase',
+        title: 'Purchase Failed',
+        message: translatedMsg,
+      });
       setStep('error');
     } finally {
       setCheckingOut(false);
     }
-  };
-
-  const handleRetryValidation = () => {
-    setSummary(null);
-    validateItems();
   };
 
   const handleRemoveInvalidItems = () => {
@@ -467,10 +484,26 @@ export function Checkout({ onClose }: CheckoutProps) {
 
       {/* Estimated network fee */}
       <div className="border-t border-white/10 pt-3">
-        <FeeEstimateBanner fee={feeEstimate} isLoading={isEstimatingFees} className="mb-3" />
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-400">Total ({itemCount} items)</span>
-          <span className="text-xl font-bold text-white">{formatPrice(totalStroops)}</span>
+        <FeeEstimateBanner fee={purchaseEstimate.networkFee} isLoading={false} className="mb-3" />
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-slate-400">Subtotal ({itemCount} items)</span>
+            <span className="text-slate-200">{formatPrice(totalStroops)}</span>
+          </div>
+          {purchaseEstimate.savingsStroops > 0 && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500">Fee saved by buying together</span>
+              <span className="text-emerald-400">
+                {formatPrice(BigInt(purchaseEstimate.savingsStroops))}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-400">Estimated total</span>
+            <span className="text-xl font-bold text-white">
+              {formatPrice(purchaseEstimate.totalStroops)}
+            </span>
+          </div>
         </div>
       </div>
 

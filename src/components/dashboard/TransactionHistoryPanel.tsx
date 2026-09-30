@@ -2,6 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, ArrowUpRight, Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { TransactionHistorySkeleton } from "@/components/PageSkeletons";
+import {
+  AddressTooltip,
+  XlmAmountTooltip,
+  TimestampTooltip,
+} from "@/components/ui/Tooltip";
 import {
   fetchBuyerTransactionHistory,
   fetchCreatorTransactionHistory,
@@ -9,7 +15,6 @@ import {
 } from "@/lib/prompts/transactionHistory";
 import { buildTransactionExplorerUrl } from "@/lib/stellar/explorer";
 import { formatPriceLabel } from "@/lib/stellar/format";
-import { shortenAddress } from "@/lib/utils";
 import { buildPromptSharePath } from "@/lib/marketplace/shareUrls";
 
 export interface TransactionHistoryPanelProps {
@@ -18,17 +23,6 @@ export interface TransactionHistoryPanelProps {
   title: string;
   description: string;
   emptyMessage: string;
-}
-
-function formatOccurredAt(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "Unknown time";
-  }
-  return date.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 function TransactionRow({
@@ -55,10 +49,14 @@ function TransactionRow({
             </span>
           </div>
           <p className="text-sm text-slate-400">
-            {formatOccurredAt(row.occurredAt)} · {formatPriceLabel(row.priceStroops)}
+            <TimestampTooltip value={row.occurredAt} /> ·{" "}
+            <XlmAmountTooltip
+              stroops={row.priceStroops}
+              label={formatPriceLabel(row.priceStroops)}
+            />
           </p>
           <p className="text-xs text-slate-500">
-            {counterpartyLabel}: {shortenAddress(counterparty)}
+            {counterpartyLabel}: <AddressTooltip address={counterparty} />
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -146,10 +144,7 @@ export function TransactionHistoryPanel({
       </div>
 
       {query.isLoading ? (
-        <div className="flex min-h-32 items-center justify-center text-sm text-slate-400">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin text-cyan-200" />
-          Loading transaction history…
-        </div>
+        <TransactionHistorySkeleton />
       ) : null}
 
       {isInvalidWallet ? (
