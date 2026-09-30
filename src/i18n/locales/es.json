@@ -170,5 +170,12 @@
     "stroops_per_xlm": "1 XLM = 10.000.000 stroops",
     "price_label": "{{amount}} XLM",
     "price_label_usd": "{{amount}} USD"
+  },
+  "trustline": {
+    "title": "Se necesita una línea de confianza",
+    "missing": "Tu billetera aún no tiene una línea de confianza para {{assets}}. Agrégala en tu billetera y vuelve; lo comprobaremos automáticamente.",
+    "unauthorized": "El emisor no ha autorizado tu línea de confianza para {{assets}}. Contacta al emisor o paga con XLM.",
+    "unfunded": "Tu cuenta aún no está financiada en esta red. Fondéala primero con XLM y luego agrega una línea de confianza para {{assets}}.",
+    "recheck": "Comprobar de nuevo"
   }
 }

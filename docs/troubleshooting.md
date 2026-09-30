@@ -62,6 +62,18 @@ graph TD
   2. Verify that the mobile device is on the same local network or has cellular data enabled.
   3. Clear stale WalletConnect pairings in your mobile wallet settings under **Connected Apps**.
 
+### 2.4 "Trustline needed" Banner
+- **Symptoms**: After connecting, a banner reads `Trustline needed` and names an asset such as `USDC`.
+- **Root Causes**:
+  - The deployment accepts a non-native asset (`PUBLIC_STELLAR_TRUSTLINE_ASSETS`) and the connected account has no trustline to that issuer. Native XLM never needs one.
+  - The account is not funded on this network yet, so it cannot hold a trustline (the banner then asks you to fund it with XLM first).
+  - The issuer requires authorization and has not approved the trustline.
+- **Resolution**:
+  1. Add the trustline in your wallet (each trustline reserves 0.5 XLM, see [3.1](#31-insufficient-xlm--minimum-reserve-requirements)).
+  2. Return to the tab. The app re-checks automatically on focus, or press **Check again**.
+  3. If the issuer has not authorized the trustline, contact the issuer or pay with XLM.
+- **Operators**: the check runs once per connected account and never blocks the purchase flow. If Horizon is unreachable the banner stays hidden and a warning is logged to the console. Malformed entries in `PUBLIC_STELLAR_TRUSTLINE_ASSETS` are skipped with a console warning. A trustline still missing at payment time surfaces as `op_no_trust`.
+
 ---
 
 ## 3. Transaction Failures & Ledger Submission Errors
