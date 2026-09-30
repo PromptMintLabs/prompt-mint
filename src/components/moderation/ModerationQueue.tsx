@@ -15,6 +15,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { SkeletonTable } from "../Skeleton";
+import { useTranslation } from "react-i18next";
 import {
   fetchModerationQueue,
   moderationAction,
@@ -25,6 +26,11 @@ import {
   type ReportStatus,
   type ReportTargetType,
 } from "@/lib/moderation";
+import {
+  getBuiltInModerationActionTemplates,
+  type CustomModerationActionTemplate,
+  type ModerationTemplateAction,
+} from "@/lib/moderation/actionTemplates";
 import type { SignMessageFn } from "@/lib/auth/moderatorAuth";
 
 const STATUS_LABELS: Record<ReportStatus, string> = {
@@ -70,13 +76,16 @@ interface ModerationQueueProps {
   moderatorAddress: string;
   signMessage?: SignMessageFn;
   apiBase?: string;
+  customTemplates?: CustomModerationActionTemplate[];
 }
 
 export const ModerationQueue = ({
   moderatorAddress,
   signMessage,
   apiBase = "/api/moderation/queue",
+  customTemplates = [],
 }: ModerationQueueProps) => {
+  const { t } = useTranslation();
   const [reports, setReports] = useState<AbuseReport[]>([]);
   const [pagination, setPagination] = useState<ReportPagination | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,6 +97,10 @@ export const ModerationQueue = ({
   const [filterReason, setFilterReason] = useState<ReportReason | "">("");
   const [search, setSearch] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const actionTemplates = [
+    ...getBuiltInModerationActionTemplates(t),
+    ...customTemplates.map((template) => ({ ...template, source: "custom" as const })),
+  ];
 
   const load = useCallback(async () => {
     if (!signMessage) {
@@ -349,6 +362,36 @@ export const ModerationQueue = ({
                       )}
                     </div>
                   )}
+
+                  <select
+                    value=""
+                    aria-label={t("errors.moderation.action_templates.choose")}
+                    onChange={(event) => {
+                      const selected = actionTemplates.find((template) => template.id === event.target.value);
+                      if (selected) {
+                        setNotes((previous) => ({ ...previous, [report.id]: selected.reason }));
+                      }
+                    }}
+                    className="mb-2 h-9 w-full rounded-md border border-white/10 bg-slate-900 px-3 text-sm text-slate-300 sm:w-auto sm:min-w-64"
+                  >
+                    <option value="" disabled>{t("errors.moderation.action_templates.choose")}</option>
+                    {actionTemplates
+                      .filter((template) => {
+                        const availableActions: ModerationTemplateAction[] = [
+                          "report_resolved",
+                          "report_dismissed",
+                          ...(report.targetType === "prompt"
+                            ? ["prompt_takedown", "prompt_reinstated"] as ModerationTemplateAction[]
+                            : []),
+                        ];
+                        return availableActions.includes(template.action);
+                      })
+                      .map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                        </option>
+                      ))}
+                  </select>
 
                   <Textarea
                     value={notes[report.id] ?? ""}

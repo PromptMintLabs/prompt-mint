@@ -88,7 +88,41 @@
     },
     "moderation": {
       "unauthorized": "Only authorized moderators can view audit logs. If you believe this is a mistake, contact support to request moderator access.",
-      "address_required": "Enter a moderator wallet address before continuing."
+      "address_required": "Enter a moderator wallet address before continuing.",
+      "action_templates": {
+        "tab": "Action Templates",
+        "title": "Moderation action templates",
+        "description": "Save reusable reasons for moderation actions. Templates stay in this browser and are scoped to your moderator wallet.",
+        "connect_required": "Connect your moderator wallet to manage templates.",
+        "built_in": "Starter templates",
+        "custom": "Your templates",
+        "empty": "No custom templates saved yet.",
+        "name_label": "Template name",
+        "name_placeholder": "For example, Spam report upheld",
+        "action_label": "Action",
+        "reason_label": "Reason text",
+        "create": "Save template",
+        "delete": "Delete template",
+        "delete_aria": "Delete {{name}}",
+        "storage_error": "Could not save the template in this browser.",
+        "choose": "Insert a template…",
+        "actions": {
+          "report_resolved": "Resolve report",
+          "report_dismissed": "Dismiss report",
+          "prompt_takedown": "Take down listing",
+          "prompt_reinstated": "Reinstate listing"
+        },
+        "defaults": {
+          "report_resolved_name": "Report upheld",
+          "report_resolved_reason": "The report was reviewed and upheld. Appropriate moderation action has been taken.",
+          "report_dismissed_name": "Report dismissed",
+          "report_dismissed_reason": "The report was reviewed and no violation of marketplace guidelines was found.",
+          "prompt_takedown_name": "Listing taken down",
+          "prompt_takedown_reason": "The listing was removed after review for violating marketplace guidelines.",
+          "prompt_reinstated_name": "Listing reinstated",
+          "prompt_reinstated_reason": "The listing was reviewed and restored because it complies with marketplace guidelines."
+        }
+      }
     }
   },
   "language": {
@@ -170,5 +204,12 @@
     "stroops_per_xlm": "1 XLM = 10,000,000 stroops",
     "price_label": "{{amount}} XLM",
     "price_label_usd": "{{amount}} USD"
+  },
+  "trustline": {
+    "title": "Trustline needed",
+    "missing": "Your wallet has no trustline for {{assets}} yet. Add it in your wallet, then come back — we'll re-check automatically.",
+    "unauthorized": "The issuer has not authorized your trustline for {{assets}}. Contact the issuer, or pay with XLM instead.",
+    "unfunded": "Your account isn't funded on this network yet. Fund it with XLM first, then add a trustline for {{assets}}.",
+    "recheck": "Check again"
   }
 }

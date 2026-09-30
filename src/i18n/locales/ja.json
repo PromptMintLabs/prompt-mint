@@ -88,7 +88,41 @@
     },
     "moderation": {
       "unauthorized": "権限を持つモデレーターのみが監査ログを閲覧できます。",
-      "address_required": "モデレーターのアドレスが必要です。"
+      "address_required": "モデレーターのアドレスが必要です。",
+      "action_templates": {
+        "tab": "アクションテンプレート",
+        "title": "モデレーションアクションのテンプレート",
+        "description": "モデレーションで再利用できる理由文を保存します。テンプレートはこのブラウザー内に保存され、モデレーターのウォレットごとに管理されます。",
+        "connect_required": "テンプレートを管理するにはモデレーターのウォレットを接続してください。",
+        "built_in": "標準テンプレート",
+        "custom": "自分のテンプレート",
+        "empty": "カスタムテンプレートはまだありません。",
+        "name_label": "テンプレート名",
+        "name_placeholder": "例: スパムの報告を確認",
+        "action_label": "アクション",
+        "reason_label": "理由文",
+        "create": "テンプレートを保存",
+        "delete": "テンプレートを削除",
+        "delete_aria": "{{name}}を削除",
+        "storage_error": "このブラウザーにテンプレートを保存できませんでした。",
+        "choose": "テンプレートを挿入…",
+        "actions": {
+          "report_resolved": "報告を解決",
+          "report_dismissed": "報告を却下",
+          "prompt_takedown": "掲載を停止",
+          "prompt_reinstated": "掲載を再開"
+        },
+        "defaults": {
+          "report_resolved_name": "報告を確認",
+          "report_resolved_reason": "報告を確認し、内容を認めました。適切なモデレーション措置を実施しました。",
+          "report_dismissed_name": "報告を却下",
+          "report_dismissed_reason": "報告を確認しましたが、マーケットプレイスのガイドライン違反は見つかりませんでした。",
+          "prompt_takedown_name": "掲載を停止",
+          "prompt_takedown_reason": "確認の結果、マーケットプレイスのガイドラインに違反していたため掲載を削除しました。",
+          "prompt_reinstated_name": "掲載を再開",
+          "prompt_reinstated_reason": "ガイドラインに準拠していることを確認し、掲載を再開しました。"
+        }
+      }
     }
   },
   "language": {
@@ -170,5 +204,12 @@
     "stroops_per_xlm": "1 XLM = 10,000,000 ストループ",
     "price_label": "{{amount}} XLM",
     "price_label_usd": "{{amount}} USD"
+  },
+  "trustline": {
+    "title": "トラストラインが必要です",
+    "missing": "ウォレットに {{assets}} のトラストラインがまだありません。ウォレットで追加してから戻ってください。自動的に再確認します。",
+    "unauthorized": "発行者があなたの {{assets}} トラストラインを承認していません。発行者に連絡するか、XLM で支払ってください。",
+    "unfunded": "このネットワークではアカウントがまだ資金化されていません。先に XLM を入金してから、{{assets}} のトラストラインを追加してください。",
+    "recheck": "再確認"
   }
 }

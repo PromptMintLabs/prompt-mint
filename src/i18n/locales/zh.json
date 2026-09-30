@@ -88,7 +88,41 @@
     },
     "moderation": {
       "unauthorized": "只有授权的管理员才能查看审计日志。",
-      "address_required": "需要管理员地址。"
+      "address_required": "需要管理员地址。",
+      "action_templates": {
+        "tab": "操作模板",
+        "title": "审核操作模板",
+        "description": "保存可重复使用的审核理由。模板保存在此浏览器中，并按管理员钱包地址区分。",
+        "connect_required": "连接管理员钱包以管理模板。",
+        "built_in": "内置模板",
+        "custom": "我的模板",
+        "empty": "尚未保存自定义模板。",
+        "name_label": "模板名称",
+        "name_placeholder": "例如：确认垃圾信息举报",
+        "action_label": "操作",
+        "reason_label": "理由内容",
+        "create": "保存模板",
+        "delete": "删除模板",
+        "delete_aria": "删除{{name}}",
+        "storage_error": "无法在此浏览器中保存模板。",
+        "choose": "插入模板…",
+        "actions": {
+          "report_resolved": "处理举报",
+          "report_dismissed": "驳回举报",
+          "prompt_takedown": "下架内容",
+          "prompt_reinstated": "恢复内容"
+        },
+        "defaults": {
+          "report_resolved_name": "举报属实",
+          "report_resolved_reason": "已审核并确认该举报，并已采取相应的审核措施。",
+          "report_dismissed_name": "举报不成立",
+          "report_dismissed_reason": "已审核该举报，未发现违反市场规范的行为。",
+          "prompt_takedown_name": "内容已下架",
+          "prompt_takedown_reason": "经审核，该内容违反市场规范，现已下架。",
+          "prompt_reinstated_name": "内容已恢复",
+          "prompt_reinstated_reason": "经审核，该内容符合市场规范，现已恢复。"
+        }
+      }
     }
   },
   "language": {
@@ -170,5 +204,12 @@
     "stroops_per_xlm": "1 XLM = 10,000,000 stroops",
     "price_label": "{{amount}} XLM",
     "price_label_usd": "{{amount}} USD"
+  },
+  "trustline": {
+    "title": "需要信任线",
+    "missing": "你的钱包尚未添加 {{assets}} 的信任线。请在钱包中添加后返回，我们会自动重新检查。",
+    "unauthorized": "发行方尚未授权你的 {{assets}} 信任线。请联系发行方，或改用 XLM 支付。",
+    "unfunded": "你的账户在此网络上尚未注资。请先用 XLM 注资，然后再添加 {{assets}} 的信任线。",
+    "recheck": "重新检查"
   }
 }

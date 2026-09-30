@@ -63,6 +63,7 @@ The UI is fully internationalised via `react-i18next`. When adding or changing c
 
 - Add the key to **all seven** locale files in `src/i18n/locales/` (`en`, `es`, `fr`, `zh`, `ja`, `de`, `yo`).
 - For new number or currency display, use the helpers in `src/lib/i18n-number.ts` (`useXlmFormatter`, `useUsdFormatter`) or `src/lib/formatters.ts`. Do **not** call `toLocaleString` with a hard-coded `"en-US"` locale — pass `undefined` or the active `i18n.language` so the output respects the user's language selection.
+- For big headline or stat-card numbers, use `formatHeadlineNumber` / `getHeadlineNumber` from `src/lib/formatters.ts` (or the `useHeadlineNumberFormatter()` hook). Values below 10,000 are shown in full (`9,999`); larger ones are abbreviated with locale-aware compact notation (`12.3K`, `1.2M`). `getHeadlineNumber` also returns `fullText`, so put the exact value in `title` / `aria-label`.
 - XLM amounts are always sourced from stroops (bigint). Use `formatXlmLocale(stroops, "stroops", locale)` or the `useXlmFormatter()` hook.
 - Adding a new locale: add a JSON file to `src/i18n/locales/`, import it in `src/i18n/index.ts`, and add it to `SUPPORTED_LANGUAGES`. No changes to the formatting helpers are required.
 

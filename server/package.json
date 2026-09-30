@@ -23,7 +23,9 @@
     "migrate:dry-run": "ts-node scripts/migrate.ts --dry-run",
     "migrate:rollback": "ts-node scripts/migrate.ts --rollback",
     "reindex": "ts-node scripts/reIndexFromLedger.ts",
-    "reindex:dry-run": "ts-node scripts/reIndexFromLedger.ts --dry-run"
+    "reindex:dry-run": "ts-node scripts/reIndexFromLedger.ts --dry-run",
+    "review:cleanup": "ts-node scripts/reviewRetentionCleanup.ts",
+    "review:cleanup:dry-run": "ts-node scripts/reviewRetentionCleanup.ts --dry-run"
   },
   "files": [
     "build"

@@ -24,6 +24,7 @@ This document provides a comprehensive reference for all environment variables s
 | `PUBLIC_STELLAR_HORIZON_URL` | Yes | `https://horizon-testnet.stellar.org` | HTTPS URL to Horizon API | Connects to Horizon for classic ledger and payment stream queries. |
 | `PUBLIC_PROMPT_HASH_CONTRACT_ID` | Yes | Placeholder | 56-character StrKey contract address (`C...`) | Address of deployed PromptHash marketplace smart contract. |
 | `PUBLIC_STELLAR_NATIVE_ASSET_CONTRACT_ID` | Yes | `CDLZFC...CYSC` | 56-character StrKey contract address | Address of the Soroban native XLM Stellar Asset Contract (SAC). |
+| `PUBLIC_STELLAR_TRUSTLINE_ASSETS` | No | _(empty)_ | Comma-separated `CODE:ISSUER` pairs (issuer is a `G...` address) | Non-native assets buyers may pay with. When a wallet connects, the app checks the account for a trustline to each and shows a banner if one is missing. Empty disables the check; native XLM never needs one. |
 | `PUBLIC_STELLAR_SIMULATION_ACCOUNT` | No | `G...` | 56-character Stellar public address (`G...`) | Source account used for gas/footprint simulation of contract dry-runs. |
 
 ---

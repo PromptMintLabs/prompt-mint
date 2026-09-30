@@ -270,3 +270,86 @@ export function formatPercent(
   const pctValue = isDecimalRatio ? parsed.num * 100 : parsed.num;
   return `${pctValue.toFixed(decimals)}%`;
 }
+
+export interface FormatHeadlineOptions {
+  /** Values with an absolute size at or above this are shown compactly. Default 10_000. */
+  compactThreshold?: number;
+  /** Maximum fraction digits in either mode. Default 1. */
+  maxFractionDigits?: number;
+  /** Optional unit appended after the number, e.g. "XLM". */
+  unit?: string;
+  fallback?: string;
+  /** BCP 47 locale tag. Defaults to the runtime locale. */
+  locale?: string;
+}
+
+export interface HeadlineNumber {
+  /** Short text for the headline, e.g. "1.2M XLM". */
+  text: string;
+  /** Full-precision text for tooltips and screen readers, e.g. "1,234,567 XLM". */
+  fullText: string;
+  /** Whether `text` was abbreviated. */
+  isCompact: boolean;
+}
+
+/**
+ * Formats a big number for a headline or stat card, returning both the short
+ * display text and the full value (for `title` / `aria-label`).
+ *
+ * Numbers below `compactThreshold` keep every digit ("9,999"); larger ones
+ * are abbreviated with locale-aware compact notation ("12.3K", "4.5M",
+ * "1.2B"). Bigint inputs keep full precision in `fullText`.
+ */
+export function getHeadlineNumber(
+  value: number | bigint | string | null | undefined,
+  options: FormatHeadlineOptions = {},
+): HeadlineNumber {
+  const {
+    compactThreshold = 10_000,
+    maxFractionDigits = 1,
+    unit,
+    fallback = "-",
+    locale,
+  } = options;
+
+  const parsed = parseNumericValue(value);
+  if (parsed.num === null || isNaN(parsed.num)) {
+    return { text: fallback, fullText: fallback, isCompact: false };
+  }
+
+  const withUnit = (formatted: string) =>
+    unit ? `${formatted} ${unit}` : formatted;
+
+  // Intl.NumberFormat accepts bigint directly, so huge integers are not
+  // rounded through a double when rendering the full value.
+  const fullText = withUnit(
+    new Intl.NumberFormat(locale, {
+      maximumFractionDigits: maxFractionDigits,
+    }).format(parsed.rawBigInt ?? parsed.num),
+  );
+
+  const isCompact = Math.abs(parsed.num) >= compactThreshold;
+  if (!isCompact) {
+    return { text: fullText, fullText, isCompact };
+  }
+
+  const text = withUnit(
+    new Intl.NumberFormat(locale, {
+      notation: "compact",
+      compactDisplay: "short",
+      maximumFractionDigits: maxFractionDigits,
+    }).format(parsed.num),
+  );
+  return { text, fullText, isCompact };
+}
+
+/**
+ * Formats a big number for a headline (e.g. 1234567 -> "1.2M").
+ * See `getHeadlineNumber` for the full-precision companion value.
+ */
+export function formatHeadlineNumber(
+  value: number | bigint | string | null | undefined,
+  options: FormatHeadlineOptions = {},
+): string {
+  return getHeadlineNumber(value, options).text;
+}

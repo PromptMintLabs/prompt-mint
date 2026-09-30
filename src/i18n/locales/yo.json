@@ -88,7 +88,41 @@
     },
     "moderation": {
       "unauthorized": "Àwọn alábòójútó tí a fún ní àṣẹ nìkan ló lè wo àkọsílẹ̀ àyẹ̀wò. Tí o bá rò pé àṣìṣe ni èyí, kàn sí ẹ̀ka ìrànlọ́wọ́ láti béèrè fún àṣẹ alábòójútó.",
-      "address_required": "Tẹ àdírẹ́sì àpamọ́wọ́ alábòójútó kí o tó tẹ̀síwájú."
+      "address_required": "Tẹ àdírẹ́sì àpamọ́wọ́ alábòójútó kí o tó tẹ̀síwájú.",
+      "action_templates": {
+        "tab": "Àwọn Àdàkọ Ìgbésẹ̀",
+        "title": "Àwọn àdàkọ ìgbésẹ̀ àbójútó",
+        "description": "Fi àwọn ìdí tí o lè tún lò pamọ́ fún àwọn ìgbésẹ̀ àbójútó. Àwọn àdàkọ yìí wà nínú ẹ̀rọ aṣàwárí yìí, wọ́n sì jẹ́ ti àpamọ́wọ́ alábòójútó rẹ.",
+        "connect_required": "So àpamọ́wọ́ alábòójútó rẹ pọ̀ láti ṣàkóso àwọn àdàkọ.",
+        "built_in": "Àwọn àdàkọ ìbẹ̀rẹ̀",
+        "custom": "Àwọn àdàkọ rẹ",
+        "empty": "O kò tíì fi àdàkọ àdáni kankan pamọ́.",
+        "name_label": "Orúkọ àdàkọ",
+        "name_placeholder": "Fún àpẹẹrẹ, ìròyìn spam tí a fìdí rẹ̀ múlẹ̀",
+        "action_label": "Ìgbésẹ̀",
+        "reason_label": "Ọ̀rọ̀ ìdí",
+        "create": "Fi àdàkọ pamọ́",
+        "delete": "Pa àdàkọ rẹ́",
+        "delete_aria": "Pa {{name}} rẹ́",
+        "storage_error": "A kò lè fi àdàkọ náà pamọ́ sínú ẹ̀rọ aṣàwárí yìí.",
+        "choose": "Fi àdàkọ sínú ààyè…",
+        "actions": {
+          "report_resolved": "Parí ìròyìn",
+          "report_dismissed": "Kọ ìròyìn sílẹ̀",
+          "prompt_takedown": "Yọ àkójọ ọjà kúrò",
+          "prompt_reinstated": "Dá àkójọ ọjà padà"
+        },
+        "defaults": {
+          "report_resolved_name": "Ìròyìn tí a fìdí rẹ̀ múlẹ̀",
+          "report_resolved_reason": "A ṣàyẹ̀wò ìròyìn náà, a sì fìdí rẹ̀ múlẹ̀. A ti ṣe ìgbésẹ̀ àbójútó tó yẹ.",
+          "report_dismissed_name": "Ìròyìn tí a kọ̀",
+          "report_dismissed_reason": "A ṣàyẹ̀wò ìròyìn náà, a kò sì rí ìrúfin sí àwọn ìlànà ọjà.",
+          "prompt_takedown_name": "A ti yọ àkójọ ọjà kúrò",
+          "prompt_takedown_reason": "A yọ àkójọ ọjà náà kúrò lẹ́yìn àyẹ̀wò nítorí pé ó rú àwọn ìlànà ọjà.",
+          "prompt_reinstated_name": "A ti dá àkójọ ọjà padà",
+          "prompt_reinstated_reason": "A ṣàyẹ̀wò àkójọ ọjà náà, a sì dá a padà nítorí pé ó bá àwọn ìlànà ọjà mu."
+        }
+      }
     }
   },
   "language": {
@@ -170,5 +204,12 @@
     "stroops_per_xlm": "1 XLM = 10,000,000 stroops",
     "price_label": "{{amount}} XLM",
     "price_label_usd": "{{amount}} USD"
+  },
+  "trustline": {
+    "title": "A nílò trustline",
+    "missing": "Àpamọ́wọ́ rẹ kò tíì ní trustline fún {{assets}}. Fi kún un nínú àpamọ́wọ́ rẹ, lẹ́yìn náà padà wá — a ó tún ṣàyẹ̀wò fúnra wa.",
+    "unauthorized": "Olùtẹ̀jáde kò tíì fọwọ́ sí trustline rẹ fún {{assets}}. Kàn sí olùtẹ̀jáde, tàbí sanwó pẹ̀lú XLM dípò rẹ̀.",
+    "unfunded": "Àkọọ́lẹ̀ rẹ kò tíì ní owó lórí nẹ́tíwọ́ọ̀kì yìí. Kọ́kọ́ fi XLM sí i, lẹ́yìn náà fi trustline fún {{assets}} kún un.",
+    "recheck": "Ṣàyẹ̀wò lẹ́ẹ̀kan sí i"
   }
 }

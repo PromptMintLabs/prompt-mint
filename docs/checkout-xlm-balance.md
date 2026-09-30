@@ -33,6 +33,18 @@ Spend is allowed when:
 native_balance ≥ cart_total + fee_buffer + minimum_reserve
 ```
 
+## Refresh throttle
+
+Balance refreshes are throttled to avoid spamming Horizon when checkout re-renders or the user rapidly edits the cart. The utility lives in `src/lib/checkout/refreshThrottle.ts` and exposes a configurable minimum interval between successful asset balance refetches.
+
+- The default throttle window is `refreshThrottleMs` (default **3000 ms / 3 s **).
+- A refresh that falls inside the window is **coalesced** with the in-flight promise instead of issuing a new Horizon request.
+- The throttle is per asset key (e.g. the account + asset code + issuer), so different assets do not block each other.
+- Failed refreshes do not advance the throttle window, so a retry after a transient Horizon error is allowed immediately.
+- Callers may force a refresh by passing `{ force: true }`, which bypasses the window (but still dedupes in-flight requests).
+
+The checkout flow uses this utility whenever it reloads the buyer account after a cart mutation or a focus/visibility event.
+
 ## Edge cases
 
 | Scenario | Behavior |
@@ -43,6 +55,8 @@ native_balance ≥ cart_total + fee_buffer + minimum_reserve
 | Empty cart or zero-priced valid total | Only reserve requirement is enforced |
 | Some cart lines invalid | Balance check uses the total of **valid** lines only; invalid lines must be removed separately |
 | Horizon base reserve fetch fails | Falls back to `0.5 XLM` base reserve constant |
+| Refresh requested within the throttle window | Reuses the in-flight/last result instead of hitting Horizon again |
+| Forced refresh while a request is in flight | Returns the in-flight promise (deduped) |
 
 ## User-facing errors
 
@@ -54,14 +68,38 @@ native_balance ≥ cart_total + fee_buffer + minimum_reserve
 
 - Pure balance math: `src/lib/checkout/xlmBalance.ts`
 - Horizon account load: `src/lib/checkout/accountBalance.ts`
+- Refresh throttle utility: `src/lib/checkout/refreshThrottle.ts`
 - Checkout orchestration: `src/lib/checkout/validation.ts`
 - UI: `src/components/Checkout.tsx`
 
 ## Tests
 
 - Unit: `src/lib/checkout/xlmBalance.test.ts`
+- Unit (throttle): `src/lib/checkout/refreshThrottle.test.ts`
 - Integration with cart validation: `src/test/checkout.test.ts`
 
 ## Backward compatibility
 
 No contract, API, or unlock permission changes. Buyers with adequate XLM see the same checkout flow; underfunded wallets are blocked earlier with explicit copy instead of a failed on-chain transaction.
+
+## Multi-item fee estimate
+
+Checkout shows a cost breakdown built by `estimateMultiItemPurchase` (`src/lib/checkout/feeEstimation.ts`):
+
+| Line | Meaning |
+| --- | --- |
+| **Subtotal** | Sum of item prices in stroops (bigint, no precision loss) |
+| **Network fee** | Estimated fee for the single bulk transaction |
+| **Fee saved by buying together** | Fee for buying each item in its own transaction minus the bulk fee (shown only when > 0) |
+| **Estimated total** | Subtotal + network fee |
+
+The bulk purchase is one Soroban transaction, so the fee is modelled as:
+
+```
+network_fee = base_fee + resource_overhead + resource_per_item × item_count
+            = 100      + 1_000             + 500 × item_count   (stroops)
+```
+
+A one-item cart matches `estimateSingleFee` (1_600 stroops). An empty cart has zero fee. All three constants can be overridden via `MultiItemFeeOptions`, e.g. once real `simulateTransaction` resource fees are wired in. Negative item prices throw a `RangeError`.
+
+This estimate is informational; the balance check above still reserves the fixed `CHECKOUT_FEE_BUFFER_STROOPS` buffer.

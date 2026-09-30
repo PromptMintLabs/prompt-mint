@@ -246,4 +246,56 @@ router.get("/high-risk-creators", async (req: Request, res: Response) => {
   }
 });
 
+// ── Review Retention & Cleanup Job (Issue #725) ───────────────────────────
+
+/**
+ * GET /api/review-analytics/retention/status
+ * Get review retention configuration and status
+ */
+router.get("/retention/status", async (req: Request, res: Response) => {
+  try {
+    const { getReviewRetentionConfig } = await import("../services/reviewRetentionService.js");
+    const config = getReviewRetentionConfig();
+    res.json({
+      status: "active",
+      config,
+      cronSchedule: process.env.REVIEW_RETENTION_CRON || "0 2 * * *",
+    });
+  } catch (err) {
+    console.error("[review-analytics] retention/status failed:", err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to get retention status",
+    });
+  }
+});
+
+/**
+ * POST /api/review-analytics/retention/cleanup
+ * Trigger review retention cleanup job (supports dryRun)
+ */
+router.post("/retention/cleanup", async (req: Request, res: Response) => {
+  try {
+    const { dryRun, removedReviewRetentionDays, auditLogRetentionDays, appealAttachmentRetentionDays } = req.body || {};
+    const { runReviewRetentionCleanup } = await import("../services/reviewRetentionService.js");
+
+    const customConfig: any = {};
+    if (typeof removedReviewRetentionDays === "number") customConfig.removedReviewRetentionDays = removedReviewRetentionDays;
+    if (typeof auditLogRetentionDays === "number") customConfig.auditLogRetentionDays = auditLogRetentionDays;
+    if (typeof appealAttachmentRetentionDays === "number") customConfig.appealAttachmentRetentionDays = appealAttachmentRetentionDays;
+
+    const report = await runReviewRetentionCleanup({
+      dryRun: Boolean(dryRun),
+      customConfig: Object.keys(customConfig).length > 0 ? customConfig : undefined,
+    });
+
+    res.json(report);
+  } catch (err) {
+    console.error("[review-analytics] retention/cleanup failed:", err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Review retention cleanup failed",
+    });
+  }
+});
+
 export default router;
+

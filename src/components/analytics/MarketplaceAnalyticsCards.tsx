@@ -4,10 +4,12 @@ import { Skeleton } from "@/components/Skeleton";
 import { getAllPrompts } from "@/lib/stellar/promptHashClient";
 import { browserStellarConfig } from "@/lib/stellar/browserConfig";
 import { stroopsToXlmString } from "@/lib/stellar/format";
+import { useHeadlineNumberFormatter } from "@/lib/i18n-number";
+import type { HeadlineNumber } from "@/lib/formatters";
 
 interface AnalyticsCardProps {
   title: string;
-  value: string | number;
+  value: HeadlineNumber;
   icon: React.ReactNode;
   description?: string;
   isLoading?: boolean;
@@ -60,7 +62,13 @@ const AnalyticsCard: React.FC<AnalyticsCardProps> = ({
         </div>
         <p className="text-xs uppercase tracking-wider text-slate-400">{title}</p>
       </div>
-      <p className="text-3xl font-bold text-white">{value}</p>
+      <p
+        className="text-3xl font-bold text-white"
+        title={value.isCompact ? value.fullText : undefined}
+        aria-label={value.fullText}
+      >
+        {value.text}
+      </p>
       {description && (
         <p className="text-xs text-slate-400 mt-2">{description}</p>
       )}
@@ -69,6 +77,7 @@ const AnalyticsCard: React.FC<AnalyticsCardProps> = ({
 };
 
 export const MarketplaceAnalyticsCards: React.FC = () => {
+  const formatHeadline = useHeadlineNumberFormatter();
   const { data: prompts, isLoading, isError } = useQuery({
     queryKey: ["marketplace-analytics"],
     queryFn: async () => {
@@ -98,7 +107,7 @@ export const MarketplaceAnalyticsCards: React.FC = () => {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <AnalyticsCard
         title="Total Listings"
-        value={analytics.totalListings}
+        value={formatHeadline(analytics.totalListings)}
         icon={<Package className="h-5 w-5 text-blue-400" />}
         description="All prompts on marketplace"
         isLoading={isLoading}
@@ -106,7 +115,7 @@ export const MarketplaceAnalyticsCards: React.FC = () => {
       />
       <AnalyticsCard
         title="Active Listings"
-        value={analytics.activeListings}
+        value={formatHeadline(analytics.activeListings)}
         icon={<TrendingUp className="h-5 w-5 text-emerald-400" />}
         description="Currently available for purchase"
         isLoading={isLoading}
@@ -114,7 +123,7 @@ export const MarketplaceAnalyticsCards: React.FC = () => {
       />
       <AnalyticsCard
         title="Total Sales"
-        value={analytics.totalSales}
+        value={formatHeadline(analytics.totalSales)}
         icon={<ShoppingCart className="h-5 w-5 text-purple-400" />}
         description="Completed transactions"
         isLoading={isLoading}
@@ -122,7 +131,7 @@ export const MarketplaceAnalyticsCards: React.FC = () => {
       />
       <AnalyticsCard
         title="Volume (XLM)"
-        value={analytics.estimatedVolume.toFixed(2)}
+        value={formatHeadline(analytics.estimatedVolume, { maxFractionDigits: 2 })}
         icon={<Coins className="h-5 w-5 text-amber-400" />}
         description="Estimated marketplace volume"
         isLoading={isLoading}

@@ -88,7 +88,41 @@
     },
     "moderation": {
       "unauthorized": "Seuls les modérateurs autorisés peuvent consulter les journaux d'audit.",
-      "address_required": "L'adresse du modérateur est requise."
+      "address_required": "L'adresse du modérateur est requise.",
+      "action_templates": {
+        "tab": "Modèles d’action",
+        "title": "Modèles d’action de modération",
+        "description": "Enregistrez des motifs réutilisables pour les actions de modération. Les modèles restent dans ce navigateur et sont associés à votre portefeuille de modérateur.",
+        "connect_required": "Connectez votre portefeuille de modérateur pour gérer les modèles.",
+        "built_in": "Modèles de base",
+        "custom": "Vos modèles",
+        "empty": "Aucun modèle personnalisé pour le moment.",
+        "name_label": "Nom du modèle",
+        "name_placeholder": "Par exemple, signalement de spam confirmé",
+        "action_label": "Action",
+        "reason_label": "Texte du motif",
+        "create": "Enregistrer le modèle",
+        "delete": "Supprimer le modèle",
+        "delete_aria": "Supprimer {{name}}",
+        "storage_error": "Impossible d’enregistrer le modèle dans ce navigateur.",
+        "choose": "Insérer un modèle…",
+        "actions": {
+          "report_resolved": "Résoudre le signalement",
+          "report_dismissed": "Rejeter le signalement",
+          "prompt_takedown": "Retirer l’annonce",
+          "prompt_reinstated": "Rétablir l’annonce"
+        },
+        "defaults": {
+          "report_resolved_name": "Signalement confirmé",
+          "report_resolved_reason": "Le signalement a été examiné et confirmé. La mesure de modération appropriée a été prise.",
+          "report_dismissed_name": "Signalement rejeté",
+          "report_dismissed_reason": "Le signalement a été examiné et aucune violation des règles de la place de marché n’a été constatée.",
+          "prompt_takedown_name": "Annonce retirée",
+          "prompt_takedown_reason": "L’annonce a été retirée après examen pour non-respect des règles de la place de marché.",
+          "prompt_reinstated_name": "Annonce rétablie",
+          "prompt_reinstated_reason": "L’annonce a été examinée puis rétablie, car elle respecte les règles de la place de marché."
+        }
+      }
     }
   },
   "language": {
@@ -170,5 +204,12 @@
     "stroops_per_xlm": "1 XLM = 10 000 000 stroops",
     "price_label": "{{amount}} XLM",
     "price_label_usd": "{{amount}} USD"
+  },
+  "trustline": {
+    "title": "Ligne de confiance requise",
+    "missing": "Votre portefeuille n'a pas encore de ligne de confiance pour {{assets}}. Ajoutez-la dans votre portefeuille puis revenez ; nous vérifierons automatiquement.",
+    "unauthorized": "L'émetteur n'a pas autorisé votre ligne de confiance pour {{assets}}. Contactez l'émetteur ou payez en XLM.",
+    "unfunded": "Votre compte n'est pas encore approvisionné sur ce réseau. Alimentez-le d'abord en XLM, puis ajoutez une ligne de confiance pour {{assets}}.",
+    "recheck": "Vérifier à nouveau"
   }
 }
