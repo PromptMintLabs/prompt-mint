@@ -4,6 +4,7 @@
 1. [Quick Diagnostic Decision Tree](#1-quick-diagnostic-decision-tree)
 2. [Wallet Connection Problems](#2-wallet-connection-problems)
 3. [Transaction Failures & Ledger Submission Errors](#3-transaction-failures--ledger-submission-errors)
+    - [USDC Trustline Errors](#31-usdc-trustline-errors)
 4. [Unlock & Decryption Errors](#4-unlock--decryption-errors)
 5. [Network & Infrastructure Issues](#5-network--infrastructure-issues)
 6. [Browser & Platform Compatibility Matrix](#6-browser--platform-compatibility-matrix)
@@ -65,7 +66,16 @@ graph TD
 
 ## 3. Transaction Failures & Ledger Submission Errors
 
-### 3.1 Insufficient XLM & Minimum Reserve Requirements
+### 3.1 USDC Trustline Errors
+
+- **Symptoms**: Purchase fails with `op_no_trust` or a message that the asset
+  trustline is missing.
+- **Resolution**: Follow the [USDC Trustline Setup Guide](./usdc-trustline-guide.md)
+  and verify the exact network, asset code, and issuer. If the trustline is
+  already present, the missing trustline may belong to a payment recipient;
+  contact PromptMint support with the listing and transaction details.
+
+### 3.2 Insufficient XLM & Minimum Reserve Requirements
 - **Symptoms**: Error message: `InsufficientBalance` or `txFAILED: op_underfunded`.
 - **Explanation**:
   Stellar accounts require a base reserve of **1 XLM**, plus **0.5 XLM** for each subentry (trustlines, signers, open offers). You cannot spend this reserved balance.
@@ -76,7 +86,7 @@ graph TD
      - On Testnet: Request test XLM from the Stellar Laboratory Friendbot (`https://laboratory.stellar.org/#account-creator`).
      - On Mainnet: Transfer additional XLM from an exchange or funding wallet.
 
-### 3.2 Bad Sequence Number (`txBAD_SEQ`)
+### 3.3 Bad Sequence Number (`txBAD_SEQ`)
 - **Symptoms**: Transaction fails immediately with `txBAD_SEQ` or `Sequence number out of date`.
 - **Root Causes**:
   - Multiple transactions submitted simultaneously from the same wallet address.
@@ -86,7 +96,7 @@ graph TD
   2. Refresh the PromptMint page to pull the latest on-chain sequence number.
   3. Resubmit the transaction.
 
-### 3.3 Soroban Resource Limit & Footprint Errors
+### 3.4 Soroban Resource Limit & Footprint Errors
 - **Symptoms**: Simulation error `HostError: ResourceLimitExceeded` or `FootprintMiss`.
 - **Root Causes**:
   - The transaction reads or writes to ledger storage keys outside its declared footprint.
