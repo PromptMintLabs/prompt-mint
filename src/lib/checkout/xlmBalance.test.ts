@@ -21,6 +21,17 @@ describe("computeMinimumReserveStroops", () => {
     // (2 + 3 + 1 - 0) * 0.5 XLM = 3 XLM
     expect(reserve).toBe(30_000_000n);
   });
+
+  it("accounts for sponsored entries and never returns a negative reserve", () => {
+    expect(computeMinimumReserveStroops(0, 0, 1)).toBe(5_000_000n);
+    expect(computeMinimumReserveStroops(0, 0, 3)).toBe(0n);
+  });
+
+  it("rejects invalid ledger counts and base reserves", () => {
+    expect(() => computeMinimumReserveStroops(-1, 0, 0)).toThrow(RangeError);
+    expect(() => computeMinimumReserveStroops(1.5, 0, 0)).toThrow(RangeError);
+    expect(() => computeMinimumReserveStroops(0, 0, 0, -1n)).toThrow(RangeError);
+  });
 });
 
 describe("assessCheckoutXlmSufficiency", () => {
