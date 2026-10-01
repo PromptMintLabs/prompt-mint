@@ -211,5 +211,12 @@
     "unauthorized": "Olùtẹ̀jáde kò tíì fọwọ́ sí trustline rẹ fún {{assets}}. Kàn sí olùtẹ̀jáde, tàbí sanwó pẹ̀lú XLM dípò rẹ̀.",
     "unfunded": "Àkọọ́lẹ̀ rẹ kò tíì ní owó lórí nẹ́tíwọ́ọ̀kì yìí. Kọ́kọ́ fi XLM sí i, lẹ́yìn náà fi trustline fún {{assets}} kún un.",
     "recheck": "Ṣàyẹ̀wò lẹ́ẹ̀kan sí i"
+  },
+  "minimumBalance": {
+    "title": "Àpamọ́wọ́ rẹ kọ́ wa lẹ́yìn àtúnṣe",
+    "belowReserve": "Ìyókù rẹ tí ó jẹ́ {{balance}} kọ́ wa lẹ́yìn àtúnṣe Stellar tí ó tọ́ gbogbo àkọọ́lẹ̀ yìí ({{reserve}}), nítorí náà ohun kan kì ní ṣe kí àdánidá ṣe títì o kì ní fi XLM kún un.",
+    "shortfall": "Fi tánà tánà {{shortfall}} kún un láti dá àtúnṣe rẹ padà.",
+    "unfunded": "Àkọọ́lẹ̀ rẹ kò tíì ní owó lórí nẹ́tíwọ́ọ̀kì yìí. Fi XLM kún un kí ó lè san owó àdánidá náà.",
+    "recheck": "Ṣàyẹ̀wò lẹ́ẹ̀kan sí i"
   }
 }

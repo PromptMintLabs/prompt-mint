@@ -211,5 +211,12 @@
     "unauthorized": "The issuer has not authorized your trustline for {{assets}}. Contact the issuer, or pay with XLM instead.",
     "unfunded": "Your account isn't funded on this network yet. Fund it with XLM first, then add a trustline for {{assets}}.",
     "recheck": "Check again"
+  },
+  "minimumBalance": {
+    "title": "Wallet below the minimum reserve",
+    "belowReserve": "Your balance of {{balance}} is under the {{reserve}} Stellar minimum reserve for this account, so transactions will fail until you add XLM.",
+    "shortfall": "Add at least {{shortfall}} to restore your reserve.",
+    "unfunded": "Your account isn't funded on this network yet. Add XLM so it can cover network fees.",
+    "recheck": "Check again"
   }
 }

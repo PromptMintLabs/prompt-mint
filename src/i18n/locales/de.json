@@ -211,5 +211,12 @@
     "unauthorized": "Der Emittent hat deine Trustline für {{assets}} nicht autorisiert. Kontaktiere den Emittenten oder zahle stattdessen mit XLM.",
     "unfunded": "Dein Konto ist in diesem Netzwerk noch nicht finanziert. Lade es zuerst mit XLM auf und füge dann eine Trustline für {{assets}} hinzu.",
     "recheck": "Erneut prüfen"
+  },
+  "minimumBalance": {
+    "title": "Wallet unter der Mindestreserve",
+    "belowReserve": "Dein Guthaben von {{balance}} liegt unter der Stellar-Mindestreserve dieses Kontos ({{reserve}}), daher schlagen Transaktionen fehl, bis du XLM hinzufügst.",
+    "shortfall": "Füge mindestens {{shortfall}} hinzu, um deine Reserve wiederherzustellen.",
+    "unfunded": "Dein Konto ist in diesem Netzwerk noch nicht finanziert. Lade es mit XLM, damit es Netzwerkgebühren decken kann.",
+    "recheck": "Erneut prüfen"
   }
 }

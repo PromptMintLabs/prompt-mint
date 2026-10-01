@@ -19,6 +19,8 @@ The wallet must cover:
 | **Fee buffer** | `0.01 XLM` (`CHECKOUT_FEE_BUFFER_STROOPS`) reserved for Soroban/network fees on the bulk purchase |
 | **Minimum reserve** | Stellar protocol minimum balance the account must keep after the payment |
 
+The wallet-wide case — a balance that is already below the reserve, so no transaction can pay fees at all — is warned about separately; see [Wallet minimum balance warning](./wallet-minimum-balance.md). Both surfaces use the same reserve calculation below.
+
 Minimum reserve is computed as:
 
 ```
