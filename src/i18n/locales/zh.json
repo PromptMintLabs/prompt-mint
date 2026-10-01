@@ -211,5 +211,12 @@
     "unauthorized": "发行方尚未授权你的 {{assets}} 信任线。请联系发行方，或改用 XLM 支付。",
     "unfunded": "你的账户在此网络上尚未注资。请先用 XLM 注资，然后再添加 {{assets}} 的信任线。",
     "recheck": "重新检查"
+  },
+  "minimumBalance": {
+    "title": "钱包余额低于最低准备金",
+    "belowReserve": "你的余额 {{balance}} 低于该账户的 Stellar 最低准备金 {{reserve}}，在添加 XLM 之前交易将失败。",
+    "shortfall": "请至少添加 {{shortfall}} 以恢复准备金。",
+    "unfunded": "你的账户在此网络上尚未注资。请添加 XLM 以支付网络手续费。",
+    "recheck": "重新检查"
   }
 }

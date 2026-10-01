@@ -1,0 +1,5 @@
+---
+"prompt-hash-stellar": minor
+---
+
+Warn when a connected wallet falls below the Stellar minimum account balance (#699). A new `lib/wallet/minimumBalance` module compares the account's native XLM balance against its minimum reserve — `(2 + subentry_count + num_sponsoring - num_sponsored) × base_reserve`, read from Horizon — and reports the shortfall. `useMinimumBalance` runs the check on connect, on account change, and when the tab regains focus, and `MinimumBalanceBanner` (shown in the prompt purchase modal next to the trustline banner) states the current balance, the reserve, and how much XLM to add, including the unfunded-account case. A failed lookup is never shown as a low balance, and the reserve math is shared with the checkout balance guard so both surfaces agree. Copy is translated in all seven locales.

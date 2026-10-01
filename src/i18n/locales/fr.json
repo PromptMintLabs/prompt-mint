@@ -211,5 +211,12 @@
     "unauthorized": "L'émetteur n'a pas autorisé votre ligne de confiance pour {{assets}}. Contactez l'émetteur ou payez en XLM.",
     "unfunded": "Votre compte n'est pas encore approvisionné sur ce réseau. Alimentez-le d'abord en XLM, puis ajoutez une ligne de confiance pour {{assets}}.",
     "recheck": "Vérifier à nouveau"
+  },
+  "minimumBalance": {
+    "title": "Portefeuille sous la réserve minimale",
+    "belowReserve": "Votre solde de {{balance}} est inférieur à la réserve minimale Stellar de ce compte ({{reserve}}) : les transactions échoueront jusqu'à ce que vous ajoutiez des XLM.",
+    "shortfall": "Ajoutez au moins {{shortfall}} pour rétablir votre réserve.",
+    "unfunded": "Votre compte n'est pas encore approvisionné sur ce réseau. Ajoutez des XLM pour qu'il puisse couvrir les frais de réseau.",
+    "recheck": "Vérifier à nouveau"
   }
 }

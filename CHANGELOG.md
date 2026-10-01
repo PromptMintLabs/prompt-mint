@@ -5,6 +5,7 @@ All notable changes to PromptHash Stellar are documented in this file. This proj
 ## [Unreleased]
 
 ### Added
+- Minimum balance warning on wallet connection: a banner in the purchase modal flags wallets whose native XLM balance has fallen below the Stellar minimum account reserve, with the balance, reserve, and shortfall shown; failed balance lookups never warn (#699)
 - Trustline auto-detection on wallet connection: a banner in the purchase modal flags missing or unauthorized trustlines for assets listed in `PUBLIC_STELLAR_TRUSTLINE_ASSETS` (#706)
 - German (`de`) and Yoruba (`yo`) UI locales, plus a key-parity test covering every locale file
 - Security model and threat analysis documentation

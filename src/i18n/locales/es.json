@@ -211,5 +211,12 @@
     "unauthorized": "El emisor no ha autorizado tu línea de confianza para {{assets}}. Contacta al emisor o paga con XLM.",
     "unfunded": "Tu cuenta aún no está financiada en esta red. Fondéala primero con XLM y luego agrega una línea de confianza para {{assets}}.",
     "recheck": "Comprobar de nuevo"
+  },
+  "minimumBalance": {
+    "title": "Billetera por debajo de la reserva mínima",
+    "belowReserve": "Tu saldo de {{balance}} está por debajo de la reserva mínima de Stellar para esta cuenta ({{reserve}}), así que las transacciones fallarán hasta que añadas XLM.",
+    "shortfall": "Añade al menos {{shortfall}} para restablecer tu reserva.",
+    "unfunded": "Tu cuenta aún no está financiada en esta red. Añade XLM para que pueda cubrir las comisiones de red.",
+    "recheck": "Comprobar de nuevo"
   }
 }

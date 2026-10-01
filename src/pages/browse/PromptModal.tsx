@@ -42,6 +42,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { browserStellarConfig } from "../../lib/stellar/browserConfig";
 import { NetworkMismatchBanner } from "../../components/wallet/NetworkMismatchBanner";
 import { TrustlineBanner } from "../../components/wallet/TrustlineBanner";
+import { MinimumBalanceBanner } from "../../components/wallet/MinimumBalanceBanner";
 import { detectNetworkMismatch } from "../../lib/wallet/networkDetection";
 import { CurrencyPrice } from "../../components/CurrencyPrice";
 import { AddressTooltip, ContractStateTooltip } from "@/components/ui/Tooltip";
@@ -633,6 +634,9 @@ export const PromptModal: React.FC<PromptModalProps> = ({
 
               {/* Missing trustline warning (auto-detected on wallet connect) */}
               <TrustlineBanner />
+
+              {/* Balance below the Stellar minimum reserve warning */}
+              <MinimumBalanceBanner />
 
               {/* TRANSACTION STAGES */}
               {(status === "IDLE" || status === "ERROR") && (
