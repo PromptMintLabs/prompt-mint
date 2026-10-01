@@ -24,6 +24,22 @@
     "already_owned": "Ya posees este prompt.",
     "max_supply_reached": "Se alcanzó el suministro máximo para este prompt."
   },
+  "checkout": {
+    "fee_breakdown_title": "Revisar compra",
+    "fee_breakdown_description": "Revisa el desglose del precio y la tarifa estimada de la red Stellar antes de continuar a tu billetera.",
+    "prompt_price": "Precio del prompt",
+    "platform_fee_estimate": "Tarifa de plataforma estimada ({{rate}}% predeterminado)",
+    "creator_proceeds_estimate": "Ingresos estimados del creador",
+    "network_fee_estimate": "Tarifa de red estimada",
+    "total_estimate": "Total estimado",
+    "platform_fee_note": "La tarifa de plataforma se descuenta del precio del prompt, no se añade. El administrador del contrato puede cambiar la tarifa predeterminada.",
+    "network_fee_note": "Las tarifas de red se pagan por separado a los validadores de Stellar y pueden variar.",
+    "review_fees": "Revisar tarifas",
+    "back": "Atrás",
+    "confirm_purchase": "Confirmar compra",
+    "estimating": "Calculando...",
+    "unavailable": "No disponible"
+  },
   "create": {
     "title": "Crear un Prompt",
     "prompt_title": "Título",

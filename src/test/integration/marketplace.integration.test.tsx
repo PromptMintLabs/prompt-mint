@@ -191,7 +191,13 @@ describe("marketplace purchase and unlock integration coverage", () => {
       name: /acquire license/i,
     });
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /confirm & purchase/i }),
+      within(dialog).getByRole("button", { name: /review fees/i }),
+    );
+    const feeDialog = await screen.findByRole("dialog", {
+      name: /review purchase/i,
+    });
+    await userEvent.click(
+      within(feeDialog).getByRole("button", { name: /confirm purchase/i }),
     );
 
     await waitFor(() => {

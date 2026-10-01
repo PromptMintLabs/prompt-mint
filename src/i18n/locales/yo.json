@@ -24,6 +24,22 @@
     "already_owned": "O ti ní prompt yìí tẹ́lẹ̀.",
     "max_supply_reached": "Iye tó pọ̀ jùlọ fún prompt yìí ti kún."
   },
+  "checkout": {
+    "fee_breakdown_title": "Ṣe àtúnyẹ̀wò rírà",
+    "fee_breakdown_description": "Ṣàyẹ̀wò bí iye owó ṣe pín àti ìṣírò owó nẹ́tíwọ́ọ̀kì Stellar kí o tó lọ sí àpò owó rẹ.",
+    "prompt_price": "Iye prompt",
+    "platform_fee_estimate": "Ìṣírò owó pẹpẹ ({{rate}}% àiyípadà)",
+    "creator_proceeds_estimate": "Ìṣírò owó tí olùdásílẹ̀ yóò rí",
+    "network_fee_estimate": "Ìṣírò owó nẹ́tíwọ́ọ̀kì",
+    "total_estimate": "Àpapọ̀ ìṣírò",
+    "platform_fee_note": "A máa yọ owó pẹpẹ kúrò nínú iye prompt; a kì í fi kún un. Alábojútó àdéhùn lè yí ìwọ̀n àiyípadà padà.",
+    "network_fee_note": "A máa san owó nẹ́tíwọ́ọ̀kì lọ́tọ̀ sí àwọn olùfọwọ́sí Stellar, ó sì lè yàtọ̀.",
+    "review_fees": "Ṣàyẹ̀wò owó",
+    "back": "Padà",
+    "confirm_purchase": "Jẹ́rìí rírà",
+    "estimating": "Ń ṣe ìṣírò...",
+    "unavailable": "Kò sí ní báyìí"
+  },
   "create": {
     "title": "Ṣẹ̀dá Prompt kan",
     "prompt_title": "Àkọlé",

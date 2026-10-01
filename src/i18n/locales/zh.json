@@ -24,6 +24,22 @@
     "already_owned": "您已拥有此提示词。",
     "max_supply_reached": "此提示词已达到最大供应量。"
   },
+  "checkout": {
+    "fee_breakdown_title": "查看购买明细",
+    "fee_breakdown_description": "前往钱包前，请查看价格分配和 Stellar 网络费用估算。",
+    "prompt_price": "提示词价格",
+    "platform_fee_estimate": "平台费用估算（默认 {{rate}}%）",
+    "creator_proceeds_estimate": "创作者预计收入",
+    "network_fee_estimate": "网络费用估算",
+    "total_estimate": "预计总额",
+    "platform_fee_note": "平台费用从提示词价格中扣除，不会额外收取。合约管理员可以更改默认费率。",
+    "network_fee_note": "网络费用单独支付给 Stellar 验证者，金额可能变化。",
+    "review_fees": "查看费用",
+    "back": "返回",
+    "confirm_purchase": "确认购买",
+    "estimating": "正在估算...",
+    "unavailable": "不可用"
+  },
   "create": {
     "title": "创建提示词",
     "prompt_title": "标题",

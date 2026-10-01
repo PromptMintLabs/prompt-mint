@@ -24,6 +24,22 @@
     "already_owned": "Du besitzt diesen Prompt bereits.",
     "max_supply_reached": "Die maximale Stückzahl für diesen Prompt ist erreicht."
   },
+  "checkout": {
+    "fee_breakdown_title": "Kauf prüfen",
+    "fee_breakdown_description": "Prüfe die Preisaufteilung und die geschätzte Stellar-Netzwerkgebühr, bevor du zur Wallet wechselst.",
+    "prompt_price": "Prompt-Preis",
+    "platform_fee_estimate": "Geschätzte Plattformgebühr ({{rate}} % Standard)",
+    "creator_proceeds_estimate": "Geschätzter Erlös für den Creator",
+    "network_fee_estimate": "Geschätzte Netzwerkgebühr",
+    "total_estimate": "Geschätzter Gesamtbetrag",
+    "platform_fee_note": "Die Plattformgebühr wird vom Prompt-Preis abgezogen und nicht zusätzlich berechnet. Die Vertragsverwaltung kann den Standardsatz ändern.",
+    "network_fee_note": "Netzwerkgebühren werden separat an Stellar-Validatoren gezahlt und können variieren.",
+    "review_fees": "Gebühren prüfen",
+    "back": "Zurück",
+    "confirm_purchase": "Kauf bestätigen",
+    "estimating": "Wird geschätzt...",
+    "unavailable": "Nicht verfügbar"
+  },
   "create": {
     "title": "Prompt erstellen",
     "prompt_title": "Titel",

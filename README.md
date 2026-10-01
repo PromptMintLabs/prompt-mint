@@ -85,6 +85,7 @@ PromptHash Stellar addresses a concrete gap between AI workflows and blockchain 
 - Encrypted prompt listings with public preview metadata
 - Soroban contract for listing creation, purchase rights, creator catalog, buyer catalog, and fee management
 - XLM-denominated purchases with contract-enforced seller/platform splits
+- Pre-purchase fee breakdown showing the price split, default-rate platform fee estimate, separate network fee estimate, and estimated wallet total
 - Wallet-based access verification using signed challenge messages
 - Unlock flow with integrity checking against a stored content hash
 - Creator dashboard for price updates and sale activation/deactivation
@@ -103,9 +104,12 @@ PromptHash Stellar addresses a concrete gap between AI workflows and blockchain 
 ### Purchase flow
 
 1. A buyer browses public listings from contract state.
-2. The app approves native asset spend and calls `buy_prompt`.
-3. The contract transfers XLM from buyer to seller and fee wallet.
-4. The contract records purchase rights and increments sales count.
+2. Before wallet approval, the app shows the prompt price, estimated platform split, estimated Stellar network fee, and estimated total.
+3. The buyer confirms and the app calls `buy_prompt`.
+4. The contract transfers XLM from buyer to seller and fee wallet.
+5. The contract records purchase rights and increments sales count.
+
+The platform fee estimate uses the contract's 5% default and is deducted from the prompt price, not added to the buyer's item charge. The contract admin can change the platform rate; the Stellar network fee is separate and may vary.
 
 ### Unlock flow
 
