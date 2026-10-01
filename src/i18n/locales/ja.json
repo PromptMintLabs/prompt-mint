@@ -24,6 +24,22 @@
     "already_owned": "このプロンプトはすでに所有しています。",
     "max_supply_reached": "このプロンプトの最大供給数に達しました。"
   },
+  "checkout": {
+    "fee_breakdown_title": "購入内容を確認",
+    "fee_breakdown_description": "ウォレットに進む前に、価格の内訳と Stellar ネットワーク手数料の見積もりを確認してください。",
+    "prompt_price": "プロンプト価格",
+    "platform_fee_estimate": "プラットフォーム手数料の見積もり（標準 {{rate}}%）",
+    "creator_proceeds_estimate": "クリエイターの受取額（見積もり）",
+    "network_fee_estimate": "ネットワーク手数料の見積もり",
+    "total_estimate": "合計見積もり",
+    "platform_fee_note": "プラットフォーム手数料はプロンプト価格から差し引かれ、追加請求されません。コントラクト管理者は標準料率を変更できます。",
+    "network_fee_note": "ネットワーク手数料は Stellar のバリデーターに別途支払われ、変動する場合があります。",
+    "review_fees": "手数料を確認",
+    "back": "戻る",
+    "confirm_purchase": "購入を確定",
+    "estimating": "見積もり中...",
+    "unavailable": "利用できません"
+  },
   "create": {
     "title": "プロンプトを作成",
     "prompt_title": "タイトル",

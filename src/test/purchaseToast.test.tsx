@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import {
@@ -128,9 +128,14 @@ describe("Purchase Toast Notifications (#427)", () => {
       );
 
       const purchaseBtn = await screen.findByRole("button", {
-        name: /confirm & purchase/i,
+        name: /review fees/i,
       });
       await user.click(purchaseBtn);
+      const feeDialog = await screen.findByRole("dialog", { name: /review purchase/i });
+      expect(within(feeDialog).getByText(/5% default/i)).toBeInTheDocument();
+      expect(within(feeDialog).getByText("0.0500000 XLM")).toBeInTheDocument();
+      expect(PromptHashClient.purchasePrompt).not.toHaveBeenCalled();
+      await user.click(within(feeDialog).getByRole("button", { name: /confirm purchase/i }));
 
       expect(toast.success).toHaveBeenCalledWith(
         expect.stringMatching(/purchased/i),
@@ -159,9 +164,11 @@ describe("Purchase Toast Notifications (#427)", () => {
       );
 
       const purchaseBtn = await screen.findByRole("button", {
-        name: /confirm & purchase/i,
+        name: /review fees/i,
       });
       await user.click(purchaseBtn);
+      const feeDialog = await screen.findByRole("dialog", { name: /review purchase/i });
+      await user.click(within(feeDialog).getByRole("button", { name: /confirm purchase/i }));
 
       expect(toast.error).toHaveBeenCalledWith(
         "Purchase Failed",

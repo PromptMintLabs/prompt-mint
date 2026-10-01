@@ -1,7 +1,9 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { WalletContext } from "../../providers/WalletProvider";
 import { useAsyncTransaction } from "../../components/useAsyncTransaction";
 import { estimateSingleFee, type FeeEstimate } from "@/lib/checkout/feeEstimation";
+import { PurchaseFeeBreakdownModal } from "@/components/PurchaseFeeBreakdownModal";
 import { FeeEstimateBanner } from "@/components/FeeEstimateBanner";
 import { PromptHashClient } from "../../lib/stellar/promptHashClient";
 import { unlockPrompt } from "../../lib/prompts/unlock";
@@ -263,7 +265,10 @@ export const PromptModal: React.FC<PromptModalProps> = ({
 }) => {
   const wallet = useContext(WalletContext);
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { addToCart, isInCart } = useAddToCart();
+  const [showFeeBreakdown, setShowFeeBreakdown] = useState(false);
+  const showFeeBreakdownRef = useRef(false);
 
   const [status, setStatus] = useState<BuyerStatus>("IDLE");
   const [txHash, setTxHash] = useState<string>("");
@@ -284,6 +289,9 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   const [isEstimatingFee, setIsEstimatingFee] = useState(false);
 
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const purchaseButtonRef = useRef<HTMLButtonElement>(null);
+  const feeBreakdownDialogRef = useRef<HTMLDivElement>(null);
+  const feeBreakdownConfirmRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const lastActiveElementRef = useRef<HTMLElement | null>(null);
 
@@ -320,8 +328,16 @@ export const PromptModal: React.FC<PromptModalProps> = ({
 
       // #270 – shared, unit-tested focus-trap + Escape handler.
       const handleKeyDown = createFocusTrapKeydownHandler({
-        container: () => modalRef.current,
-        onEscape: onClose,
+        container: () => feeBreakdownDialogRef.current ?? modalRef.current,
+        onEscape: () => {
+          if (showFeeBreakdownRef.current) {
+            showFeeBreakdownRef.current = false;
+            setShowFeeBreakdown(false);
+            setTimeout(() => purchaseButtonRef.current?.focus(), 0);
+          } else {
+            onClose();
+          }
+        },
       });
 
       document.addEventListener("keydown", handleKeyDown);
@@ -333,6 +349,12 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       };
     }
   }, [isOpen, onClose]);
+  useEffect(() => {
+    if (showFeeBreakdown && promptData) {
+      feeBreakdownConfirmRef.current?.focus();
+    }
+  }, [showFeeBreakdown, promptData]);
+
 
   useEffect(() => {
     if (isOpen && wallet?.address) {
@@ -555,6 +577,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           category: promptData.category,
         }
       : null;
+  const purchasePriceStroops = promptData?.effectivePrice ?? promptData?.priceStroops;
   const unlockDisconnectError = isWalletDisconnectUnlockError(unlockError);
   const walletCanUnlock = wallet?.status === "connected" && Boolean(wallet?.address);
   const unlockNeedsReconnect = unlockDisconnectError && !walletCanUnlock;
@@ -669,8 +692,13 @@ export const PromptModal: React.FC<PromptModalProps> = ({
 
                   <div className="flex flex-wrap gap-3">
                     <button
-                      onClick={() => runPurchase().catch(() => {})}
+                      ref={purchaseButtonRef}
+                      onClick={() => {
+                        showFeeBreakdownRef.current = true;
+                        setShowFeeBreakdown(true);
+                      }}
                       disabled={
+                        !promptData ||
                         isPurchasing ||
                         !networkState.canTrustConfirmation ||
                         detectNetworkMismatch(!!wallet?.address, wallet?.network, wallet?.status).type !== "correct"
@@ -686,7 +714,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                         "Transactions Unavailable"
                       ) : (
                         <>
-                          Confirm & Purchase <Wallet className="w-4 h-4" />
+                          {t("checkout.review_fees")} <Wallet className="w-4 h-4" />
                         </>
                       )}
                     </button>
@@ -970,6 +998,26 @@ export const PromptModal: React.FC<PromptModalProps> = ({
         )}
       </div>
 
+      {showFeeBreakdown && purchasePriceStroops !== undefined && (
+        <PurchaseFeeBreakdownModal
+          promptPriceStroops={purchasePriceStroops}
+          feeEstimate={feeEstimate}
+          isEstimatingFee={isEstimatingFee}
+          dialogRef={feeBreakdownDialogRef}
+          confirmButtonRef={feeBreakdownConfirmRef}
+          onBack={() => {
+            showFeeBreakdownRef.current = false;
+            setShowFeeBreakdown(false);
+            setTimeout(() => purchaseButtonRef.current?.focus(), 0);
+          }}
+          onConfirm={() => {
+            showFeeBreakdownRef.current = false;
+            setShowFeeBreakdown(false);
+            closeButtonRef.current?.focus();
+            runPurchase().catch(() => {});
+          }}
+        />
+      )}
       {/* Gift Modal */}
       {showGiftModal && promptData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-md">

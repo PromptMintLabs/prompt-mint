@@ -1,4 +1,22 @@
 const BASE_FEE_STROOPS = 100;
+export const DEFAULT_PLATFORM_FEE_BPS = 500;
+
+export interface PurchaseFeeBreakdown {
+  platformFeeStroops: bigint;
+  creatorProceedsStroops: bigint;
+}
+
+export function calculatePurchaseFeeBreakdown(
+  priceStroops: bigint,
+  platformFeeBps = DEFAULT_PLATFORM_FEE_BPS,
+): PurchaseFeeBreakdown {
+  const platformFeeStroops = (priceStroops * BigInt(platformFeeBps)) / 10_000n;
+
+  return {
+    platformFeeStroops,
+    creatorProceedsStroops: priceStroops - platformFeeStroops,
+  };
+}
 
 /**
  * Resource fee model for a Soroban purchase transaction.

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../render";
 import { PromptModal } from "@/pages/browse/PromptModal";
@@ -73,7 +73,7 @@ describe("Purchase Button States", () => {
     );
 
     await waitFor(() => {
-      const purchaseButton = screen.queryByRole("button", { name: /confirm & purchase/i });
+      const purchaseButton = screen.queryByRole("button", { name: /review fees/i });
       if (purchaseButton) {
         expect(purchaseButton).toBeDisabled();
       }
@@ -96,7 +96,7 @@ describe("Purchase Button States", () => {
     );
 
     await waitFor(() => {
-      const purchaseButton = screen.queryByRole("button", { name: /confirm & purchase/i });
+      const purchaseButton = screen.queryByRole("button", { name: /review fees/i });
       if (purchaseButton) {
         expect(purchaseButton).not.toBeDisabled();
       }
@@ -125,11 +125,13 @@ describe("Purchase Button States", () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /confirm & purchase/i })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /review fees/i })).toBeInTheDocument();
     });
 
-    const purchaseButton = screen.getByRole("button", { name: /confirm & purchase/i });
+    const purchaseButton = screen.getByRole("button", { name: /review fees/i });
     await user.click(purchaseButton);
+    const feeDialog = await screen.findByRole("dialog", { name: /review purchase/i });
+    await user.click(within(feeDialog).getByRole("button", { name: /confirm purchase/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/broadcasting to stellar/i)).toBeInTheDocument();
@@ -158,11 +160,13 @@ describe("Purchase Button States", () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /confirm & purchase/i })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /review fees/i })).toBeInTheDocument();
     });
 
-    const purchaseButton = screen.getByRole("button", { name: /confirm & purchase/i });
+    const purchaseButton = screen.getByRole("button", { name: /review fees/i });
     await user.click(purchaseButton);
+    const feeDialog = await screen.findByRole("dialog", { name: /review purchase/i });
+    await user.click(within(feeDialog).getByRole("button", { name: /confirm purchase/i }));
 
     await waitFor(() => {
       expect(screen.getAllByText(/insufficient xlm balance/i).length).toBeGreaterThan(0);
@@ -190,7 +194,7 @@ describe("Purchase Button States", () => {
     });
 
     await waitFor(() => {
-      const purchaseButton = screen.queryByRole("button", { name: /confirm & purchase/i });
+      const purchaseButton = screen.queryByRole("button", { name: /review fees/i });
       if (purchaseButton) {
         expect(purchaseButton).toBeDisabled();
       }
@@ -217,7 +221,7 @@ describe("Purchase Button States", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/decrypt content/i)).toBeInTheDocument();
-      expect(screen.queryByText(/confirm & purchase/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/review fees/i)).not.toBeInTheDocument();
     });
   });
 

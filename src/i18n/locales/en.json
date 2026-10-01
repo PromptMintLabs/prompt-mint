@@ -24,6 +24,22 @@
     "already_owned": "You already own this prompt.",
     "max_supply_reached": "Maximum supply reached for this prompt."
   },
+  "checkout": {
+    "fee_breakdown_title": "Review purchase",
+    "fee_breakdown_description": "Check the price split and estimated Stellar network fee before continuing to your wallet.",
+    "prompt_price": "Prompt price",
+    "platform_fee_estimate": "Estimated platform fee ({{rate}}% default)",
+    "creator_proceeds_estimate": "Estimated creator proceeds",
+    "network_fee_estimate": "Estimated network fee",
+    "total_estimate": "Estimated total",
+    "platform_fee_note": "The platform fee is taken from the prompt price, not added to it. The contract admin can change the default rate.",
+    "network_fee_note": "Network fees are paid separately to Stellar validators and can vary.",
+    "review_fees": "Review fees",
+    "back": "Back",
+    "confirm_purchase": "Confirm purchase",
+    "estimating": "Estimating...",
+    "unavailable": "Unavailable"
+  },
   "create": {
     "title": "Create a Prompt",
     "prompt_title": "Title",

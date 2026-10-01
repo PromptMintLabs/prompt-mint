@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  calculatePurchaseFeeBreakdown,
   estimateSingleFee,
   estimateBulkFee,
   estimateMultiItemPurchase,
@@ -7,6 +8,22 @@ import {
 } from "@/lib/checkout/feeEstimation";
 
 describe("feeEstimation", () => {
+  describe("calculatePurchaseFeeBreakdown", () => {
+    it("splits the default platform fee from the listed price", () => {
+      expect(calculatePurchaseFeeBreakdown(10_000_000n)).toEqual({
+        platformFeeStroops: 500_000n,
+        creatorProceedsStroops: 9_500_000n,
+      });
+    });
+
+    it("floors fractional stroops in favor of the creator", () => {
+      expect(calculatePurchaseFeeBreakdown(19n)).toEqual({
+        platformFeeStroops: 0n,
+        creatorProceedsStroops: 19n,
+      });
+    });
+  });
+
   describe("estimateSingleFee", () => {
     it("returns a fee estimate with expected shape", async () => {
       const fee = await estimateSingleFee();

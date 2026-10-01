@@ -24,6 +24,22 @@
     "already_owned": "Vous possédez déjà ce prompt.",
     "max_supply_reached": "L'offre maximale pour ce prompt est atteinte."
   },
+  "checkout": {
+    "fee_breakdown_title": "Vérifier l'achat",
+    "fee_breakdown_description": "Vérifiez le détail du prix et les frais réseau Stellar estimés avant de continuer vers votre portefeuille.",
+    "prompt_price": "Prix du prompt",
+    "platform_fee_estimate": "Frais de plateforme estimés ({{rate}} % par défaut)",
+    "creator_proceeds_estimate": "Revenu estimé du créateur",
+    "network_fee_estimate": "Frais réseau estimés",
+    "total_estimate": "Total estimé",
+    "platform_fee_note": "Les frais de plateforme sont prélevés sur le prix du prompt, sans supplément. L'administrateur du contrat peut modifier le taux par défaut.",
+    "network_fee_note": "Les frais réseau sont payés séparément aux validateurs Stellar et peuvent varier.",
+    "review_fees": "Vérifier les frais",
+    "back": "Retour",
+    "confirm_purchase": "Confirmer l'achat",
+    "estimating": "Estimation...",
+    "unavailable": "Indisponible"
+  },
   "create": {
     "title": "Créer un Prompt",
     "prompt_title": "Titre",
