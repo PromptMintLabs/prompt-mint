@@ -90,10 +90,11 @@ graph TD
 ### 3.2 Insufficient XLM & Minimum Reserve Requirements
 - **Symptoms**: Error message: `InsufficientBalance` or `txFAILED: op_underfunded`.
 - **Explanation**:
-  Stellar accounts require a base reserve of **1 XLM**, plus **0.5 XLM** for each subentry (trustlines, signers, open offers). You cannot spend this reserved balance.
+  Stellar accounts reserve two base-reserve units (currently **1 XLM**), adjusted by subentries, sponsored entries, and sponsoring entries. You cannot spend this reserved balance.
 - **Resolution**:
   1. Calculate your minimum spendable balance:
-     $$\text{Available XLM} = \text{Total XLM} - (1.0 + 0.5 \times \text{Subentries}) - 0.01 \text{ (fee cushion)}$$
+     $$\text{Reserved XLM} = (2 + \text{Subentries} + \text{Sponsoring} - \text{Sponsored}) \times \text{Base Reserve}$$
+     $$\text{Available XLM} = \text{Total XLM} - \text{Reserved XLM} - 0.01 \text{ (fee cushion)}$$
   2. Top up your account:
      - On Testnet: Request test XLM from the Stellar Laboratory Friendbot (`https://laboratory.stellar.org/#account-creator`).
      - On Mainnet: Transfer additional XLM from an exchange or funding wallet.

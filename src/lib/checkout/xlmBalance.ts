@@ -49,9 +49,20 @@ export function computeMinimumReserveStroops(
   numSponsored: number,
   baseReserveStroops: bigint = DEFAULT_BASE_RESERVE_STROOPS,
 ): bigint {
-  const ledgerEntries = 2 + subentryCount + numSponsoring - numSponsored;
-  const entries = ledgerEntries > 0 ? ledgerEntries : 0;
-  return BigInt(entries) * baseReserveStroops;
+  for (const [name, count] of Object.entries({ subentryCount, numSponsoring, numSponsored })) {
+    if (!Number.isSafeInteger(count) || count < 0) {
+      throw new RangeError(`${name} must be a non-negative safe integer`);
+    }
+  }
+
+  if (baseReserveStroops < 0n) {
+    throw new RangeError("baseReserveStroops must be non-negative");
+  }
+
+  const ledgerEntries =
+    2n + BigInt(subentryCount) + BigInt(numSponsoring) - BigInt(numSponsored);
+  const reservedEntries = ledgerEntries > 0n ? ledgerEntries : 0n;
+  return reservedEntries * baseReserveStroops;
 }
 
 export function assessCheckoutXlmSufficiency(params: {
